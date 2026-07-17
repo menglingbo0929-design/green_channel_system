@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    driver-class-name: com.oceanbase.jdbc.Driver
+    url: jdbc:oceanbase://127.0.0.1:2881/green_channel?useUnicode=true&characterEncoding=utf8&useSSL=false
+    username: root
+    password:
+  mvc:
+    format:
+      date: yyyy-MM-dd
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+    encoding:
+      charset: utf-8
+  web:
+    resources:
+      static-locations: classpath:/META-INF/resources/, classpath:/resources/, classpath:/static/, classpath:/public/, file:${file-upload-path}
+server:
+  port: 8080
+
+mybatis:
+  mapper-locations: classpath:/mybatis/mapper/*.xml, classpath:/mybatis/mapper/extend/*.xml
+
+logging:
+  level:
+    com.example.mybatisplusdemo.mapper: debug
+file-upload-path: ./file
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: 'https://ws-6nwi9xo7l7v84m7p.cn-beijing.maas.aliyuncs.com/api/v1'
+  community:
+    dashscope:
+      chat-model:
+        api-key: sk-ws-H.EDRMLIR.ktik.MEUCIQDYWU5mRjVwtDjBvwz03FiBDUAws7DK_LXL6nXXtGhSHQIgQmIBJnK0yzSCgm5EpCTR_LIprjOKD8iZP-O2bdnMq5o
+        model-name: qwen-max
