@@ -206,3 +206,41 @@ idx_message_read_user(user_id, read_time)
 ```
 
 取消申请时，成员三还需要调用成员四提供的单据检查和作废 Service。成员三不得直接修改 `arrears_confirmation`。
+
+## 8. V2 全表总览（待四位成员确认）
+
+本节只补充全项目的表范围、关键字段和关系，不替代前述成员三表的详细字段定义，也不授权任何成员修改其他成员的表。
+
+| 负责人 | 表 | 关键字段/数据格式 | 必须满足的关系或约束 |
+|---|---|---|---|
+| 成员一 | sys_user、sys_role、sys_user_role | 用户名、密码哈希、角色编码；ID 为 BIGINT | 用户名有效数据唯一；角色固定为 STUDENT/COUNSELOR/COLLEGE/SCHOOL |
+| 成员一 | college、major、grade、class_info | 编码、名称、enabled TINYINT | 学院→专业→班级；学生引用的组织数据必须一致 |
+| 成员一 | student、counselor_student | 学号、姓名、学院/专业/年级/班级 ID、贷款情况 | 学号有效数据唯一；辅导员只可处理其关联学生 |
+| 成员一 | green_channel_batch、batch_eligible_grade | 批次编号、开始/结束/学院上报截止时间、状态 | 批次与适用年级多对多；时间顺序合法 |
+| 成员一 | subsidy_batch、subsidy_batch_eligible_grade | 批次编号、开始/结束时间、状态 | 补助批次与适用年级多对多 |
+| 成员二 | fee_item、fee_amount_option | 欠费项目、可选金额 DECIMAL(12,2) | 金额大于 0；选项归属一个欠费项目 |
+| 成员二 | gift_item、batch_gift_item、college_gift_quota、grade_gift_quota | 礼包物品、库存、名额、reserved_count、used_count、version | 0 ≤ used_count ≤ reserved_count ≤ 总量；原子扣减 |
+| 成员二 | application | student_id、application_type、source、batch_type、批次 ID、status、current_level、review_round、version | 唯一申请主表；同学生同批次同类型仅一条有效记录 |
+| 成员二 | arrears_application、gift_application、gift_application_item | application_id、申报金额/物品数量 | 仅归属 GREEN_CHANNEL；欠费和礼包均为可选明细 |
+| 成员二 | subsidy_application、college_subsidy_quota、grade_subsidy_quota | application_id、申请/核定金额、额度金额 | 仅归属 LIVING_SUBSIDY/TRAVEL_SUBSIDY；金额使用 DECIMAL(12,2) |
+| 成员二 | application_attachment、student_recommendation | application_id、受控 file_id；推荐快照 JSON | 不保存可猜测公开路径；敏感字段不写 JSON |
+| 成员三 | approval_record、approval_submission_record | application_id、审核轮次、动作、旧/新状态、request_id | 不可变流水；request_id 唯一，避免重复审核/上报 |
+| 成员三 | system_message、message_read_record | 接收用户、业务类型/ID、已读时间 | 消息已读以 (message_id,user_id) 唯一 |
+| 成员四 | arrears_confirmation | application_id、单据号、申报/确认金额、确认人/时间、deleted | 一条有效申请仅一条有效确认；确认金额大于 0 且不高于申报金额 |
+
+### 8.1 两类批次的字段约定
+
+green_channel_batch 与 subsidy_batch 是两张不同表。为避免后续混淆，申请和上报记录统一采用：
+
+- batch_type：GREEN_CHANNEL 或 SUBSIDY；
+- green_channel_batch_id：绿色通道批次时非空；
+- subsidy_batch_id：补助批次时非空；
+- 接口层可统一返回 batchId，但写入时必须同时说明 batchType。
+
+数据库 CHECK 约束保证任一记录只关联其中一类批次。这样保留真实外键，也避免同一个 batch_id 指到不同表的冲突。
+
+### 8.2 统一字段和实现边界
+
+- 新表默认遵循 database-format-standard.md：BIGINT、DECIMAL(12,2)、DATETIME、VARCHAR(32)、create_time/update_time/deleted。
+- application 仍由成员二维护；成员三只通过其 Service 修改状态；成员四只通过成员三 Service 完成 CONFIRM_PENDING 到 COMPLETED。
+- 本节没有新增表。若需要新增表、字段或索引，必须先在 change-log.md 创建 PROPOSED 记录，再由表负责人实现。
