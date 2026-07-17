@@ -2,9 +2,10 @@ package com.example.backend.model.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
 
 import java.time.LocalDateTime;
-
+@Data
 @TableName("user")
 public class User {
     @TableId(value = "id", type = IdType.AUTO)

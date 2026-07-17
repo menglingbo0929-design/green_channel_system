@@ -24,7 +24,11 @@ mybatis:
 
 logging:
   level:
-    com.example.mybatisplusdemo.mapper: debug
+    com:
+      example:
+        backend:
+          mapper:
+          com.example.backend.mapper: debug
 file-upload-path: ./file
 langchain4j:
   open-ai:
