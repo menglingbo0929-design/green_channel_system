@@ -1,9 +1,9 @@
 # 成员二申请配置模块接口与协作决策
 
-> 状态：`PROPOSED`
+> 状态：`APPROVED`
 > 负责人：成员二
 > 适用分支：`feature/application-config`
-> 说明：本文整理成员二完成申请配置与学生申请模块所依赖的跨模块能力、需要对外提供的 Service，以及本模块计划提供的 REST 接口。相关成员确认并在 `docs/change-log.md` 更新为 `APPROVED` 后，接口签名才成为正式实现依据。
+> 说明：本文整理成员二完成申请配置与学生申请模块所依赖的跨模块能力、需要对外提供的 Service，以及本模块计划提供的 REST 接口。四人第一阶段共识已写入 `docs/requirement.md`；实现以该共识和本文接口方向为依据。
 
 ## 1. 成员二职责和边界
 
@@ -383,7 +383,7 @@ public interface ApplicationStatisticsQueryService {
 }
 ```
 
-该接口是否采用 Service、只读 Mapper 或数据库视图，需要成员二和成员四共同确认。不得通过逐条远程式 Service 调用完成大批量聚合。
+第一阶段允许使用成员二提供的面向集合查询 Service，或成员二、四确认后的只读聚合 SQL；具体方式由两名负责人在实现时选择。禁止逐条跨模块调用后再汇总。
 
 ## 6. 成员二 REST 接口提案
 
@@ -549,7 +549,7 @@ APPLICATION_ATTACHMENT_SIZE_EXCEEDED
 APPLICATION_REQUEST_ALREADY_PROCESSED
 ```
 
-## 8. 开发前必须确认的阻塞项
+## 8. 第一阶段已经确认的实现约定
 
 ### 8.1 `application.batch_id` 的父表
 
@@ -561,7 +561,7 @@ green_channel_batch_id
 subsidy_batch_id
 ```
 
-使用 CHECK 约束保证两个批次外键有且仅有一个非空，并与 `batch_type` 一致。对外快照统一返回 `batchType + batchId`。该方案还需成员一和成员四确认，并同步 `approval_submission_record`、批量上报和统计契约。
+使用 CHECK 约束保证两个批次外键有且仅有一个非空，并与 `batch_type` 一致。对外快照统一返回 `batchType + batchId`。成员一已确认该方案；成员三的 `approval_submission_record`、批量上报及成员四统计契约按相同规则实现。
 
 ### 8.2 首次提交事务负责人
 
@@ -581,7 +581,7 @@ subsidy_batch_id
 
 ### 8.6 其他公共约定
 
-还需统一：
+以下细节由对应负责人在实现前补充，不再阻塞第一阶段开发：
 
 ```text
 application_no 生成格式
@@ -591,14 +591,10 @@ application_no 生成格式
 后端基础包名 com.example.backend / com.greenchannel.backend
 ```
 
-## 9. 确认流程
+## 9. 实施流程
 
-1. 成员二将本文对应记录登记到 `docs/change-log.md`，状态保持 `PROPOSED`；
-2. 成员一确认第 2 节依赖接口；
-3. 成员三复核已经按其评审意见修订的第 3、4 节状态、资源和事务接口；
-4. 成员四确认第 5 节确认、代申请、补录和统计接口；
-5. 四人确认第 8 节阻塞项；
-6. 将变更记录更新为 `APPROVED`；
-7. 成员二把已确认 REST 接口同步到 `docs/api-document.md`，把最终表结构同步到 `docs/database-design.md`；
-8. 各负责人分别实现本人拥有的 Service、DDL、Entity、Mapper 和测试；
-9. 完成联调后将记录更新为 `IMPLEMENTED`。
+1. 四人第一阶段共识和本决策状态均为 `APPROVED`；
+2. 成员二把 REST 接口同步到 `docs/api-document.md`，把最终表结构同步到 `docs/database-design.md`；
+3. 各负责人分别实现本人拥有的 Service、DDL、Entity、Mapper 和测试；
+4. 负责人在实现对应功能前补充不影响公共边界的内部细节；
+5. 完成联调后将变更记录更新为 `IMPLEMENTED`。
