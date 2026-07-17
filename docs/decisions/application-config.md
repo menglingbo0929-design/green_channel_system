@@ -21,6 +21,7 @@ arrears_application
 gift_application
 gift_application_item
 application_attachment
+application_operation_record
 college_subsidy_quota
 grade_subsidy_quota
 subsidy_application
@@ -144,7 +145,7 @@ public interface PolicyRuleQueryService {
 ### 3.1 申请提交与状态流转
 
 ```java
-public interface ApplicationTransitionService {
+public interface ApprovalTransitionService {
     ApplicationStatusResult submitInitial(
         Long applicationId,
         Integer expectedVersion,
@@ -158,29 +159,24 @@ public interface ApplicationTransitionService {
         String requestId,
         Long operatorId
     );
-
-    ApplicationStatusResult completeAfterConfirmation(
-        Long applicationId,
-        Integer expectedVersion,
-        String requestId,
-        Long operatorId
-    );
 }
 ```
 
 原因：首次提交和退回重提既要改变 `application`，又要向成员三负责的 `approval_record` 写入 `SUBMIT` 记录。成员二负责保存申请内容和资源预占，成员三负责状态机及审核记录编排。
 
-必须确认事务边界，禁止出现“资源已预占但状态未提交”或“状态已提交但审核记录未写入”。
+`completeAfterConfirmation` 不属于成员二调用范围，由成员四调用成员三提供的 `ApprovalCompletionService`。
+
+`resubmitReturned` 必须使用新的 `requestId`，增加 `reviewRound`，更新本轮 `submitTime`、操作人和更新时间，新增一条 `SUBMIT` 审核记录，并保留全部历史审核记录。
 
 ### 3.2 审核状态与记录查询
 
 ```java
 public interface ApprovalFlowQueryService {
-    ApprovalFlowSnapshot getFlow(Long applicationId, Long currentUserId);
+    ApprovalFlowSnapshot getFlow(Long applicationId);
 }
 ```
 
-学生申请详情页需要展示当前状态、退回原因和审核时间轴，但成员二不直接查询 `approval_record`。
+学生申请详情页需要展示当前状态、退回原因和审核时间轴，但成员二不直接查询 `approval_record`。成员三在实现内部通过可信登录上下文获取用户、角色、学院和数据范围。
 
 ## 4. 成员二提供给成员三的能力
 
@@ -199,6 +195,7 @@ public interface ApplicationStateQueryService {
 ```text
 applicationId
 studentId
+batchType
 batchId
 applicationType
 status
@@ -242,6 +239,8 @@ deleted = 0
 
 受影响行数不是 1 时返回明确的状态冲突或版本冲突。
 
+批量上报不新增第二套批量写接口。成员三在同一个外层事务中循环调用单条 `updateState`；任意一条发生状态或版本冲突时抛出异常，使整批状态更新、审核记录和上报记录全部回滚。
+
 ### 4.3 审核详情
 
 ```java
@@ -257,17 +256,37 @@ public interface ApplicationDetailService {
 
 ```java
 public interface ApplicationResourceService {
-    void reserveOnSubmit(Long applicationId);
-    void validateCounselorApproval(Long applicationId, BigDecimal finalSubsidyAmount);
+    void reserveOnSubmit(Long applicationId, String requestId, Long operatorId);
+    ResourceAdjustmentResult applyCounselorSubsidyAmount(
+        Long applicationId,
+        BigDecimal finalSubsidyAmount,
+        String requestId,
+        Long operatorId
+    );
     void validateCollegeApproval(Long applicationId);
-    void confirmOnSchoolApproval(Long applicationId);
-    void handleReturn(Long applicationId, Integer reservationHours);
-    void releaseOnReject(Long applicationId);
-    void releaseOnCancel(Long applicationId);
+    void confirmOnSchoolApproval(Long applicationId, String requestId, Long operatorId);
+    void handleReturn(Long applicationId, Integer reservationHours, String requestId, Long operatorId);
+    void releaseOnReject(Long applicationId, String requestId, Long operatorId);
+    void releaseOnCancel(Long applicationId, String requestId, Long operatorId);
 }
 ```
 
 所有库存、名额和额度更新必须使用事务、条件原子更新、行锁或乐观锁，禁止先查询余额再无条件更新。
+
+资源操作幂等记录由成员二维护在不可变的 `application_operation_record` 中，按照 `application_id + operation_type + request_id` 建立唯一约束。成员三的 `approval_record.request_id` 只保证审核操作幂等，不能代替资源操作幂等。
+
+学生提交补助申请时按期望金额预占额度；辅导员确认最终金额时，`applyCounselorSubsidyAmount` 持久化最终金额并原子调整预占差额。额度不足时审核失败，学院再次校验，学校审核通过后确认占用，拒绝或取消时释放。
+
+### 4.5 跨模块事务边界
+
+| 业务场景 | 外层事务发起方 | 同一事务内完成的操作 |
+|---|---|---|
+| 首次提交、退回重提 | 成员二 | 保存申请、预占或调整资源、调用成员三写 `SUBMIT` 记录并推进状态 |
+| 审核、退回、拒绝、取消、批量上报 | 成员三 | 权限校验、调用成员二更新状态和资源、写审核/上报记录 |
+| 学校欠费确认完成 | 成员四 | 写确认记录、调用成员三完成状态流转和审核记录 |
+| 线下补录自动审核 | 成员四 | 调用成员二创建申请、调用成员三写自动审核记录并推进状态 |
+
+所有跨模块 Service 使用同一数据源并加入外层事务，默认 `Propagation.REQUIRED`。任意一步失败，申请、资源、审核记录和确认记录整体回滚。
 
 ## 5. 成员二提供给成员四的能力
 
@@ -305,6 +324,19 @@ status
 
 只允许返回有效且状态为 `CONFIRM_PENDING` 的申请。成员四不直接查询 `application`、`arrears_application` 或 `student`。
 
+成员四写入欠费确认记录后，通过成员三提供的接口完成状态和审核记录：
+
+```java
+public interface ApprovalCompletionService {
+    ApplicationStatusResult completeAfterConfirmation(
+        Long applicationId,
+        Integer expectedVersion,
+        String requestId,
+        Long operatorId
+    );
+}
+```
+
 ### 5.2 学校代申请与线下补录
 
 ```java
@@ -326,6 +358,20 @@ public interface ApplicationCreationService {
 - 防止同一学生、同一批次、同一申请类型重复创建；
 - 成员四负责补录业务编排，成员二负责申请主表及明细的物理写入；
 - 自动审核记录和最终状态由成员三提供的状态流转 Service 处理。
+
+成员三提供以下补录自动审核能力，由成员四在补录外层事务中调用：
+
+```java
+public interface ApprovalTransitionService {
+    ApplicationStatusResult completeSupplementReview(
+        Long applicationId,
+        boolean containsArrears,
+        Integer expectedVersion,
+        String requestId,
+        Long operatorId
+    );
+}
+```
 
 ### 5.3 统计只读能力
 
@@ -507,27 +553,31 @@ APPLICATION_REQUEST_ALREADY_PROCESSED
 
 ### 8.1 `application.batch_id` 的父表
 
-当前同时存在 `green_channel_batch` 和 `subsidy_batch`，单个 `batch_id` 无法同时物理外键关联两张表。相关成员必须选择以下一种方案：
+成员二采纳“两列可空外键加类型约束”方案：
 
-1. 统一批次主表；
-2. 使用两个可空批次外键；
-3. 使用 `batch_id + batch_type` 逻辑关联且不建立物理外键。
+```text
+batch_type
+green_channel_batch_id
+subsidy_batch_id
+```
+
+使用 CHECK 约束保证两个批次外键有且仅有一个非空，并与 `batch_type` 一致。对外快照统一返回 `batchType + batchId`。该方案还需成员一和成员四确认，并同步 `approval_submission_record`、批量上报和统计契约。
 
 ### 8.2 首次提交事务负责人
 
-必须确认成员二保存内容、预占资源和成员三写 `SUBMIT` 记录及状态推进如何组成同一事务。
+首次提交和退回重提由成员二发起外层事务，调用成员三 `ApprovalTransitionService` 写 `SUBMIT` 记录和推进状态；接口加入现有事务，不开启独立事务。
 
 ### 8.3 补助额度预占时点
 
-学生只填写期望金额，最终补助金额由辅导员审核确定。必须确认正式提交时预占期望金额，还是辅导员确认最终金额时才预占额度。
+正式提交时按学生期望金额预占；辅导员确认最终金额时持久化金额并原子调整差额。额度不足时不允许审核通过。
 
 ### 8.4 幂等记录位置
 
-申请创建、正式提交、附件上传和资源占用均要求 `requestId`，需要确认幂等结果保存到申请字段、独立请求记录表，还是对应不可变业务记录中。
+成员二使用不可变的 `application_operation_record` 保存申请与资源操作幂等结果；唯一约束为 `application_id + operation_type + request_id`。创建申请时尚无 `application_id`，同时对 `request_id` 建立业务级唯一约束并在创建成功后回填申请 ID。
 
 ### 8.5 `APPROVED -> COMPLETED` 负责人
 
-欠费由成员四确认后完成；礼包、生活补助和路费补助仍需明确办结模块和接口。
+第一阶段采用以下规则：普通无欠费申请校级审核通过后进入 `APPROVED` 并作为审核终态；包含欠费的申请进入 `CONFIRM_PENDING`，学校确认后进入 `COMPLETED`；无欠费补录可直接进入 `COMPLETED`。礼包领取和补助发放暂不强制执行 `APPROVED -> COMPLETED`。
 
 ### 8.6 其他公共约定
 
@@ -539,14 +589,13 @@ application_no 生成格式
 退回申请资源保留时长及超时释放任务负责人
 统计模块跨表查询方式
 后端基础包名 com.example.backend / com.greenchannel.backend
-数据库完整结构脚本文件名 02_create_table.sql / 02_create_tables.sql
 ```
 
 ## 9. 确认流程
 
 1. 成员二将本文对应记录登记到 `docs/change-log.md`，状态保持 `PROPOSED`；
 2. 成员一确认第 2 节依赖接口；
-3. 成员三确认第 3、4 节状态和资源接口；
+3. 成员三复核已经按其评审意见修订的第 3、4 节状态、资源和事务接口；
 4. 成员四确认第 5 节确认、代申请、补录和统计接口；
 5. 四人确认第 8 节阻塞项；
 6. 将变更记录更新为 `APPROVED`；

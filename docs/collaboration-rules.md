@@ -79,6 +79,7 @@ arrears_application
 gift_application
 gift_application_item
 application_attachment
+application_operation_record
 college_subsidy_quota
 grade_subsidy_quota
 subsidy_application
