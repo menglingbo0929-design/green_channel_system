@@ -607,3 +607,74 @@ POST /api/school-proxy/applications/{applicationId}/submit?version={version}&req
 ### 15.4 当前用户身份的统一处理
 
 `X-User-Id` 只可用于本地手工调试，绝不是已确定的生产接口参数或权限方案。第一阶段正式实现必须使用成员一提供的 `CurrentUserProvider`（或其后续等价 JWT 实现）取得用户 ID、角色和数据范围；在该真实实现合入前，6.1.1、6.1.2、6.1.3 的权限成功场景均不可验证，也不得写入 `IMPLEMENTED`。
+
+---
+
+## 16. 6.1.5 统计功能与 6.1.6 统计筛选固定约定
+
+### 16.1 对外接口、权限和统计口径
+
+学校端只使用一个聚合读取接口：
+
+```http
+GET /api/statistics/applications/summary
+```
+
+- 接口要求 `SCHOOL` 权限；正式实现从成员一 `CurrentUserProvider` 取得当前用户。`X-User-Id` 只能用于本地连通性调试，未接入真实权限时接口必须返回 503，不能返回统计成功结果。
+- 只统计 `application.deleted = 0` 且状态为 `APPROVED` 或 `COMPLETED` 的申请；`CONFIRM_PENDING`、所有待审/退回/拒绝状态和 `CANCELLED` 一律排除。
+- “申请总人数”固定为筛选范围内拥有最终状态申请的 `DISTINCT student_id` 数；“实报人数”固定为其中状态为 `COMPLETED` 的 `DISTINCT student_id` 数。两项均不以申请行数冒充人数。
+- “欠费总金额”固定为筛选范围内、关联有效 `arrears_confirmation.deleted = 0` 且申请状态为 `COMPLETED` 的 `SUM(confirmed_amount)`；没有确认记录时按 `0.00` 返回。
+- “欠费项目人数”固定为筛选范围内至少申报该欠费项目的 `DISTINCT student_id` 数；按项目分组时，同一学生对同一项目只能计一次。
+- 统计查询必须是一条成员二实现的面向集合的聚合查询（允许只读关联成员四 `arrears_confirmation`）；禁止成员四先逐条取申请再在内存中汇总。
+
+### 16.2 固定筛选参数
+
+所有参数均为可选；不传表示不过滤。参数名、类型和约束固定如下：
+
+| 参数 | 类型 | 约束 |
+|---|---|---|
+| `batchType` | string | `GREEN_CHANNEL` 或 `SUBSIDY`；传 `batchId` 时必传 |
+| `batchId` | long | 大于 0；与 `batchType` 共同定位历史或当前批次 |
+| `collegeId` / `majorId` / `gradeId` / `classId` | long | 大于 0；组织层级必须真实存在且相互隶属 |
+| `applicationType` | string | `GREEN_CHANNEL`、`LIVING_SUBSIDY`、`TRAVEL_SUBSIDY` 之一 |
+| `applicationStatus` | string | 仅允许 `APPROVED` 或 `COMPLETED`；不传时统计两种最终状态 |
+| `feeItemId` | long | 大于 0；只筛选含该欠费项目的申请 |
+| `applicationStartTime` / `applicationEndTime` | ISO 8601 datetime | 起始时间不得晚于结束时间；按申请创建时间闭区间筛选 |
+
+`batchType=GREEN_CHANNEL` 时只允许 `applicationType=GREEN_CHANNEL`；`batchType=SUBSIDY` 时只允许 `LIVING_SUBSIDY` 或 `TRAVEL_SUBSIDY`。不符合上述组合返回 400，不能静默忽略条件。
+
+### 16.3 固定返回数据 `ApplicationStatisticsVO`
+
+接口的 `data` 固定包含：
+
+```text
+finalApplicantCount                 申请总人数
+completedStudentCount               实报人数
+feeItemApplicantCount               满足 feeItemId 时的欠费项目人数；未传 feeItemId 时为所有欠费项目去重人数
+confirmedArrearsAmount              欠费总金额
+collegeApplicantCounts[]            {collegeId, collegeName, applicantCount}
+gradeApplicantCounts[]              {gradeId, gradeName, applicantCount}
+arrearsReasonStatistics[]           {arrearsReasonCode, arrearsReasonName, applicantCount, confirmedAmount}
+giftItemApplicationCounts[]         {giftItemId, giftItemName, applicationCount}
+batchHistoryStatistics[]            {batchType, batchId, batchName, applicantCount, completedStudentCount, confirmedArrearsAmount}
+```
+
+- 所有金额使用 JSON 数值和 Java `BigDecimal`；无数据的金额为 `0.00`，无数据的列表为 `[]`，不得为 `null`。
+- `collegeApplicantCounts`、`gradeApplicantCounts`、`arrearsReasonStatistics` 和 `giftItemApplicationCounts` 按人数降序、同数时按 ID 升序；`batchHistoryStatistics` 按批次开始时间降序、同时间按 `batchId` 降序。
+- `batchHistoryStatistics` 在不传 `batchId` 时返回当前筛选范围内的历史批次聚合；传入 `batchType + batchId` 时只返回该批次的一项。
+
+### 16.4 跨模块统计查询与欠费原因字段
+
+成员二实现本地适配接口 `ApplicationStatisticsQueryPort.queryFinalStatistics(StatisticsFilterDTO)`，其正式业务能力对应已批准的 `ApplicationStatisticsQueryService`。它负责一次性读取申请、学生组织、欠费项目、礼包和批次数据，并以只读方式关联成员四 `arrears_confirmation`；成员四只负责学校端权限编排、参数校验和接口返回。
+
+截图要求的“欠费原因”在当前 `arrears_application` 结构说明中尚无可统计字段，不能把自由文本 `applicationReason` 当作原因分组。为使该功能可实现，新增以下**待成员二确认的表字段提案**：
+
+```text
+arrears_application.arrears_reason_code VARCHAR(32) NOT NULL
+```
+
+允许值固定为 `FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`；返回名称分别为“家庭经济困难”“家庭突发变故”“重大疾病”“灾害或事故”“其他”。成员二须按共享结构流程更新其 DDL、Entity、DTO、迁移和测试数据。该字段合入前，`arrearsReasonStatistics` 没有真实来源，因此完整统计接口返回 503，不得返回虚构分类或空数组冒充成功。
+
+### 16.5 完成边界
+
+成员四可独立完成 Controller、筛选 DTO、统计 VO、前端筛选页和对成员二集合查询 Service 的调用外壳。以下条件全部满足后，6.1.5 与 6.1.6 才能标记为 `IMPLEMENTED`：成员一合入学校统计权限能力；成员二合入统计聚合 Service、真实批次/组织/申请/礼包测试数据，以及已确认的欠费原因字段；接口使用真实数据在 Apifox 和前端联调成功。
