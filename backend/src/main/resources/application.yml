@@ -30,12 +30,15 @@ logging:
           mapper:
           com.example.backend.mapper: debug
 file-upload-path: ./file
+
+jwt:
+  secret: UYSD+HA8VEB+jErOR8zOFAX3IqgsW3uP77P9Ab7Xcl4=
+  expiration: 86400000
+
 langchain4j:
   open-ai:
     chat-model:
       base-url: 'https://ws-6nwi9xo7l7v84m7p.cn-beijing.maas.aliyuncs.com/api/v1'
   community:
     dashscope:
-      chat-model:
-        api-key: sk-ws-H.EDRMLIR.ktik.MEUCIQDYWU5mRjVwtDjBvwz03FiBDUAws7DK_LXL6nXXtGhSHQIgQmIBJnK0yzSCgm5EpCTR_LIprjOKD8iZP-O2bdnMq5o
-        model-name: qwen-max
+
