@@ -6,7 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 @Data
-@TableName("user")
+@TableName("sys_user")
 public class User {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
@@ -24,10 +24,10 @@ public class User {
     @TableField("remark")
     private String remark;
 
-    @ApiModelProperty(value = "是否删除")
-    @TableField("is_deleted")
-    @TableLogic
-    private Boolean deleted;
+    @ApiModelProperty(value = "逻辑删除，0=有效，非0=已删除")
+    @TableField("deleted")
+    @TableLogic(value = "0", delval = "1")
+    private Long deleted;
 
     @ApiModelProperty(value = "创建时间")
     @TableField("gmt_created")

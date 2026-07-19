@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.List;
 
 /**
  * JWT 令牌工具类 —— 负责 Token 的生成、验证、解析
@@ -57,28 +58,34 @@ public class JwtTokenProvider {
     /**
      * 生成 JWT Token
      *
-     * @param userId   用户 ID，存入 Payload 的 userId 字段
-     * @param loginName 用户名，存入 Payload 的 sub（subject）字段
-     * @return JWT 字符串，如 "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI..."
+     * @param userId   用户 ID
+     * @param loginName 用户名
+     * @param roles     角色编码列表，如 ["SCHOOL", "COUNSELOR"]
+     * @return JWT 字符串
      *
      * Token 包含：
      * - sub: 用户名（JWT 标准字段）
      * - userId: 自定义字段
+     * - roles: 角色列表（逗号分隔），如 "SCHOOL,COUNSELOR"
      * - iat: 签发时间（JWT 标准字段）
-     * - exp: 过期时间（JWT 标准字段，过了这个时间 Token 自动失效）
+     * - exp: 过期时间（JWT 标准字段）
      */
-    public String generateToken(Long userId, String loginName) {
+    public String generateToken(Long userId, String loginName, List<String> roles) {
         Date now = new Date();
-        // 过期时间 = 当前时间 + 配置的过期时长
         Date expiration = new Date(now.getTime() + jwtProperties.getExpiration());
 
-        return Jwts.builder()           // 建造者模式，链式调用构建 Token
-                .subject(loginName)     // 设置主题（用户名）
-                .claim("userId", userId) // 设置自定义字段（用户ID）
-                .issuedAt(now)          // 签发时间
-                .expiration(expiration) // 过期时间
-                .signWith(secretKey)    // 用密钥签名
-                .compact();             // 压缩成最终的 JWT 字符串
+        // 角色列表转逗号分隔字符串存 JWT，解析时再拆分
+        String rolesStr = (roles != null && !roles.isEmpty())
+                ? String.join(",", roles) : "";
+
+        return Jwts.builder()
+                .subject(loginName)
+                .claim("userId", userId)
+                .claim("roles", rolesStr)  // ← 新增：角色信息塞进 Token
+                .issuedAt(now)
+                .expiration(expiration)
+                .signWith(secretKey)
+                .compact();
     }
 
     /**
@@ -95,6 +102,19 @@ public class JwtTokenProvider {
      */
     public String getLoginNameFromToken(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    /**
+     * 从 Token 中提取角色列表
+     * Token 存的是逗号分隔字符串 "STUDENT,COUNSELOR"
+     * 这里拆分成 List
+     */
+    public List<String> getRolesFromToken(String token) {
+        String rolesStr = parseClaims(token).get("roles", String.class);
+        if (rolesStr == null || rolesStr.isEmpty()) {
+            return List.of();
+        }
+        return List.of(rolesStr.split(","));
     }
 
     /**

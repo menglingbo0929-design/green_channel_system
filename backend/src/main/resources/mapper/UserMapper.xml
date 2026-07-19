@@ -7,7 +7,7 @@
         <result column="password" property="password" />
         <result column="last_login_time" property="lastLoginTime" />
         <result column="remark" property="remark" />
-        <result column="is_deleted" property="deleted" />
+        <result column="deleted" property="deleted" />
         <result column="gmt_created" property="gmtCreated" />
         <result column="gmt_modified" property="gmtModified" />
     </resultMap>
