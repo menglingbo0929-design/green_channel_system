@@ -12,7 +12,7 @@
           <!-- 盾牌图标：象征安全和保障，与绿色通道"保障入学"业务契合 -->
           <svg viewBox="0 0 64 64" width="72" height="72">
             <path d="M32 4L8 14v20c0 15.5 10.2 29.9 24 33 13.8-3.1 24-17.5 24-33V14L32 4z"
-                  fill="#2563EB" stroke="#1D4ED8" stroke-width="1.5"/>
+                  fill="#1677FF" stroke="#1677FF" stroke-width="1.5"/>
             <path d="M26 34l4 4 8-10" fill="none" stroke="#fff"
                   stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -91,7 +91,7 @@
 import { ref, reactive, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { loginAPI } from '../api/index.js'
+import { useUserStore } from '../stores/user.js'
 
 // Element Plus 图标（按需引用，保持包体积小）
 import { User, Lock } from '@element-plus/icons-vue'
@@ -101,6 +101,7 @@ const UserIcon = shallowRef(User)
 const LockIcon = shallowRef(Lock)
 
 const router = useRouter()
+const userStore = useUserStore()
 
 // ========== 表单数据 ==========
 const loginForm = reactive({
@@ -132,21 +133,13 @@ const handleLogin = async () => {
 
   loading.value = true
   try {
-    // 调用后端 POST /api/user/login
-    const res = await loginAPI(loginForm.loginName, loginForm.password)
-    const data = res.data.data  // JsonResponse 的结构：{ status, data: {token, userId, loginName} }
+    // 调用 Pinia Store 的 login，内部自动调后端 + 解码 JWT + 存 localStorage
+    await userStore.login(loginForm.loginName, loginForm.password)
 
-    // Token 存入 localStorage，后续请求由 api/index.js 的拦截器自动携带
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('userId', data.userId)
-    localStorage.setItem('loginName', data.loginName)
-
-    // 登录成功提示，然后跳转首页（后续可改为 /home）
-    ElMessage.success(`欢迎回来，${data.loginName}！`)
-    // TODO: 等首页做好后改成 router.push('/home')
-    // router.push('/home')
+    // 登录成功，按角色跳转默认页面
+    ElMessage.success(`欢迎回来，${userStore.loginName}！`)
+    router.push(userStore.defaultPage)
   } catch (err) {
-    // 网络错误或用户名密码错误
     const msg = err.response?.data?.message || '登录失败，请检查网络连接'
     ElMessage.error(msg)
   } finally {
@@ -190,7 +183,7 @@ const handleLogin = async () => {
 /* ==================== 左侧品牌区 ==================== */
 .login-brand {
   width: 400px;
-  background: #1A3A5C;   /* 深藏蓝色，与左侧导航栏同色系 */
+  background: #123B63;   /* 规范：侧边栏深藏蓝 #123B63 */
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -243,7 +236,7 @@ const handleLogin = async () => {
   color: #303133;
   margin: 0 0 32px 0;
   padding-bottom: 16px;
-  border-bottom: 2px solid #2563EB;
+  border-bottom: 2px solid #1677FF;
   display: inline-block;
 }
 
@@ -267,11 +260,11 @@ const handleLogin = async () => {
 }
 
 .login-el-form :deep(.el-input__wrapper:hover) {
-  border-color: #2563EB;
+  border-color: #1677FF;
 }
 
 .login-el-form :deep(.el-input__wrapper.is-focus) {
-  border-color: #2563EB;
+  border-color: #1677FF;
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
 }
 
@@ -284,8 +277,8 @@ const handleLogin = async () => {
   font-size: 16px;
   letter-spacing: 4px;
   /* 科技蓝主色 */
-  background-color: #2563EB;
-  border-color: #2563EB;
+  background-color: #1677FF;
+  border-color: #1677FF;
 }
 
 .login-btn:hover {
