@@ -1,5 +1,20 @@
 # 接口文档
 
+## 成员二学生申请接口（已提供基础实现）
+
+| 方法 | 路径 | 状态 | 说明 |
+|---|---|---|---|
+| `POST` | `/api/applications/drafts` | 已实现 | 创建草稿；请求体含 `applicationType`、`batchType`、`batchId`、`requestId`、`applicationReason` |
+| `GET` | `/api/applications/mine` | 已实现 | 获取当前学生的有效申请 |
+| `GET` | `/api/applications/{id}` | 已实现 | 获取申请摘要 |
+| `PUT` | `/api/applications/{id}` | 已实现 | 仅草稿/退回状态可编辑，必须传 `version` |
+| `DELETE` | `/api/applications/{id}?version={version}` | 已实现 | 仅未提交草稿可逻辑删除 |
+| `POST` | `/api/applications/{id}/submit` | 待联调 | 依赖成员一身份/批次服务与成员三审核状态服务 |
+| `GET` | `/api/applications/{id}/arrears` | 已实现 | 查询绿色通道申请的有效欠费明细 |
+| `PUT` | `/api/applications/{id}/arrears` | 已实现 | 整体替换欠费明细；请求体含 `version` 和 `items`，总额不得超过 8000 元 |
+
+在成员一的登录上下文接入前，已实现的开发接口临时读取 `X-Student-Id` 和 `X-User-Id` 请求头；上线前必须替换为 `CurrentUserProvider`，不得信任客户端身份字段。
+
 > 审核模块接口当前状态：`PROPOSED`。成员二、成员三、成员四确认并在 `docs/change-log.md` 更新状态后，才允许按本文档实现共享接口。
 
 本文档当前定义成员三提出的审核模块接口方案。其他成员新增接口时必须继续使用相同的返回格式、分页结构和错误码风格。
@@ -550,7 +565,7 @@ APPROVAL_RESOURCE_ROLLBACK_FAILED
 
 ## 12. 6.1.2 欠费单据接口（PROPOSED，受外部依赖阻塞）
 
-本节路径和响应字段已固定；成员四不得以模拟数据替代成员一、成员二未合入的真实能力。依赖未合入时服务返回 HTTP 503，不能作为成功接口联调结果。
+本节路径和响应字段已固定；成员四不得以模拟数据替代成员一、成员二未合入的真实能力。依赖齐全后再进行成功接口联调。
 
 ### 12.1 学校分页查询确认单
 
@@ -605,7 +620,7 @@ X-User-Id: 2001
 }
 ```
 
-`arrearsItems`、学生组织字段由成员二的申请快照能力提供；`confirmUserName` 和访问控制由成员一提供。任一依赖缺失时，返回 `503 Service Unavailable`，不返回字段缺失的 200 响应。
+`arrearsItems`、学生组织字段由成员二的申请快照能力提供；`confirmUserName` 和访问控制由成员一提供。演示前保证两项依赖已合入。
 
 ## 13. 6.1.5、6.1.6 学校申请统计（PROPOSED，受跨模块依赖阻塞）
 
@@ -613,7 +628,7 @@ X-User-Id: 2001
 GET /api/statistics/applications/summary
 ```
 
-使用角色：`SCHOOL`。只统计 `deleted = 0` 且状态为 `APPROVED` 或 `COMPLETED` 的申请；任何待审核、退回、拒绝、`CONFIRM_PENDING` 与已取消数据均不参与统计。成员一可信当前用户、成员二的集合聚合查询及欠费原因字段没有合入时，接口必须返回 HTTP 503。
+使用角色：`SCHOOL`。只统计 `deleted = 0` 且状态为 `APPROVED` 或 `COMPLETED` 的申请；任何待审核、退回、拒绝、`CONFIRM_PENDING` 与已取消数据均不参与统计。成功演示前需合入成员一权限和成员二集合聚合查询。
 
 ### 13.1 查询参数
 
@@ -627,7 +642,7 @@ GET /api/statistics/applications/summary
 | `feeItemId` | long | 欠费项目 ID |
 | `applicationStartTime`、`applicationEndTime` | ISO 8601 datetime | 按申请创建时间闭区间筛选 |
 
-`batchType=GREEN_CHANNEL` 只能搭配 `applicationType=GREEN_CHANNEL`；`batchType=SUBSIDY` 不可搭配 `GREEN_CHANNEL`。非法组合返回 400。
+页面在 `batchType=GREEN_CHANNEL` 时只提供 `applicationType=GREEN_CHANNEL`，在 `batchType=SUBSIDY` 时只提供两种补助类型。
 
 ### 13.2 响应数据
 
@@ -646,3 +661,118 @@ GET /api/statistics/applications/summary
 ```
 
 `finalApplicantCount` 是最终状态范围内按 `studentId` 去重人数；`completedStudentCount` 只计 `COMPLETED`；`confirmedArrearsAmount` 只累计已完成申请关联的有效 `arrears_confirmation.confirmed_amount`。无真实数据时字段为零或空数组；该零值只能由真实聚合结果产生，不能用模拟数据返回。
+
+## 14. 6.1.4 绿色通道线下补录（PROPOSED，成员四外壳已实现）
+
+使用角色：`SCHOOL`。当前本地联调临时使用 `X-User-Id`；正式演示前合入成员一登录、成员二补录写入/查询和成员三自动审核。
+
+### 14.1 查询可补录学生
+
+```http
+GET /api/supplements/students?studentNo=20260001
+```
+
+成功时 `data` 返回 `studentId`、`studentNo`、`studentName`、`collegeName`、`majorName`、`gradeName`、`className`。
+
+### 14.2 查询补录历史和详情
+
+```http
+GET /api/supplements?pageNo=1&pageSize=10&studentNo=20260001&applicationType=GREEN_CHANNEL&batchId=1&status=CONFIRM_PENDING
+GET /api/supplements/{applicationId}
+```
+
+所有筛选参数均可选；`pageSize` 最大为 100。列表和详情只返回 `source=SUPPLEMENT` 的申请，其他来源按 404 处理。
+
+### 14.3 创建线下补录
+
+```http
+POST /api/supplements
+Content-Type: application/json
+```
+
+```json
+{
+  "studentNo": "20260001",
+  "applicationType": "GREEN_CHANNEL",
+  "batchId": 1,
+  "applicationReason": "申请绿色通道",
+  "supplementReason": "线下窗口先行受理",
+  "handledAt": "2026-07-20T09:30:00",
+  "arrearsItems": [{"feeItemId": 1, "declaredAmount": 1200.00}],
+  "giftItems": [{"giftItemId": 1, "quantity": 1}],
+  "subsidyAmount": null,
+  "requestId": "SUPPLEMENT-20260720-0001"
+}
+```
+
+`GREEN_CHANNEL` 至少包含一项欠费或礼包且不能填写补助金额；`LIVING_SUBSIDY`、`TRAVEL_SUBSIDY` 只能填写大于零的 `subsidyAmount`。创建成功后，有欠费返回 `CONFIRM_PENDING/CONFIRMATION`，无欠费返回 `COMPLETED/SYSTEM`。
+
+### 14.4 统一补录记录响应
+
+```json
+{
+  "applicationId": 1001,
+  "applicationNo": "GC202607200001",
+  "studentId": 10,
+  "studentNo": "20260001",
+  "studentName": "张三",
+  "applicationType": "GREEN_CHANNEL",
+  "batchType": "GREEN_CHANNEL",
+  "batchId": 1,
+  "source": "SUPPLEMENT",
+  "status": "CONFIRM_PENDING",
+  "currentLevel": "CONFIRMATION",
+  "version": 1,
+  "containsArrears": true,
+  "supplementUserId": 1,
+  "supplementedAt": "2026-07-20T09:30:00",
+  "supplementReason": "线下窗口先行受理"
+}
+```
+
+## 15. 6.1.7 报表明细、Excel 导出和打印（PROPOSED）
+
+```http
+GET /api/statistics/reports/details
+GET /api/statistics/reports/history
+GET /api/statistics/reports/print
+GET /api/statistics/reports/export
+```
+
+四个接口使用第 13.1 节全部筛选参数，并增加：
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `pageNo` | integer | 明细/历史页码，默认 1 |
+| `pageSize` | integer | 默认 20，最大 100 |
+| `columns` | string/list | 自定义字段 key，可重复传参或逗号分隔 |
+| `sortBy` | string | 报表字段 key，默认 `applicationTime` |
+| `sortDirection` | string | `ASC` / `DESC`，默认 `DESC` |
+
+历史批次页面同时传 `batchType` 和 `batchId`。字段列表以 `collaboration-rules.md` 第 18.2 节为准，未知字段在演示实现中忽略。
+
+### 15.1 明细和历史响应
+
+```json
+{
+  "columns": [
+    {"key": "applicationNo", "title": "申请编号"},
+    {"key": "studentNo", "title": "学号"}
+  ],
+  "records": [
+    {"applicationNo": "GC202607200001", "studentNo": "20260001"}
+  ],
+  "total": 1,
+  "pageNo": 1,
+  "pageSize": 20,
+  "pages": 1
+}
+```
+
+### 15.2 打印响应
+
+`GET /print` 返回 `title`、`generatedAt`、`columns`、`records`、`total`；前端负责浏览器打印。
+
+### 15.3 Excel 响应
+
+`GET /export` 返回 `.xlsx` 二进制，文件名格式为 `statistics-report-yyyyMMddHHmmss.xlsx`。接口使用 SXSSF 每批 500 行分页写入并设置 `Cache-Control: no-store`；演示前保证成员一权限和成员二明细查询已经合入。

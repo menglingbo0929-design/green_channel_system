@@ -1,5 +1,21 @@
 # 数据库设计
 
+## 成员二申请配置表（2026-07-20 已提交 migration）
+
+成员二的数据库基线位于 `database/migrations/V20260720_001__create_member2_application_tables.sql`，覆盖：
+
+```text
+fee_item, fee_amount_option, gift_item, batch_gift_item,
+college_gift_quota, grade_gift_quota, application, arrears_application,
+gift_application, gift_application_item, subsidy_application,
+college_subsidy_quota, grade_subsidy_quota, application_attachment,
+application_operation_record, student_recommendation
+```
+
+`application` 使用 `batch_type`、`green_channel_batch_id`、`subsidy_batch_id` 表达批次，并由 `CHECK` 限制两类批次列有且仅有一个非空；生成列 `batch_id` 仅用于数据库唯一约束，避免 MySQL 多列唯一索引对 `NULL` 的重复放行。有效申请唯一约束为 `(student_id, batch_id, application_type, deleted)`。状态更新必须同时匹配 `id`、期望 `status`、期望 `version` 和 `deleted = 0`。
+
+资源表的库存、名额与金额字段均有非负/上下界 `CHECK` 约束；实际预占、确认、释放须使用条件原子更新，并在 `application_operation_record` 以 `request_id` 记录幂等结果。
+
 
 ## arrears_confirmation（成员四）
 
