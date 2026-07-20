@@ -22,3 +22,6 @@ uploads/*
 # Operating system
 .DS_Store
 Thumbs.db
+
+# Local IntelliJ IDEA project settings
+.idea/

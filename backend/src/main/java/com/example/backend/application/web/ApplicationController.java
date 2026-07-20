@@ -22,5 +22,7 @@ public class ApplicationController {
     @GetMapping("/{id}") public ApplicationSummary one(@PathVariable Long id) { return service.findOne(id); }
     @PutMapping("/{id}") public ApplicationSummary update(@PathVariable Long id, @Valid @RequestBody UpdateDraftRequest request, @RequestHeader("X-User-Id") Long userId) { return service.updateDraft(id, request.applicationReason(), request.version(), userId); }
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) public void delete(@PathVariable Long id, @RequestParam Integer version, @RequestHeader("X-User-Id") Long userId) { service.deleteDraft(id, version, userId); }
+    @GetMapping("/{id}/arrears") public List<ArrearsItemSnapshot> arrears(@PathVariable Long id) { return service.findArrearsItems(id); }
+    @PutMapping("/{id}/arrears") public List<ArrearsItemSnapshot> replaceArrears(@PathVariable Long id, @Valid @RequestBody UpdateArrearsRequest request, @RequestHeader("X-User-Id") Long userId) { return service.replaceArrearsItems(id, request.version(), request.items(), userId); }
     public record UpdateDraftRequest(@NotNull Integer version, @NotBlank String applicationReason) { }
 }
