@@ -10,7 +10,8 @@ CREATE TABLE `sys_user` (
   `deleted` bigint(20) NOT NULL DEFAULT 0,
   `gmt_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `gmt_modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`) USING BTREE
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_login_name`(`login_name`) USING BTREE
 ) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
 
 -- 角色表
