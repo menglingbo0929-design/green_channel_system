@@ -45,7 +45,7 @@
 - `backend/src/main/java/com/example/backend/approval/domain/`：状态枚举、状态机、Transition 和异常。
 - `backend/src/main/java/com/example/backend/approval/persistence/`：四张表的 Entity、Mapper 和类型枚举。
 - `backend/src/test/java/com/example/backend/approval/`：状态机和持久层测试。
-- `database/migrations/V20260720_001__create_approval_and_message_tables.sql`。
+- `database/migrations/V20260720_002__create_approval_and_message_tables.sql`。
 - `database/02_create_tables.sql`、`backend/pom.xml` 和测试配置也存在未提交修改。
 
 ## 5. 已完成的审核前端

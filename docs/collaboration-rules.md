@@ -520,7 +520,7 @@ Map<Long, ArrearsVoucherApplicantSnapshot> findVoucherApplicantsByApplicationIds
 void checkSchoolUser(Long userId);
 void checkStudentOwnsApplication(Long userId, Long applicationId)。
 
-成员四列表一次最多取 100 条确认记录后批量请求成员二快照，禁止逐条跨模块查询。任一依赖未合入时接口返回 503，不返回不完整或伪造单据。
+成员四列表按分页结果批量请求成员二快照，禁止逐条跨模块查询。依赖未合入时不进行该功能的成功演示，也不返回伪造单据。
 
 ### 13.4 6.1.2 的完成边界与当前阻塞项
 
@@ -543,7 +543,7 @@ void checkStudentOwnsApplication(Long userId, Long applicationId)。
 
 1. 停止实现该依赖对应的业务闭环；不得用内存数据、硬编码数据、假 SQL、猜测字段、临时接口或直接访问他人 Mapper 替代。
 2. 在本人决策文件和 `docs/change-log.md` 中写明：已完成范围、缺失依赖的负责人和准确名称、受影响功能、当前不能验证的接口、解除条件。
-3. 如已有路由骨架，接口必须明确返回 `503 Service Unavailable`，错误信息指出缺失的依赖；不得返回字段缺失的 200 成功响应。
+3. 演示阶段不保留自定义异常类和全局异常处理器；依赖未合入时由 Spring 保持默认失败行为，不额外包装业务错误码。
 4. 前端可以保留仅用于路由连通性验证的空态页面，但必须显示“依赖未合入，当前不可验证”，不得展示伪造业务数据或声称功能已完成。
 
 “代码可以编译”不等于“功能已完成”。只有依赖实现、真实 SQL/测试数据和成功联调均具备时，才能在 `docs/change-log.md` 将对应功能标记为 `IMPLEMENTED`。
@@ -578,14 +578,14 @@ POST /api/confirm/{applicationId}
 - `confirmedAmount` 必须大于 `0.00`，且不大于成员二返回的 `appliedAmount`；确认人、确认时间、单据编号和申报金额快照均由后端产生或读取，前端不得传入。
 - 确认成功返回 `confirmationId`、`applicationId`、`appliedAmount`、`confirmedAmount`、`voucherNo`、`confirmUserId`、`confirmedAt`、`applicationStatus`；其中 `applicationStatus` 固定为 `COMPLETED`。
 - `voucherNo` 固定为 `GC + 四位确认年份 + applicationId 六位补零`，例如申请 `1` 于 2026 年确认时为 `GC2026000001`。同一 `applicationId` 的有效确认记录只能有一条。
-- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_database.sql` 当前尚未包含 `request_id` 及后两个约束，与本条、`database-design.md` 和成员四 migration 冲突；在该基线 SQL 同步前，禁止把 6.1.1 标记为可在全新数据库完整验证。
-- 成员三的正式能力名为 `ApprovalCompletionService`；成员四代码中的 `ArrearsConfirmationCompletionPort` 只是调用该能力的本地适配边界，不要求成员三另建第二套状态机。
+- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_database.sql`、成员四 migration 与 `database-design.md` 必须保持这组字段和约束一致；`database/04_create_database.sql` 的确认测试数据必须为每条记录提供唯一 `request_id`，不得省略该幂等字段。
+- 成员三的正式能力名为 `ApprovalCompletionService.completeAfterConfirmation(applicationId, expectedVersion, requestId, operatorId)`；成员四代码中的 `ArrearsConfirmationCompletionPort` 使用同名方法作为本地适配边界，不要求成员三另建第二套状态机。
 
 ### 15.2 6.1.2 欠费单据：保持现有固定规则，不新增临时字段
 
 第 13 节的四个单据路径、`ArrearsVoucherVO` 字段、分页上限和批量查询规则继续有效。本次核对没有发现能以成员四自有表补全学生、组织、欠费项目或用户姓名的数据来源，因此这些字段不得从确认表猜测、拼接或设置默认值。
 
-当前唯一允许的实现状态是：成员四读取 `arrears_confirmation` 并编排查询；成员二提供完整 `ArrearsVoucherApplicantSnapshot`，成员一提供权限、归属和姓名查询后，才可返回完整的 200 单据响应。依赖未合入时必须返回 503。
+当前唯一允许的实现状态是：成员四读取 `arrears_confirmation` 并编排查询；成员二提供完整 `ArrearsVoucherApplicantSnapshot`，成员一提供权限、归属和姓名查询后，才进行完整单据演示。
 
 ### 15.3 6.1.3 学校代申请：路径、载荷和状态
 
@@ -602,7 +602,7 @@ POST /api/school-proxy/applications/{applicationId}/submit?version={version}&req
 - 创建草稿请求体固定为 `studentNo`、`batchType`、`batchId`、`applicationReason`、`arrearsItems`、`giftItems`、`requestId`。其中 `batchType` 的唯一合法值是 `GREEN_CHANNEL`；`arrearsItems` 的每项为 `feeItemId`、`declaredAmount`，`giftItems` 的每项为 `giftItemId`、`quantity`。
 - 附件请求使用 `multipart/form-data`，文件字段名固定为 `file`；提交接口的 `version`、`requestId` 均为必填查询参数。创建、上传和提交不得复用不同业务操作的 `requestId`。
 - 创建草稿成功后返回 `applicationId`、`applicationNo`、`source`、`status`、`version`，其中 `source` 固定为 `SCHOOL_PROXY`、初始 `status` 固定为 `DRAFT`；正式提交成功后 `status` 固定为 `COUNSELOR_PENDING`。
-- 成员二的正式职责为 `ApplicationCreationService` 及附件/提交写入；成员四代码中的 `SchoolProxyApplicationPort` 仅是本模块调用成员二能力的适配边界，成员四不得以此直接写 `application`、明细、附件或资源表。成员一的学生查询、成员二的创建/附件/提交、成员三的提交审核记录尚未合入时，该流程仍必须返回 503，不得宣布可用。
+- 成员二的正式职责为 `ApplicationCreationService` 及附件/提交写入；成员四代码中的 `SchoolProxyApplicationPort` 仅是本模块调用成员二能力的适配边界，成员四不得以此直接写 `application`、明细、附件或资源表。依赖尚未合入时不进行完整流程演示。
 
 ### 15.4 当前用户身份的统一处理
 
@@ -620,7 +620,7 @@ POST /api/school-proxy/applications/{applicationId}/submit?version={version}&req
 GET /api/statistics/applications/summary
 ```
 
-- 接口要求 `SCHOOL` 权限；正式实现从成员一 `CurrentUserProvider` 取得当前用户。`X-User-Id` 只能用于本地连通性调试，未接入真实权限时接口必须返回 503，不能返回统计成功结果。
+- 接口要求 `SCHOOL` 权限；正式实现从成员一 `CurrentUserProvider` 取得当前用户。`X-User-Id` 只用于本地连通性调试，真实演示前须接入成员一权限实现。
 - 只统计 `application.deleted = 0` 且状态为 `APPROVED` 或 `COMPLETED` 的申请；`CONFIRM_PENDING`、所有待审/退回/拒绝状态和 `CANCELLED` 一律排除。
 - “申请总人数”固定为筛选范围内拥有最终状态申请的 `DISTINCT student_id` 数；“实报人数”固定为其中状态为 `COMPLETED` 的 `DISTINCT student_id` 数。两项均不以申请行数冒充人数。
 - “欠费总金额”固定为筛选范围内、关联有效 `arrears_confirmation.deleted = 0` 且申请状态为 `COMPLETED` 的 `SUM(confirmed_amount)`；没有确认记录时按 `0.00` 返回。
@@ -641,7 +641,7 @@ GET /api/statistics/applications/summary
 | `feeItemId` | long | 大于 0；只筛选含该欠费项目的申请 |
 | `applicationStartTime` / `applicationEndTime` | ISO 8601 datetime | 起始时间不得晚于结束时间；按申请创建时间闭区间筛选 |
 
-`batchType=GREEN_CHANNEL` 时只允许 `applicationType=GREEN_CHANNEL`；`batchType=SUBSIDY` 时只允许 `LIVING_SUBSIDY` 或 `TRAVEL_SUBSIDY`。不符合上述组合返回 400，不能静默忽略条件。
+`batchType=GREEN_CHANNEL` 时页面只提供 `applicationType=GREEN_CHANNEL`；`batchType=SUBSIDY` 时页面只提供 `LIVING_SUBSIDY` 或 `TRAVEL_SUBSIDY`。
 
 ### 16.3 固定返回数据 `ApplicationStatisticsVO`
 
@@ -673,8 +673,186 @@ batchHistoryStatistics[]            {batchType, batchId, batchName, applicantCou
 arrears_application.arrears_reason_code VARCHAR(32) NOT NULL
 ```
 
-允许值固定为 `FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`；返回名称分别为“家庭经济困难”“家庭突发变故”“重大疾病”“灾害或事故”“其他”。成员二须按共享结构流程更新其 DDL、Entity、DTO、迁移和测试数据。该字段合入前，`arrearsReasonStatistics` 没有真实来源，因此完整统计接口返回 503，不得返回虚构分类或空数组冒充成功。
+允许值固定为 `FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`；返回名称分别为“家庭经济困难”“家庭突发变故”“重大疾病”“灾害或事故”“其他”。成员二须按共享结构流程更新其 DDL、Entity、DTO、迁移和测试数据；字段合入前不演示欠费原因统计。
 
 ### 16.5 完成边界
 
 成员四可独立完成 Controller、筛选 DTO、统计 VO、前端筛选页和对成员二集合查询 Service 的调用外壳。以下条件全部满足后，6.1.5 与 6.1.6 才能标记为 `IMPLEMENTED`：成员一合入学校统计权限能力；成员二合入统计聚合 Service、真实批次/组织/申请/礼包测试数据，以及已确认的欠费原因字段；接口使用真实数据在 Apifox 和前端联调成功。
+
+---
+
+## 17. 6.1.4 绿色通道线下补录固定约定
+
+### 17.1 对外接口与调用权限
+
+6.1.4 只使用以下四个学校端接口，路径和用途不得另起别名：
+
+```http
+GET  /api/supplements/students?studentNo={studentNo}
+GET  /api/supplements?pageNo={pageNo}&pageSize={pageSize}
+GET  /api/supplements/{applicationId}
+POST /api/supplements
+```
+
+- 四个接口均要求 `SCHOOL` 角色。正式实现必须从成员一 `CurrentUserProvider` 取得当前用户及数据范围；`X-User-Id` 只允许本地接口连通性调试，不能作为生产身份方案。
+- 学生查询只接受 `studentNo`，返回字段固定为 `studentId`、`studentNo`、`studentName`、`collegeName`、`majorName`、`gradeName`、`className`，不得返回身份证号、手机号等敏感字段。
+- 历史列表只查询 `application.source = SUPPLEMENT` 的记录，默认按 `create_time` 降序、同时间按 `application.id` 降序；`pageNo` 默认 `1`，`pageSize` 默认 `10` 且最大 `100`。
+- 历史列表允许的筛选参数固定为 `studentNo`、`applicationType`、`batchId`、`status`；详情接口只允许读取补录来源的申请，其他来源返回 404。
+
+### 17.2 创建请求的确定字段与校验
+
+`POST /api/supplements` 的 JSON 请求体固定为：
+
+```json
+{
+  "studentNo": "20260001",
+  "applicationType": "GREEN_CHANNEL",
+  "batchId": 1,
+  "applicationReason": "学生已在线下完成办理，现补录系统",
+  "supplementReason": "线下窗口先行受理",
+  "handledAt": "2026-07-20T09:30:00",
+  "arrearsItems": [
+    {"feeItemId": 1, "declaredAmount": 1200.00}
+  ],
+  "giftItems": [
+    {"giftItemId": 1, "quantity": 1}
+  ],
+  "subsidyAmount": null,
+  "requestId": "SUPPLEMENT-20260720-0001"
+}
+```
+
+- `applicationType` 只允许 `GREEN_CHANNEL`、`LIVING_SUBSIDY`、`TRAVEL_SUBSIDY`。客户端不得提交 `batchType`：后端将 `GREEN_CHANNEL` 唯一映射为 `batchType=GREEN_CHANNEL`，将两种补助唯一映射为 `batchType=SUBSIDY`。
+- `studentNo`、`batchId`、`applicationType`、`supplementReason`、`handledAt`、`requestId` 必填；`batchId` 必须大于 `0`；`handledAt` 不得晚于服务器当前时间；`requestId` 去除首尾空格后长度为 `1—64`。
+- `GREEN_CHANNEL` 必须至少包含一项 `arrearsItems` 或一项 `giftItems`，且 `subsidyAmount` 必须为 `null`；欠费项目的 `feeItemId` 和 `declaredAmount` 必须大于 `0`，礼包项目的 `giftItemId` 和 `quantity` 必须大于 `0`，同一请求内项目 ID 不得重复。
+- `LIVING_SUBSIDY`、`TRAVEL_SUBSIDY` 的 `subsidyAmount` 必须大于 `0.00`，`arrearsItems` 和 `giftItems` 必须为空。
+- 后端固定写入 `application.source=SUPPLEMENT`。存在欠费项目时最终状态固定为 `CONFIRM_PENDING`、当前层级固定为 `CONFIRMATION`；不存在欠费项目时最终状态固定为 `COMPLETED`、当前层级固定为 `SYSTEM`。客户端不得传入来源、状态、审核层级、操作者或创建时间。
+
+### 17.3 固定返回字段
+
+创建、详情和历史列表中的单条补录记录统一返回：
+
+```text
+applicationId
+applicationNo
+studentId
+studentNo
+studentName
+applicationType
+batchType
+batchId
+source
+status
+currentLevel
+version
+containsArrears
+supplementUserId
+supplementedAt
+supplementReason
+```
+
+- `source` 必须为 `SUPPLEMENT`；`containsArrears` 由真实欠费明细计算，不能由客户端单独指定。
+- `supplementUserId` 为当前学校操作人 ID；`supplementedAt` 采用请求中的 `handledAt`，用于保留实际线下办理时间。系统实际落库时间仍使用各表自己的 `create_time`、`update_time`。
+- 历史分页统一返回 MyBatis-Plus `Page<SupplementApplicationVO>`；没有数据时 `records=[]`、`total=0`，不得返回模拟记录。
+
+### 17.4 跨模块写入、事务与幂等边界
+
+- 成员四的 `SupplementApplicationServiceImpl.createSupplement` 是线下补录的外层事务发起方，并沿用视频项目的普通 `@Transactional`；成员二、成员三的实现必须加入同一事务。
+- 成员一负责学校身份和学生查询；成员二负责 `application`、欠费/礼包/补助明细、资源及 `application_operation_record` 的物理写入；成员三负责自动审核记录和状态流转。成员四不得为补录新建业务表、Mapper 或直接写上述共享表。
+- 成员二须实现补录创建和历史查询能力；创建时校验同一学生、批次、申请类型不得存在未删除的重复申请，并以 `requestId` 做创建幂等。线下已经完成的礼包、名额和补助资源直接确认为已占用，不再创建普通申请的待审核预占状态。
+- 成员三须提供 `completeSupplementReview(applicationId, containsArrears, expectedVersion, requestId, operatorId)`：写入校级自动审核记录，审核动作固定为 `APPROVE`，旧状态固定为 `DRAFT`，并按是否包含欠费流转到 `CONFIRM_PENDING/CONFIRMATION` 或 `COMPLETED/SYSTEM`。
+- 成员四本地的 `SupplementApplicationPort`、`SupplementCompletionPort` 仅是对上述负责人正式 Service 的适配边界，不构成第二套申请或审核实现。
+- 创建请求的 `requestId` 同时用于补录创建和该次自动审核的幂等关联；成员二按 `application_id + operation_type + request_id` 记录申请操作，成员三按其审核记录幂等规则处理重试。任一步失败必须整体回滚，不得留下只有申请没有自动审核记录的半成品。
+
+### 17.5 当前阻塞与完成判定
+
+截至 2026-07-20，成员二尚未合入补录明细/资源/历史查询，成员三尚未合入 `completeSupplementReview`，成员一可信身份和学生查询适配也未完成。成员四当前完成 Controller、DTO/VO、事务编排和 Port；依赖齐全后再演示真实补录。
+
+只有成员一身份/学生能力、成员二补录创建与历史查询、成员三自动审核流转全部合入，并使用真实 SQL 数据完成后端和前端联调后，6.1.4 才能标记为 `IMPLEMENTED`。
+
+---
+
+## 18. 6.1.7 报表明细、Excel 导出和打印固定约定
+
+### 18.1 对外接口和共用筛选条件
+
+```http
+GET /api/statistics/reports/details
+GET /api/statistics/reports/history
+GET /api/statistics/reports/print
+GET /api/statistics/reports/export
+```
+
+- 四个接口均要求 `SCHOOL` 权限，正式身份和学校数据范围由成员一 `CurrentUserProvider`/权限 Service 提供；`X-User-Id` 只用于本地连通性调试。
+- 四个接口共用 `StatisticsReportQueryDTO`，并完整复用第 16.2 节的 `batchType`、`batchId`、`collegeId`、`majorId`、`gradeId`、`classId`、`applicationType`、`applicationStatus`、`feeItemId`、`applicationStartTime`、`applicationEndTime`。明细、打印、Excel 不得各自解释筛选条件。
+- `/details` 为普通分页明细；`pageNo` 默认 `1`，`pageSize` 默认 `20` 且最大 `100`。
+- `/history` 必须同时提供 `batchType + batchId`，其他条件可继续叠加；历史批次切换就是替换这两个参数，不另建历史申请表。
+- 只查询 `application.deleted=0` 且状态为 `APPROVED` 或 `COMPLETED` 的申请，口径与 6.1.5、6.1.6 完全一致。
+
+### 18.2 自定义字段和排序白名单
+
+`columns` 可使用重复查询参数或英文逗号分隔，允许值固定为：
+
+```text
+applicationId, applicationNo, studentNo, studentName,
+collegeName, majorName, gradeName, className,
+applicationType, batchType, batchId, batchName,
+applicationStatus, applicationSource,
+arrearsItemNames, arrearsReasonName, declaredAmount, confirmedAmount,
+giftItemNames, subsidyAmount, applicationTime, completionTime
+```
+
+- `columns` 为空时使用后端固定默认列；重复字段去重并保留第一次出现的顺序；演示页面之外的未知字段直接忽略。
+- `sortBy` 使用同一字段 key 白名单，默认 `applicationTime`；`sortDirection` 只允许 `ASC` 或 `DESC`，默认 `DESC`。
+- 字段 key 是 API 契约，不是 SQL 字段名。成员二必须用固定映射选择排序 SQL，禁止把前端 `sortBy` 原样拼接到 SQL。
+- `StatisticsReportPageVO.records` 只返回用户选中的字段，并使用 `LinkedHashMap` 保持 JSON、Excel 和打印列顺序一致。
+- 报表不得包含身份证号、手机号、附件路径、JWT 或其他敏感字段。
+
+### 18.3 Excel 与打印规则
+
+- `/export` 返回真正的 `.xlsx` 二进制文件，媒体类型固定为 `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`，并设置 `Cache-Control: no-store`。
+- Excel 采用 Apache POI `SXSSFWorkbook` 流式写入：内存窗口 100 行、数据库每批 500 行，不设置演示阶段的总行数拦截。不得退化为把 CSV 改名为 xlsx。
+- Excel 首行为中文表头，列顺序与 `columns` 一致；冻结首行、启用首行筛选；以 `=、+、-、@` 开头的文本必须转义，防止公式注入。
+- `/print` 返回 `title`、`generatedAt`、`columns`、`records`、`total`；后端不生成第二份统计数据，前端按返回字段排版并调用浏览器打印。
+- 导出和打印没有数据时正常返回只有表头的 Excel 或 `records=[]` 的打印对象；零行必须来自真实查询，不得使用模拟数据。
+
+### 18.4 跨模块边界和完成判定
+
+- 成员一实现 `StatisticsAccessPort`，校验真实学校身份和数据范围。
+- 成员二实现 `StatisticsReportQueryPort.queryReportPage(StatisticsReportQueryDTO, currentUserId)`，以集合分页查询申请、学生组织、批次、欠费、礼包、补助和确认金额；成员四不得为 6.1.7 新建业务表或跨模块 Mapper。
+- 成员四负责页面字段映射、分页编排、Excel 生成和打印数据组装。演示前需保证成员一权限 Bean 和成员二明细 Bean 已经存在；本地不增加自定义异常包装。
+- `backend/pom.xml` 新增 `org.apache.poi:poi-ooxml:5.3.0` 是公共构建变更；其他成员合并前须确认依赖无冲突。
+- 只有成员一权限、成员二明细查询和真实 SQL 数据合入，并完成明细/历史/Excel/打印联调后，6.1.7 才能标记为 `IMPLEMENTED`。
+
+---
+
+## 19. 演示版本异常处理约定
+
+- 当前演示版本不保留成员四新增的自定义异常体系，已删除 `BusinessException`、`GlobalExceptionHandler`、`ApplicationException` 和 `ApplicationExceptionHandler`。
+- 成员四 Controller、Service 和前端联调页均直接调用下一层，不编写 `try/catch`、不主动 `throw`、不额外转换业务错误码。
+- 请求 DTO 上已有的基础校验注解、数据库约束和事务仍然保留，它们不属于成员四自定义异常包装。
+- 跨成员依赖未合入时，不用临时数据或临时异常响应补齐闭环；必须在本文件与 `change-log.md` 中写清缺失实现、负责人和受影响功能，待依赖合入后再验证成功场景。
+- 本节是成员四演示代码的现行规则；前文若写有“成员四返回自定义 503/自定义错误码”，以本节为准。
+
+---
+
+## 20. 成员四 6.1.1—6.1.7 跨成员依赖总表
+
+本节集中记录七项任务的准确依赖、当前缺口和解除条件。前面各节继续作为接口字段和业务口径的详细规定；若其他成员实现名称发生变化，必须先更新本表和 `docs/change-log.md`，再修改成员四的调用代码。
+
+| 任务 | 成员一必须提供 | 成员二必须提供 | 成员三必须提供 | 当前状态与解除条件 |
+|---|---|---|---|---|
+| 6.1.1 欠费最终确认 | `CurrentUserProvider` 或等价可信登录上下文，返回学校用户、角色和数据范围；提供学生组织快照 | `ArrearsConfirmationApplicationPort`：分页/详情读取真实 `CONFIRM_PENDING` 申请，返回申请编号、学生、申报金额和 `application.version` | `ApprovalCompletionService.completeAfterConfirmation`，由 `ArrearsConfirmationCompletionPort` 适配，在成员四确认事务中完成 `CONFIRM_PENDING -> COMPLETED` | 成员二已有基础读取实现，但仍依赖成员一学生组织快照；成员一身份/快照和成员三完成 Service 合入后，用真实 SQL 完成列表、详情、确认和状态联调 |
+| 6.1.2 欠费单据 | `StudentOrganizationSnapshotQuery`；`ArrearsVoucherAccessPort` 的学校权限、学生本人归属和确认人姓名查询 | `ArrearsVoucherApplicantQueryPort.findVoucherApplicantsByApplicationIds`，批量返回申请、学生组织、欠费项目和金额快照 | 无新增写操作；只读取已经完成的确认结果 | 成员二基础批量查询已存在；成员一两个能力合入并提供最小测试数据后，验证学校列表/详情/打印和学生本人查询 |
+| 6.1.3 学校代申请 | `SchoolProxyStudentQueryPort` 真实学生查询及 `CurrentUserProvider` 学校权限 | `SchoolProxyApplicationPort`：创建 `SCHOOL_PROXY/DRAFT`、写欠费/礼包明细、上传附件、预占资源和正式提交 | 正式提交时写 `SUBMIT` 审核记录并将申请推进到 `COUNSELOR_PENDING` | 三方实现当前均未形成可注入的完整 Bean；全部合入后按“查学生→建草稿→传附件→提交”完成一次真实流程 |
+| 6.1.4 线下补录 | `SchoolProxyStudentQueryPort` 真实学生查询及学校身份/数据范围 | `SupplementApplicationPort`：补录草稿、欠费/礼包/补助明细、资源确认、详情和历史分页 | `SupplementCompletionPort.completeSupplementReview`：写校级自动通过记录并流转到 `CONFIRM_PENDING/CONFIRMATION` 或 `COMPLETED/SYSTEM` | 三个 Port 的真实实现均未合入；实现加入同一事务并使用真实 SQL 完成创建、详情和历史联调后解除阻塞 |
+| 6.1.5 统计功能 | `StatisticsAccessPort`：学校角色和统计数据范围校验 | `ApplicationStatisticsQueryPort.queryFinalStatistics`：按最终状态集合聚合申请、组织、批次、欠费、礼包、确认金额；补齐 `arrears_reason_code` 和真实测试数据 | 无新增依赖 | 权限 Port、聚合 Port、欠费原因字段和真实数据全部合入后，核对人数、金额、礼包、原因及历史批次统计 |
+| 6.1.6 统计筛选 | 与 6.1.5 共用 `StatisticsAccessPort` | 在同一个 `ApplicationStatisticsQueryPort` 中准确支持批次、学院、专业、年级、班级、申请类型、最终状态、欠费项目和申请时间筛选 | 无新增依赖 | 与 6.1.5 一并解除；所有筛选组合必须基于真实集合查询完成 Apifox 和前端联调 |
+| 6.1.7 报表明细/导出/打印 | 与 6.1.5 共用 `StatisticsAccessPort` | `StatisticsReportQueryPort.queryReportPage`：按统一筛选、字段和排序契约分页返回 `StatisticsReportRowVO` | 无新增依赖 | 成员一权限 Bean、成员二报表分页 Bean 和真实 SQL 数据合入后，验证明细、历史批次、xlsx 打开和浏览器打印；其他成员合并时确认公共 POI 依赖 |
+
+### 20.1 统一完成判定
+
+1. 表中写明的 Port 或正式 Service 必须存在可注入的 Spring Bean，只有接口文件或 TODO 不算完成。
+2. 负责人必须提供最小真实 SQL/测试数据和实现类位置；成员四不建立临时表、不返回模拟记录、不跨模块直接调用他人 Mapper。
+3. 对应后端接口、Apifox 请求和前端验证页全部跑通后，才能在 `docs/change-log.md` 把该任务更新为 `IMPLEMENTED`。
+4. 某个依赖已经部分实现时，必须在“当前状态与解除条件”中明确剩余缺口，不能继续使用“等其他人完成”这种不确定表述。
