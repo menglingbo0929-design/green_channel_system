@@ -6,16 +6,14 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * 当前登录用户信息
+ * 当前登录用户信息 —— 对齐 docs/member-code-contracts.md
  *
- * 从 JWT Token 中解析，由 CurrentUserProvider 返回给所有需要用户身份的模块。
- *
- * 字段来源：
- *   userId    ← JWT claim "userId"
- *   loginName  ← JWT subject
- *   roles      ← JWT claim "roles"（逗号分隔后拆分）
- *   studentId  ← 预留，等 student 表建好后补
- *   collegeId  ← 预留，等 college 建好后补
+ * 字段来源：JWT Token
+ *   userId     ← claim "userId"
+ *   loginName   ← subject
+ *   roles       ← claim "roles"
+ *   studentId   ← claim "studentId"（学生角色时非空）
+ *   collegeId   ← claim "collegeId"（学院角色时非空）
  */
 @Data
 @AllArgsConstructor
@@ -23,7 +21,8 @@ public class LoginUser {
     private Long userId;
     private String loginName;
     private List<String> roles;
-    // TODO: 等 student 表和 college 表建好后补充
-    // private Long studentId;
-    // private Long collegeId;
+    /** 学生 ID，仅 STUDENT 角色时非空 */
+    private Long studentId;
+    /** 学院 ID，COLLEGE 或 COUNSELOR 角色时非空 */
+    private Long collegeId;
 }

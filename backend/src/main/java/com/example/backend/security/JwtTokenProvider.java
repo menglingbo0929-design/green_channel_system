@@ -70,22 +70,25 @@ public class JwtTokenProvider {
      * - iat: 签发时间（JWT 标准字段）
      * - exp: 过期时间（JWT 标准字段）
      */
-    public String generateToken(Long userId, String loginName, List<String> roles) {
+    public String generateToken(Long userId, String loginName, List<String> roles,
+                                 Long studentId, Long collegeId) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + jwtProperties.getExpiration());
 
-        // 角色列表转逗号分隔字符串存 JWT，解析时再拆分
         String rolesStr = (roles != null && !roles.isEmpty())
                 ? String.join(",", roles) : "";
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(loginName)
                 .claim("userId", userId)
-                .claim("roles", rolesStr)  // ← 新增：角色信息塞进 Token
+                .claim("roles", rolesStr)
                 .issuedAt(now)
-                .expiration(expiration)
-                .signWith(secretKey)
-                .compact();
+                .expiration(expiration);
+
+        if (studentId != null) builder.claim("studentId", studentId);
+        if (collegeId != null) builder.claim("collegeId", collegeId);
+
+        return builder.signWith(secretKey).compact();
     }
 
     /**
@@ -111,10 +114,16 @@ public class JwtTokenProvider {
      */
     public List<String> getRolesFromToken(String token) {
         String rolesStr = parseClaims(token).get("roles", String.class);
-        if (rolesStr == null || rolesStr.isEmpty()) {
-            return List.of();
-        }
+        if (rolesStr == null || rolesStr.isEmpty()) return List.of();
         return List.of(rolesStr.split(","));
+    }
+
+    public Long getStudentIdFromToken(String token) {
+        return parseClaims(token).get("studentId", Long.class);
+    }
+
+    public Long getCollegeIdFromToken(String token) {
+        return parseClaims(token).get("collegeId", Long.class);
     }
 
     /**

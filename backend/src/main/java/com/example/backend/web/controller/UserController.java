@@ -6,7 +6,7 @@ import com.example.backend.model.domain.User;
 import com.example.backend.model.dto.*;
 import com.example.backend.security.JwtTokenProvider;
 import com.example.backend.service.IUserService;
-import com.example.backend.security.CurrentUserProvider;
+import com.example.backend.security.ICurrentUserProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +21,7 @@ public class UserController {
     private final IUserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRoleMapper userRoleMapper;
-    private final CurrentUserProvider currentUserProvider;
+    private final ICurrentUserProvider currentUserProvider;
 
     /** 登录 */
     @PostMapping("login")
@@ -32,7 +32,7 @@ public class UserController {
         }
         List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
         String token = jwtTokenProvider.generateToken(
-                user.getId(), user.getLoginName(), roles);
+                user.getId(), user.getLoginName(), roles, null, null);
         LoginResponse loginResponse = new LoginResponse(
                 token, user.getId(), user.getLoginName());
         return JsonResponse.success(loginResponse, "登录成功");

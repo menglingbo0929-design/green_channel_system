@@ -18,8 +18,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -87,21 +88,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Long userId = jwtTokenProvider.getUserIdFromToken(token);
         String loginName = jwtTokenProvider.getLoginNameFromToken(token);
         List<String> roles = jwtTokenProvider.getRolesFromToken(token);
+        Long studentId = jwtTokenProvider.getStudentIdFromToken(token);
+        Long collegeId = jwtTokenProvider.getCollegeIdFromToken(token);
 
-        // 将角色转为 Spring Security 的权限对象
-        // ROLE_ 前缀是 Spring Security 的约定，如 ROLE_SCHOOL
         List<SimpleGrantedAuthority> authorities = roles.stream()
                 .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
                 .collect(Collectors.toList());
 
-        // UsernamePasswordAuthenticationToken 是 Spring Security 的认证对象
-        // 参数：（用户名, 密码, 权限列表）—— 这里把角色存入 authorities，
-        //       CurrentUserProvider 可以通过 getAuthorities() 拿到
         UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(
-                        loginName, null, authorities);
-        // 把 userId 存入 details，方便后续 Controller 获取
-        authentication.setDetails(userId);
+                new UsernamePasswordAuthenticationToken(loginName, null, authorities);
+
+        // 所有用户信息存入 details（Map 承载多个字段）
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", userId);
+        details.put("studentId", studentId);
+        details.put("collegeId", collegeId);
+        authentication.setDetails(details);
 
         // 写入 SecurityContext：这行代码执行后，Spring Security 认为"当前用户已登录"
         SecurityContextHolder.getContext().setAuthentication(authentication);
