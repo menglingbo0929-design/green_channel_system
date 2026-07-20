@@ -10,6 +10,8 @@
 | `PUT` | `/api/applications/{id}` | 已实现 | 仅草稿/退回状态可编辑，必须传 `version` |
 | `DELETE` | `/api/applications/{id}?version={version}` | 已实现 | 仅未提交草稿可逻辑删除 |
 | `POST` | `/api/applications/{id}/submit` | 待联调 | 依赖成员一身份/批次服务与成员三审核状态服务 |
+| `GET` | `/api/applications/{id}/arrears` | 已实现 | 查询绿色通道申请的有效欠费明细 |
+| `PUT` | `/api/applications/{id}/arrears` | 已实现 | 整体替换欠费明细；请求体含 `version` 和 `items`，总额不得超过 8000 元 |
 
 在成员一的登录上下文接入前，已实现的开发接口临时读取 `X-Student-Id` 和 `X-User-Id` 请求头；上线前必须替换为 `CurrentUserProvider`，不得信任客户端身份字段。
 

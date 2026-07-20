@@ -8,6 +8,7 @@ import com.example.backend.application.mapper.ApplicationOperationMapper;
 import com.example.backend.application.mapper.ArrearsApplicationMapper;
 import com.example.backend.application.port.*;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -63,6 +64,24 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     @Transactional public void deleteDraft(Long id, Integer version, Long operatorId) {
         if (applicationMapper.deleteDraft(id, version, operatorId) != 1) throw conflict("APPLICATION_INVALID_STATUS", "仅未提交草稿可删除");
     }
+    @Transactional public List<ArrearsItemSnapshot> replaceArrearsItems(Long applicationId, Integer version, List<ArrearsItemCommand> items, Long operatorId) {
+        Application application = required(applicationId);
+        if (application.getApplicationType() != ApplicationType.GREEN_CHANNEL ||
+                (application.getStatus() != ApplicationStatus.DRAFT && application.getStatus() != ApplicationStatus.RETURNED)) {
+            throw new ApplicationException("APPLICATION_INVALID_STATUS", HttpStatus.CONFLICT, "仅绿色通道草稿或退回申请可维护欠费明细");
+        }
+        if (!application.getVersion().equals(version)) throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
+        BigDecimal total = items.stream().map(ArrearsItemCommand::declaredAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.compareTo(new BigDecimal("8000.00")) > 0) throw new ApplicationException("APPLICATION_ARREARS_AMOUNT_EXCEEDED", HttpStatus.BAD_REQUEST, "欠费申报总额不得超过 8000 元");
+        if (items.stream().map(ArrearsItemCommand::feeItemId).distinct().count() != items.size()) throw new ApplicationException("APPLICATION_ARREARS_ITEM_DUPLICATE", HttpStatus.BAD_REQUEST, "欠费项目不可重复");
+        arrearsMapper.deleteActiveByApplicationId(applicationId);
+        for (ArrearsItemCommand item : items) arrearsMapper.insert(applicationId, item.feeItemId(), item.declaredAmount());
+        List<ArrearsItemSnapshot> storedItems = arrearsMapper.findItemsByApplicationId(applicationId);
+        if (storedItems.size() != items.size()) throw new ApplicationException("APPLICATION_ARREARS_ITEM_INVALID", HttpStatus.BAD_REQUEST, "欠费项目不存在或已停用");
+        if (applicationMapper.updateDraft(applicationId, application.getApplicationReason(), version, operatorId) != 1) throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
+        return storedItems;
+    }
+    public List<ArrearsItemSnapshot> findArrearsItems(Long applicationId) { required(applicationId); return arrearsMapper.findItemsByApplicationId(applicationId); }
     @Override public ApplicationStateSnapshot getRequiredState(Long id) { return snapshot(required(id)); }
     @Override @Transactional public ApplicationStateSnapshot updateState(Long id, ApplicationStatus expected, ApplicationStatus target, ApprovalLevel level, Integer version, Long operatorId) {
         if (applicationMapper.updateState(id, expected, target, level, version, operatorId) != 1) throw conflict("APPLICATION_VERSION_CONFLICT", "申请状态或版本已变化");
