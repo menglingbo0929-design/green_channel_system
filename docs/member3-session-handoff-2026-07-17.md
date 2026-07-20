@@ -2,6 +2,8 @@
 
 > 用途：供下一次新会话快速恢复上下文。本文记录截至 2026-07-17 的职责边界、关键决策、已完成工作、当前 Git 状态、未完成事项和建议执行顺序。
 
+> 2026-07-20 更新：本文第 5—7 节是历史快照。四人第一阶段共识、成员二申请配置决策和成员三审核公共契约现已 `APPROVED`；旧的“同步 main、等待最终复核、等待批次方案确认”事项均已完成。开发请以最新的 `docs/requirement.md`、`docs/change-log.md`、`docs/member-code-contracts.md`、`docs/status-flow.md` 和 `docs/api-document.md` 为准。
+
 ## 1. 项目与成员身份
 
 - 项目：高校绿色通道系统

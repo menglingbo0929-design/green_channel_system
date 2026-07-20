@@ -1,0 +1,44 @@
+spring:
+  datasource:
+    driver-class-name: com.oceanbase.jdbc.Driver
+    url: jdbc:oceanbase://127.0.0.1:2881/green_channel?useUnicode=true&characterEncoding=utf8&useSSL=false
+    username: root
+    password:
+  mvc:
+    format:
+      date: yyyy-MM-dd
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+    encoding:
+      charset: utf-8
+  web:
+    resources:
+      static-locations: classpath:/META-INF/resources/, classpath:/resources/, classpath:/static/, classpath:/public/, file:${file-upload-path}
+server:
+  port: 8080
+
+mybatis:
+  mapper-locations: classpath:/mybatis/mapper/*.xml, classpath:/mybatis/mapper/extend/*.xml
+
+logging:
+  level:
+    com:
+      example:
+        backend:
+          mapper:
+          com.example.backend.mapper: debug
+file-upload-path: ./file
+
+jwt:
+  secret: UYSD+HA8VEB+jErOR8zOFAX3IqgsW3uP77P9Ab7Xcl4=
+  expiration: 86400000
+
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: 'https://ws-6nwi9xo7l7v84m7p.cn-beijing.maas.aliyuncs.com/api/v1'
+  community:
+    dashscope:
+

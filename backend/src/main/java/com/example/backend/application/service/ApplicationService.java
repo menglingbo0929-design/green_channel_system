@@ -67,7 +67,7 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     @Transactional public List<ArrearsItemSnapshot> replaceArrearsItems(Long applicationId, Integer version, List<ArrearsItemCommand> items, Long operatorId) {
         Application application = required(applicationId);
         if (application.getApplicationType() != ApplicationType.GREEN_CHANNEL ||
-                (application.getStatus() != ApplicationStatus.DRAFT && application.getStatus() != ApplicationStatus.RETURNED)) {
+                (application.getStatus() != ApplicationStatus.DRAFT && !isReturned(application.getStatus()))) {
             throw new ApplicationException("APPLICATION_INVALID_STATUS", HttpStatus.CONFLICT, "仅绿色通道草稿或退回申请可维护欠费明细");
         }
         if (!application.getVersion().equals(version)) throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
@@ -97,6 +97,11 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     private Application required(Long id) { Application a = applicationMapper.findRequired(id); if (a == null) throw new ApplicationException("APPLICATION_NOT_FOUND", HttpStatus.NOT_FOUND, "申请不存在"); return a; }
     private void validateBatch(ApplicationType type, BatchType batchType) {
         if ((type == ApplicationType.GREEN_CHANNEL) != (batchType == BatchType.GREEN_CHANNEL)) throw new ApplicationException("APPLICATION_BATCH_TYPE_INVALID", HttpStatus.BAD_REQUEST, "申请类型与批次类型不匹配");
+    }
+    private boolean isReturned(ApplicationStatus status) {
+        return status == ApplicationStatus.COUNSELOR_RETURNED
+                || status == ApplicationStatus.COLLEGE_RETURNED
+                || status == ApplicationStatus.SCHOOL_RETURNED;
     }
     private String nextApplicationNo() { return "GC" + LocalDate.now().toString().replace("-", "") + String.format("%06d", System.nanoTime() % 1_000_000); }
     private ApplicationStateSnapshot snapshot(Application a) { Long batchId = a.getBatchType() == BatchType.GREEN_CHANNEL ? a.getGreenChannelBatchId() : a.getSubsidyBatchId(); return new ApplicationStateSnapshot(a.getId(), a.getStudentId(), a.getBatchType(), batchId, a.getApplicationType(), a.getStatus(), a.getCurrentLevel(), a.getReviewRound(), a.getVersion()); }
