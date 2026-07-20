@@ -560,3 +560,102 @@ APPROVAL_QUOTA_INSUFFICIENT
 APPROVAL_CANCEL_NOT_ALLOWED
 APPROVAL_RESOURCE_ROLLBACK_FAILED
 ```
+
+## 12. 6.1.2 欠费单据接口（PROPOSED，受外部依赖阻塞）
+
+本节路径和响应字段已固定；成员四不得以模拟数据替代成员一、成员二未合入的真实能力。依赖未合入时服务返回 HTTP 503，不能作为成功接口联调结果。
+
+### 12.1 学校分页查询确认单
+
+```http
+GET /api/arrears-vouchers?pageNo=1&pageSize=10&voucherNo=GC2026000001
+X-User-Id: 1
+```
+
+使用角色：`SCHOOL`。`pageNo` 默认 `1`，`pageSize` 默认 `10`、最大 `100`；`voucherNo` 可选，用于精确筛选。只返回 `arrears_confirmation.deleted = 0` 的记录。
+
+### 12.2 学校预览与打印数据
+
+```http
+GET /api/arrears-vouchers/{voucherNo}
+GET /api/arrears-vouchers/{voucherNo}/print
+X-User-Id: 1
+```
+
+使用角色：`SCHOOL`。预览响应的 `printTime` 为 `null`；打印接口的 `printTitle` 固定为“高校绿色通道欠费确认单”，`printTime` 为本次后端请求时间。后端只提供打印数据，浏览器打印由前端触发。
+
+### 12.3 学生查看本人单据
+
+```http
+GET /api/student/arrears-vouchers/{voucherNo}
+X-User-Id: 2001
+```
+
+使用角色：`STUDENT`。成员一的权限实现必须校验该用户实际拥有对应 `applicationId`；不得相信前端传递的学号、学生 ID、学院 ID 或角色。
+
+### 12.4 单据响应 `ArrearsVoucherVO`
+
+四个接口统一返回以下 `data`：
+
+```json
+{
+  "voucherNo": "GC2026000001",
+  "applicationId": 1,
+  "studentNo": "20260001",
+  "studentName": "张三",
+  "collegeName": "计算机学院",
+  "majorName": "软件工程",
+  "gradeName": "2026级",
+  "className": "软件工程1班",
+  "arrearsItems": [{"feeItemName": "学费", "declaredAmount": 5000.00}],
+  "appliedAmount": 5000.00,
+  "confirmedAmount": 4500.00,
+  "confirmedTime": "2026-07-18T10:30:00",
+  "confirmUserId": 1,
+  "confirmUserName": "学校管理员",
+  "printTitle": "高校绿色通道欠费确认单",
+  "printTime": null
+}
+```
+
+`arrearsItems`、学生组织字段由成员二的申请快照能力提供；`confirmUserName` 和访问控制由成员一提供。任一依赖缺失时，返回 `503 Service Unavailable`，不返回字段缺失的 200 响应。
+
+## 13. 6.1.5、6.1.6 学校申请统计（PROPOSED，受跨模块依赖阻塞）
+
+```http
+GET /api/statistics/applications/summary
+```
+
+使用角色：`SCHOOL`。只统计 `deleted = 0` 且状态为 `APPROVED` 或 `COMPLETED` 的申请；任何待审核、退回、拒绝、`CONFIRM_PENDING` 与已取消数据均不参与统计。成员一可信当前用户、成员二的集合聚合查询及欠费原因字段没有合入时，接口必须返回 HTTP 503。
+
+### 13.1 查询参数
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `batchType` | string | `GREEN_CHANNEL` / `SUBSIDY`；传 `batchId` 时必填 |
+| `batchId` | long | 批次 ID，与 `batchType` 一起定位历史或当前批次 |
+| `collegeId`、`majorId`、`gradeId`、`classId` | long | 组织筛选 ID，均须大于 0 |
+| `applicationType` | string | `GREEN_CHANNEL` / `LIVING_SUBSIDY` / `TRAVEL_SUBSIDY` |
+| `applicationStatus` | string | 仅 `APPROVED` / `COMPLETED`；不传时两种状态均统计 |
+| `feeItemId` | long | 欠费项目 ID |
+| `applicationStartTime`、`applicationEndTime` | ISO 8601 datetime | 按申请创建时间闭区间筛选 |
+
+`batchType=GREEN_CHANNEL` 只能搭配 `applicationType=GREEN_CHANNEL`；`batchType=SUBSIDY` 不可搭配 `GREEN_CHANNEL`。非法组合返回 400。
+
+### 13.2 响应数据
+
+```json
+{
+  "finalApplicantCount": 0,
+  "completedStudentCount": 0,
+  "feeItemApplicantCount": 0,
+  "confirmedArrearsAmount": 0.00,
+  "collegeApplicantCounts": [{"collegeId": 1, "collegeName": "计算机学院", "applicantCount": 0}],
+  "gradeApplicantCounts": [{"gradeId": 1, "gradeName": "2026级", "applicantCount": 0}],
+  "arrearsReasonStatistics": [{"arrearsReasonCode": "FAMILY_FINANCIAL_DIFFICULTY", "arrearsReasonName": "家庭经济困难", "applicantCount": 0, "confirmedAmount": 0.00}],
+  "giftItemApplicationCounts": [{"giftItemId": 1, "giftItemName": "爱心礼包", "applicationCount": 0}],
+  "batchHistoryStatistics": [{"batchType": "GREEN_CHANNEL", "batchId": 1, "batchName": "2026 年绿色通道", "applicantCount": 0, "completedStudentCount": 0, "confirmedArrearsAmount": 0.00}]
+}
+```
+
+`finalApplicantCount` 是最终状态范围内按 `studentId` 去重人数；`completedStudentCount` 只计 `COMPLETED`；`confirmedArrearsAmount` 只累计已完成申请关联的有效 `arrears_confirmation.confirmed_amount`。无真实数据时字段为零或空数组；该零值只能由真实聚合结果产生，不能用模拟数据返回。

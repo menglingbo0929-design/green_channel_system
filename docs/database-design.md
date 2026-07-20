@@ -33,6 +33,7 @@ application_operation_record, student_recommendation
 | `applied_amount` | `DECIMAL(12,2)` | 否 | 学生申报金额快照；确认时从成员二提供的读取 Service 获取 |
 | `confirmed_amount` | `DECIMAL(12,2)` | 否 | 学校最终确认的实际欠费金额 |
 | `confirm_user_id` | `BIGINT UNSIGNED` | 否 | 确认学校管理员的用户 ID |
+| `request_id` | `VARCHAR(64)` | 否 | 确认写操作的幂等请求号 |
 | `confirmed_at` | `DATETIME` | 否 | 最终确认时间 |
 | `created_at` | `DATETIME` | 否 | 创建时间 |
 | `updated_at` | `DATETIME` | 否 | 更新时间 |
@@ -42,6 +43,7 @@ application_operation_record, student_recommendation
 
 - `uk_arrears_confirmation_application_id_deleted(application_id, deleted)`：同一申请只能存在一条有效确认记录，作为重复确认的数据库最终防线；
 - `uk_arrears_confirmation_voucher_no(voucher_no)`：单据编号唯一；
+- `uk_arrears_confirmation_request_id(request_id)`：同一确认请求只允许写入一次；
 - `idx_arrears_confirmation_confirm_user_id(confirm_user_id)`：按确认人查询或审计时使用。
 
 业务规则：
@@ -260,3 +262,99 @@ green_channel_batch 与 subsidy_batch 是两张不同表。为避免后续混淆
 - 新表默认遵循 database-format-standard.md：BIGINT、DECIMAL(12,2)、DATETIME、VARCHAR(32)、create_time/update_time/deleted。
 - application 仍由成员二维护；成员三只通过其 Service 修改状态；成员四只通过成员三 Service 完成 CONFIRM_PENDING 到 COMPLETED。
 - 本节没有新增表。若需要新增表、字段或索引，必须先在 change-log.md 创建 PROPOSED 记录，再由表负责人实现。
+
+## 9. 角色字典表 `sys_role`（成员一）
+
+用途：存储系统角色的字典数据，角色固定为 4 种，基本不增删改。
+
+表负责人：成员一（`feature/base-user-batch`）。
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| `id` | `BIGINT` | PK | 主键、自增 |
+| `role_code` | `VARCHAR(32)` | NOT NULL | 角色编码，固定值：`STUDENT`/`COUNSELOR`/`COLLEGE`/`SCHOOL` |
+| `role_name` | `VARCHAR(32)` | NOT NULL | 角色中文名，如"学生""辅导员""学院管理员""学校管理员" |
+| `create_time` | `DATETIME` | NOT NULL DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+成员一负责的约束和索引：
+
+```text
+uk_role_code(role_code) UNIQUE
+```
+
+初始数据：
+
+```sql
+INSERT INTO `sys_role` (`role_code`, `role_name`) VALUES
+    ('STUDENT',   '学生'),
+    ('COUNSELOR', '辅导员'),
+    ('COLLEGE',   '学院管理员'),
+    ('SCHOOL',    '学校管理员');
+```
+
+规则：
+
+- 角色为全系统权限模型的基础，其他模块从 JWT Token 中获取角色编码做权限判断；
+- 角色编码为固定枚举值，不在前端或接口中动态创建；
+- 成员一通过 `CurrentUserProvider` 对外暴露当前用户的角色列表。
+
+## 10. 用户-角色关联表 `sys_user_role`（成员一）
+
+用途：实现用户与角色的多对多关联。一个用户可以同时拥有多个角色（如某学生兼任辅导员）。
+
+表负责人：成员一（`feature/base-user-batch`）。
+
+| 字段 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| `id` | `BIGINT` | PK | 主键、自增 |
+| `user_id` | `BIGINT` | NOT NULL | 用户 ID，关联 `sys_user.id` |
+| `role_id` | `BIGINT` | NOT NULL | 角色 ID，关联 `sys_role.id` |
+| `create_time` | `DATETIME` | NOT NULL DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+
+成员一负责的约束和索引：
+
+```text
+uk_user_role(user_id, role_id) UNIQUE
+idx_user_role_user(user_id)
+idx_user_role_role(role_id)
+```
+
+规则：
+
+- 同一用户不可重复绑定同一角色；
+- 登录时查询用户角色列表，写入 JWT Token 的 `roles` 字段（逗号分隔）；
+- 成员一提供 `selectRoleCodesByUserId(Long userId)` 查询方法供 Controller 使用；
+- 其他模块通过 JWT Token 获取角色，不直接查此表。
+
+建表 SQL：
+
+```sql
+-- 角色字典表
+CREATE TABLE `sys_role` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT,
+    `role_code`   VARCHAR(32)  NOT NULL COMMENT '角色编码：STUDENT/COUNSELOR/COLLEGE/SCHOOL',
+    `role_name`   VARCHAR(32)  NOT NULL COMMENT '角色中文名',
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_role_code` (`role_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 用户-角色关联表
+CREATE TABLE `sys_user_role` (
+    `id`          BIGINT   NOT NULL AUTO_INCREMENT,
+    `user_id`     BIGINT   NOT NULL COMMENT '用户ID，关联sys_user.id',
+    `role_id`     BIGINT   NOT NULL COMMENT '角色ID，关联sys_role.id',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_role` (`user_id`, `role_id`),
+    KEY `idx_user_role_user` (`user_id`),
+    KEY `idx_user_role_role` (`role_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 初始角色数据
+INSERT INTO `sys_role` (`role_code`, `role_name`) VALUES
+    ('STUDENT',   '学生'),
+    ('COUNSELOR', '辅导员'),
+    ('COLLEGE',   '学院管理员'),
+    ('SCHOOL',    '学校管理员');
+```
