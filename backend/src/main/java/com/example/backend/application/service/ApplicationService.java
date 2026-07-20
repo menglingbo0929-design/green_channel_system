@@ -25,6 +25,13 @@ public class ApplicationService implements ApplicationCreationService, Applicati
 
     @Override @Transactional
     public ApplicationStateSnapshot create(Long studentId, Long operatorId, ApplicationDraftCommand command) {
+        return create(studentId, operatorId, command, ApplicationSource.STUDENT);
+    }
+    @Override @Transactional
+    public ApplicationStateSnapshot createSchoolProxyApplication(Long studentId, Long operatorId, ApplicationDraftCommand command) {
+        return create(studentId, operatorId, command, ApplicationSource.SCHOOL_PROXY);
+    }
+    private ApplicationStateSnapshot create(Long studentId, Long operatorId, ApplicationDraftCommand command, ApplicationSource source) {
         Long existingId = operationMapper.findApplicationIdByRequestId(command.requestId());
         if (existingId != null && existingId > 0) return getRequiredState(existingId);
         validateBatch(command.applicationType(), command.batchType());
@@ -33,7 +40,7 @@ public class ApplicationService implements ApplicationCreationService, Applicati
         }
         Application application = new Application();
         application.setApplicationNo(nextApplicationNo()); application.setStudentId(studentId);
-        application.setApplicationType(command.applicationType()); application.setSource(ApplicationSource.STUDENT);
+        application.setApplicationType(command.applicationType()); application.setSource(source);
         application.setBatchType(command.batchType());
         if (command.batchType() == BatchType.GREEN_CHANNEL) application.setGreenChannelBatchId(command.batchId());
         else application.setSubsidyBatchId(command.batchId());
