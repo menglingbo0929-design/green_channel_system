@@ -1,6 +1,68 @@
 
 # 共享结构与接口变更记录
 
+## 2026-07-20｜汇总 6.1.1—6.1.7 跨成员依赖和解除条件
+
+- 状态：APPROVED
+- 提出人：成员四
+- 影响模块：成员一、成员二、成员三、成员四
+- 变更内容：在 `collaboration-rules.md` 第 20 节集中列出七项任务所需的准确 Port/Service、负责人、当前实现状态、真实数据要求和解除条件；同时将 6.1.4 外层事务声明与当前普通 `@Transactional` 实现对齐。
+- 协作要求：只存在接口或 TODO 不算依赖完成；实现方须提供 Spring Bean、实现类位置和最小真实 SQL/测试数据，成员四完成 Apifox 与前端联调后才能更新为 `IMPLEMENTED`。
+- 对应提交：本次公共文档提交
+
+## 2026-07-20｜演示版本移除成员四自定义异常处理
+
+- 状态：PROPOSED
+- 提出人：成员四
+- 影响模块：成员二、成员四及公共异常包
+- 影响文件：删除 `BusinessException`、`GlobalExceptionHandler`、`ApplicationException`、`ApplicationExceptionHandler`；成员四 Controller、Service、测试页及被成员四调用的本地申请服务不再使用显式 `try/catch` 或主动 `throw`。
+- 保留内容：DTO 基础校验注解、数据库约束和事务；它们继续保证正常演示输入下的数据格式与写入一致性。
+- 协作要求：缺少跨成员实现时在协作文档中记录阻塞，不使用临时异常响应、模拟数据或第二套接口补齐。
+- 对应提交：本地待决定，未提交
+
+## 2026-07-20｜成员四 6.1.7 报表明细、Excel 导出和打印
+
+- 状态：PROPOSED
+- 提出人：成员四
+- 负责人：成员四（查询编排、字段白名单、Excel 和打印）、成员一（学校权限与数据范围）、成员二（真实报表明细分页查询）
+- 影响模块：成员一、成员二、成员四
+- 影响表：只读成员一组织/学生、成员二申请/明细/批次/资源和成员四确认表；不新增报表业务表
+- 影响接口：`GET /api/statistics/reports/details`、`/history`、`/print`、`/export`、`StatisticsReportQueryPort`
+- 影响状态：只读 `APPROVED`、`COMPLETED`，不改变申请状态
+- 变更内容：固定 22 个自定义列、统一筛选 DTO、历史批次查询和 SXSSF 每批 500 行的流式导出；演示版本不设置打印/导出总数拦截；`pom.xml` 新增 `poi-ooxml:5.3.0`。
+- 当前实现范围：成员四 Controller、Service、DTO/VO、列映射、Excel 与打印生成已经完成；不保留自定义异常包装。
+- 当前阻塞项：成员一 `StatisticsAccessPort` 与成员二 `StatisticsReportQueryPort` 真实实现尚未合入，不能用真实数据验证成功下载和打印。
+- 使用者需要执行的操作：成员一、二确认第 18 节及新 Port；合入实现后由成员四完成 Apifox、Excel 文件打开和打印联调。
+- 对应提交：本地待决定，未提交
+
+## 2026-07-20｜成员四 6.1.4 绿色通道线下补录接口与编排
+
+- 状态：PROPOSED
+- 提出人：成员四
+- 负责人：成员四（学校端校验、事务编排与页面）、成员一（可信学校身份和学生查询）、成员二（补录申请/明细/资源/历史查询）、成员三（自动审核记录与状态流转）
+- 影响模块：成员一、成员二、成员三、成员四
+- 影响表：成员四不新增或直接写业务表；成员二写 `application` 及欠费/礼包/补助明细和资源，成员三写 `approval_record`
+- 影响接口：`GET /api/supplements/students`、`GET /api/supplements`、`GET /api/supplements/{applicationId}`、`POST /api/supplements`、`SupplementApplicationPort`、`SupplementCompletionPort`
+- 影响状态：补录先创建 `DRAFT`；含欠费固定进入 `CONFIRM_PENDING/CONFIRMATION`，不含欠费固定进入 `COMPLETED/SYSTEM`
+- 变更内容：固定 6.1.4 请求字段、批次类型映射、明细互斥规则、幂等号、返回字段、分页筛选、外层事务和跨模块写入边界；完成成员四 Controller、DTO/VO、Service 编排、Port 和前端验证页。
+- 当前阻塞项：成员一可信身份/学生适配、成员二补录明细/资源/历史查询、成员三 `completeSupplementReview` 尚未合入；依赖齐全后再进行真实创建与历史演示。
+- 使用者需要执行的操作：成员一、二、三按 `collaboration-rules.md` 第 17 节实现对应适配；合入后由成员四使用真实 SQL 数据完成 Apifox 和前端联调，再将状态更新为 `IMPLEMENTED`。
+- 对应提交：协作边界 `e17e951`；代码本地待提交
+
+## 2026-07-20｜成员四确认表 SQL 与成员三完成接口对齐
+
+- 状态：IMPLEMENTED
+- 提出人：成员四
+- 负责人：成员四（`arrears_confirmation` 基线、migration、测试数据及本地确认适配）、成员三（正式 `ApprovalCompletionService` 实现）
+- 影响模块：成员三、成员四
+- 影响表：`arrears_confirmation`；不修改成员三审核表、成员一角色表或成员二申请表
+- 影响接口：成员四本地 `ArrearsConfirmationCompletionPort.completeAfterConfirmation` 对齐成员三 `ApprovalCompletionService.completeAfterConfirmation`
+- 影响状态：确认成功后的目标状态仍为 `CONFIRM_PENDING -> COMPLETED`，不新增状态值
+- 变更内容：`database/02_create_database.sql` 补齐 `request_id`、有效确认记录唯一约束、单据号唯一约束和请求号唯一约束；`database/04_create_database.sql` 的 100 条确认测试数据补齐唯一 `request_id`；成员四 migration、Entity、数据库设计与基线 SQL 保持一致。
+- 当前阻塞项：成员三正式 `ApprovalCompletionService`、成员二待确认申请读取和成员一可信身份实现尚未合入，因此确认业务仍不能完成真实跨模块联调。
+- 使用者需要执行的操作：新环境按 `01_create_database.sql`、`02_create_database.sql`、`04_create_database.sql` 顺序建库和导入测试数据；已有数据库继续按成员四 migration 处理，不回改已执行 migration。
+- 对应提交：待提交
+
 ## 2026-07-19｜成员四统计功能与统计筛选接口契约
 
 - 状态：PROPOSED
@@ -42,6 +104,8 @@
 - 影响接口：学校代申请学生查询、创建草稿、上传附件、正式提交
 - 影响状态：SCHOOL_PROXY 草稿为 DRAFT；正式提交后进入 COUNSELOR_PENDING
 - 变更内容：固定 6.1.3 的路径、请求字段、附件上传方式、requestId、事务发起方和跨模块写入边界。
+- 当前阻塞项：成员一 `SchoolProxyStudentQueryPort`/可信学校身份、成员二 `SchoolProxyApplicationPort` 的草稿/明细/附件/资源写入，以及成员三 `SUBMIT -> COUNSELOR_PENDING` 审核流转均未形成可注入的完整实现。
+- 解除条件：三方提供 Spring Bean、实现类位置和最小真实数据后，成员四按查学生、建草稿、传附件、正式提交的顺序完成 Apifox 与前端联调。
 - 使用者需要执行的操作：成员一、二、三按 confirmation-statistics.md 的 Port 契约提供实现；完成联调后更新状态。
 - 对应提交：待提交
 
