@@ -4,6 +4,8 @@ import Login from '../views/Login.vue'
 import Layout from '../views/Layout.vue'
 import Home from '../views/Home.vue'
 import BaseData from '../views/BaseData.vue'
+import ApplicationConfig from '../views/ApplicationConfig.vue'
+import StudentApplicationCenter from '../views/StudentApplicationCenter.vue'
 
 /**
  * 路由配置
@@ -30,7 +32,8 @@ const routes = [
       { path: 'home', name: 'Home', component: Home, meta: { title: '首页' } },
       // 以下页面占位符：等对应 Vue 文件建好后替换 component
       { path: 'profile',     name: 'Profile',      component: () => import('../views/Home.vue'), meta: { title: '个人中心' } },
-      { path: 'student-center',name:'StudentCenter',component:()=> import('../views/Home.vue'), meta: { title: '学生申请中心' } },
+      { path: 'student-center',name:'StudentCenter',component: StudentApplicationCenter, meta: { title: '学生申请中心' } },
+      { path: 'application-config', name: 'ApplicationConfig', component: ApplicationConfig, meta: { title: '批次与申请配置' } },
       { path: 'my-apply',    name: 'MyApply',      component: () => import('../views/Home.vue'), meta: { title: '我的申请' } },
       { path: 'counselor-review',name:'CounselorReview',component:()=> import('../views/Home.vue'), meta: { title: '辅导员审核' } },
       { path: 'college-review',name:'CollegeReview',component:()=> import('../views/Home.vue'), meta: { title: '学院审核' } },

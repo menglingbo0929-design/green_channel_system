@@ -113,7 +113,7 @@ import FormDialog from '../components/FormDialog.vue'
 import {
   HomeFilled, User, School, EditPen, Document,
   CircleCheck, Flag, Coin, Plus, TrendCharts,
-  Coin as Database, InfoFilled, Fold, Bell, ArrowDown
+  Coin as Database, InfoFilled, Fold, Bell, ArrowDown, Setting
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -161,7 +161,8 @@ const iconMap = {
   plus:         Plus,
   'chart-line': TrendCharts,
   database:     Database,
-  info:         InfoFilled
+  info:         InfoFilled,
+  setting:      Setting
 }
 
 const currentPath = computed(() => route.path)

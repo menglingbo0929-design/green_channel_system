@@ -40,6 +40,7 @@ const ALL_MENUS = [
   { key: 'supplement',  label: '申请补录',     icon: 'plus',            roles: ['SCHOOL'],                                    path: '/supplement' },
   { key: 'stats',       label: '统计报表',     icon: 'chart-line',      roles: ['SCHOOL','COLLEGE'],                          path: '/stats' },
   { key: 'base-data',   label: '基础数据',     icon: 'database',        roles: ['SCHOOL'],                                    path: '/base-data' },
+  { key: 'application-config', label: '批次与申请配置', icon: 'setting', roles: ['SCHOOL', 'COLLEGE'],                       path: '/application-config' },
   { key: 'policy',      label: '政策与说明',   icon: 'info',            roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'],    path: '/policy' }
 ]
 
