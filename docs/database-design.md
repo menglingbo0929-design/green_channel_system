@@ -55,7 +55,7 @@ application_operation_record, student_recommendation
 
 > 本次变更只记录成员三拥有的表：`approval_record`、`approval_submission_record`、`system_message`、`message_read_record`。其他成员负责表的 DDL、字段、索引、Entity 和 Mapper 不在本文档中代为定义。
 
-> 审核流程对共享主表 `application` 的字段需求当前为 `PROPOSED`，只登记在 `docs/change-log.md` 和成员三决策文件中；成员二、成员三、成员四确认前，成员三不得修改 `application` 的 DDL、Entity 或 Mapper。
+> 审核流程对共享主表 `application` 的字段需求已随四人第一阶段共识获得 `APPROVED`。`application` 的 DDL、Entity、Mapper 和直接数据库写入仍只由成员二负责；成员三只能调用成员二提供的 Service。
 
 ## 1. 成员三表所有权
 
@@ -87,6 +87,7 @@ arrears_confirmation
 public record ApplicationStateSnapshot(
     Long applicationId,
     Long studentId,
+    BatchType batchType,
     Long batchId,
     ApplicationType applicationType,
     ApplicationStatus status,
@@ -96,7 +97,7 @@ public record ApplicationStateSnapshot(
 ) {}
 ```
 
-成员三负责判断目标状态，成员二负责 `application` 的直接写入。建议的跨模块接口记录在 `docs/member-code-contracts.md`，确认后由成员二实现。
+成员三负责判断目标状态，成员二负责 `application` 的直接写入。已批准的跨模块接口记录在 `docs/member-code-contracts.md`，由成员二实现。
 
 ## 3. 审核记录表 `approval_record`
 
@@ -125,6 +126,7 @@ uk_approval_record_request(request_id) UNIQUE
 idx_approval_record_application(application_id, create_time, id)
 idx_approval_record_level(approval_level, approver_id, create_time)
 idx_approval_record_round(application_id, review_round, approval_level, action)
+chk_approval_record_review_round CHECK (review_round >= 0)
 ```
 
 规则：
@@ -141,7 +143,9 @@ idx_approval_record_round(application_id, review_round, approval_level, action)
 | 字段 | 类型 | 约束 | 说明 |
 |---|---|---|---|
 | `id` | `BIGINT` | PK | 主键 |
-| `batch_id` | `BIGINT` | NOT NULL | 批次 ID |
+| `batch_type` | `VARCHAR(32)` | NOT NULL | `GREEN_CHANNEL/SUBSIDY` |
+| `green_channel_batch_id` | `BIGINT` | NULL | 绿色通道批次 ID，仅 `batch_type=GREEN_CHANNEL` 时有值 |
+| `subsidy_batch_id` | `BIGINT` | NULL | 补助批次 ID，仅 `batch_type=SUBSIDY` 时有值 |
 | `submission_level` | `VARCHAR(32)` | NOT NULL | `COUNSELOR/COLLEGE` |
 | `submission_type` | `VARCHAR(32)` | NOT NULL | `INITIAL_BATCH/RETURN_RESUBMIT` |
 | `scope_type` | `VARCHAR(32)` | NOT NULL | `COUNSELOR/COLLEGE` |
@@ -159,14 +163,25 @@ idx_approval_record_round(application_id, review_round, approval_level, action)
 
 ```text
 uk_submission_request(request_id) UNIQUE
-uk_submission_scope(batch_id, submission_level, scope_id, submission_type, application_id, review_round) UNIQUE
-idx_submission_batch(batch_id, submission_level, submit_time)
+chk_submission_batch_reference CHECK (
+    (batch_type = 'GREEN_CHANNEL' AND green_channel_batch_id IS NOT NULL AND subsidy_batch_id IS NULL)
+    OR
+    (batch_type = 'SUBSIDY' AND green_channel_batch_id IS NULL AND subsidy_batch_id IS NOT NULL)
+)
+uk_submission_green_scope(green_channel_batch_id, submission_level, scope_id, submission_type, application_id, review_round) UNIQUE
+uk_submission_subsidy_scope(subsidy_batch_id, submission_level, scope_id, submission_type, application_id, review_round) UNIQUE
+idx_submission_green_batch(green_channel_batch_id, submission_level, submit_time)
+idx_submission_subsidy_batch(subsidy_batch_id, submission_level, submit_time)
+chk_submission_review_round CHECK (review_round >= 0)
+chk_submission_count CHECK (submitted_count >= 0)
 ```
 
 规则：
 
 - `INITIAL_BATCH` 的 `application_id` 和 `review_round` 固定为 0；
 - `RETURN_RESUBMIT` 使用真实申请 ID 和当前审核轮次；
+- 两个批次外键有且仅有一个非空，并且必须与 `batch_type` 一致；
+- 接口和领域快照统一使用 `batchType + batchId`，持久层负责映射到对应物理外键；
 - 同一范围只能首次上报一次，同一申请在同一轮次只能补交一次。
 
 ## 5. 系统消息表 `system_message`
@@ -177,7 +192,7 @@ idx_submission_batch(batch_id, submission_level, submit_time)
 |---|---|---|---|
 | `id` | `BIGINT` | PK | 主键 |
 | `receiver_user_id` | `BIGINT` | NOT NULL | 接收用户 ID |
-| `message_type` | `VARCHAR(32)` | NOT NULL | 消息类型 |
+| `message_type` | `VARCHAR(32)` | NOT NULL | `APPROVAL_RETURNED/APPROVAL_REJECTED/APPROVAL_APPROVED/BATCH_DEADLINE/OFFLINE_PROCESSING` |
 | `business_type` | `VARCHAR(32)` | NOT NULL | `APPLICATION/BATCH` |
 | `business_id` | `BIGINT` | NOT NULL | 申请 ID 或批次 ID |
 | `title` | `VARCHAR(200)` | NOT NULL | 标题 |
