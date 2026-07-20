@@ -6,6 +6,7 @@ import com.example.backend.model.domain.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,7 @@ import java.util.List;
  */
 @Slf4j
 @Component  // 让 Spring 扫描并管理这个 Bean
+@ConditionalOnProperty(name = "app.password-migration.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class PasswordMigrationRunner implements CommandLineRunner {
 
