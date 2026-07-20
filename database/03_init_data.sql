@@ -90,3 +90,26 @@ INSERT INTO `class_info` VALUES (6, 'SE2501', '软工2501', 18, 4, 10, 1, '2026-
 INSERT INTO `class_info` VALUES (7, 'EE2401', '电气2401', 7, 3, 4, 1, '2026-07-20 13:48:11', '2026-07-20 13:48:11', 0);
 INSERT INTO `class_info` VALUES (8, 'EE2501', '电气2501', 7, 4, 4, 1, '2026-07-20 13:48:11', '2026-07-20 13:48:11', 0);
 INSERT INTO `class_info` VALUES (9, 'FN2401', '金融2401', 27, 3, 16, 1, '2026-07-20 13:48:11', '2026-07-20 13:48:11', 0);
+
+-- 学生标签初始化
+INSERT INTO `student_tag` VALUES (1, 'POVERTY', '建档立卡', 'DIFFICULTY', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `student_tag` VALUES (2, 'LOW_INCOME', '低保', 'DIFFICULTY', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `student_tag` VALUES (3, 'ORPHAN', '孤儿', 'SPECIAL', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `student_tag` VALUES (4, 'DISABLED', '残疾', 'SPECIAL', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `student_tag` VALUES (5, 'SINGLE_PARENT', '单亲家庭', 'SPECIAL', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `student_tag` VALUES (6, 'RURAL', '农村户籍', 'DIFFICULTY', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `student_tag` VALUES (7, 'MARTYRED', '烈士子女', 'SPECIAL', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `student_tag` VALUES (8, 'DISASTER', '受灾家庭', 'DIFFICULTY', 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+
+-- 绿色通道批次初始化
+INSERT INTO `green_channel_batch` VALUES (1, 'GC2026', '2026年绿色通道', '2026-08-01 00:00:00', '2026-09-15 23:59:59', '2026-09-20 23:59:59', 'OPEN', 1, NULL, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+
+-- 批次适用年级初始化
+INSERT INTO `batch_eligible_grade` VALUES (1, 1, 3, '2026-07-20 13:35:10');
+INSERT INTO `batch_eligible_grade` VALUES (2, 1, 4, '2026-07-20 13:35:10');
+INSERT INTO `batch_eligible_grade` VALUES (3, 1, 5, '2026-07-20 13:35:10');
+
+-- 政策规则初始化
+INSERT INTO `policy_rule` VALUES (1, 'GC_RULE_001', '生源地贷款优先', '已办理生源地贷款的学生可优先申请绿色通道，申请时需上传贷款回执或合同。', 'GREEN_CHANNEL', 1, 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `policy_rule` VALUES (2, 'GC_RULE_002', '欠费上限', '绿色通道欠费缓缴上限为当学年学费标准，不含住宿费和代收费。', 'GREEN_CHANNEL', 2, 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);
+INSERT INTO `policy_rule` VALUES (3, 'GC_RULE_003', '困难认定必备', '申请绿色通道的学生须完成家庭经济困难认定，未认定的学生请先联系辅导员完成认定。', 'ALL', 3, 1, '2026-07-20 13:35:10', '2026-07-20 13:35:10', 0);

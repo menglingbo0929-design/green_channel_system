@@ -1,12 +1,15 @@
 package com.example.backend.web.controller;
 
 import com.example.backend.common.JsonResponse;
+import com.example.backend.mapper.StudentMapper;
 import com.example.backend.mapper.UserRoleMapper;
+import com.example.backend.model.domain.Student;
 import com.example.backend.model.domain.User;
 import com.example.backend.model.dto.*;
 import com.example.backend.security.JwtTokenProvider;
 import com.example.backend.service.IUserService;
 import com.example.backend.security.ICurrentUserProvider;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +24,7 @@ public class UserController {
     private final IUserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRoleMapper userRoleMapper;
+    private final StudentMapper studentMapper;
     private final ICurrentUserProvider currentUserProvider;
 
     /** 登录 */
@@ -31,8 +35,21 @@ public class UserController {
             return JsonResponse.failure("用户名或密码错误");
         }
         List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
+
+        // 查询该用户是否关联学生，填充 studentId 和 collegeId 到 JWT
+        Long studentId = null;
+        Long collegeId = null;
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getUserId, user.getId())
+                        .eq(Student::getDeleted, 0));
+        if (student != null) {
+            studentId = student.getId();
+            collegeId = student.getCollegeId();
+        }
+
         String token = jwtTokenProvider.generateToken(
-                user.getId(), user.getLoginName(), roles, null, null);
+                user.getId(), user.getLoginName(), roles, studentId, collegeId);
         LoginResponse loginResponse = new LoginResponse(
                 token, user.getId(), user.getLoginName());
         return JsonResponse.success(loginResponse, "登录成功");
