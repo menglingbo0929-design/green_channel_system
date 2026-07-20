@@ -15,6 +15,10 @@ frontend/.env.local
 frontend/.env.development.local
 frontend/.env.production.local
 
+# Docs
+doce/高校绿色通道系统_9页面5弹窗最终分工.md
+docs/高校绿色通道系统_9页面终版设计与角色演示流程+v1 (1).md
+
 # Upload files
 uploads/*
 !uploads/.gitkeep
@@ -25,3 +29,4 @@ Thumbs.db
 
 # Local IntelliJ IDEA project settings
 .idea/
+
