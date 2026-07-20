@@ -12,12 +12,15 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * JWT 认证过滤器 —— 整个 JWT 认证的核心拦截器
@@ -83,14 +86,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // ═══ 第四步：Token 有效 → 解析用户信息，写入 SecurityContext ═══
         Long userId = jwtTokenProvider.getUserIdFromToken(token);
         String loginName = jwtTokenProvider.getLoginNameFromToken(token);
+        List<String> roles = jwtTokenProvider.getRolesFromToken(token);
+
+        // 将角色转为 Spring Security 的权限对象
+        // ROLE_ 前缀是 Spring Security 的约定，如 ROLE_SCHOOL
+        List<SimpleGrantedAuthority> authorities = roles.stream()
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                .collect(Collectors.toList());
 
         // UsernamePasswordAuthenticationToken 是 Spring Security 的认证对象
-        // 参数：（用户名, 密码, 权限列表）
-        // 密码传 null：Token 已验证过，不需要密码
-        // 权限传空列表：目前没有做角色/权限控制，后续可以扩展
+        // 参数：（用户名, 密码, 权限列表）—— 这里把角色存入 authorities，
+        //       CurrentUserProvider 可以通过 getAuthorities() 拿到
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
-                        loginName, null, Collections.emptyList());
+                        loginName, null, authorities);
         // 把 userId 存入 details，方便后续 Controller 获取
         authentication.setDetails(userId);
 
