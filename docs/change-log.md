@@ -1,6 +1,19 @@
 
 # 共享结构与接口变更记录
 
+## 2026-07-20｜成员三审核与消息持久层
+
+- 状态：IMPLEMENTED
+- 提出人：成员三
+- 负责人：成员三
+- 影响模块：三级审核、批量上报、审核消息；其他模块仅通过成员三 Service 查询或写入
+- 影响表：`approval_record`、`approval_submission_record`、`system_message`、`message_read_record`
+- 影响接口：成员三内部 Mapper；不改变已批准的跨模块 Service 签名
+- 影响状态：不增加或修改申请状态枚举
+- 变更内容：新增四张成员三表的权威基线 DDL 和 `V20260720_001__create_approval_and_message_tables.sql`；实现四个 Entity、四个 MyBatis Mapper、枚举映射、H2 测试数据源及 Mapper 集成测试。`approval_submission_record` 按 `batchType + batchId` 契约使用批次类型和两列可空批次 ID，并通过 CHECK 约束保证一致性。
+- 使用者需要执行的操作：全新环境执行 `database/02_create_tables.sql`；尚未创建成员三表的既有环境执行本次 migration。已从旧脚本创建过同名表的本地环境应先备份并重建，不得直接重复执行创建 migration。
+- 对应提交：待提交
+
 ## 2026-07-19｜成员四统计功能与统计筛选接口契约
 
 - 状态：PROPOSED
@@ -88,14 +101,14 @@
 
 ## 2026-07-17｜审核模块公共契约与申请审核字段
 
-- 状态：PROPOSED
+- 状态：APPROVED
 - 提出人：成员三
 - 负责人：成员二（`application` 结构）、成员三（审核状态与审核接口）
 - 影响模块：申请配置、三级审核、欠费确认与统计
 - 影响表：`application`、`approval_record`、`approval_submission_record`、`system_message`、`message_read_record`
 - 影响接口：申请首次提交、退回重提、三级审核、批量上报、取消、欠费确认完成、审核消息查询与已读
 - 影响状态：全部申请状态、审核层级和审核动作
-- 变更内容：提议为 `application` 统一采用 `status`、`current_level`、`review_round`、`version` 等审核字段；逐条通过只记录结论，首次批量上报时推进到下一节点；退回申请通过补交通道重新流转；所有跨表写入通过表负责人 Service 完成。
-- 使用者需要执行的操作：成员二、成员三、成员四确认字段、枚举、Service 边界和最终状态映射；确认前不得修改 `application` DDL、Entity 或 Mapper。
+- 变更内容：`application` 统一采用 `status`、`current_level`、`review_round`、`version` 等审核字段；逐条通过只记录结论，首次批量上报时推进到下一节点；退回申请通过补交通道重新流转；所有跨表写入通过表负责人 Service 完成。四人第一阶段共识已确认字段方向、枚举、Service 边界、状态终点和事务发起方。
+- 使用者需要执行的操作：成员三按照已批准契约实现本人表、状态机、审核接口、审核页面和消息；成员二实现 `application` 状态与资源 Service；成员一提供可信身份和数据范围；成员四通过成员三 Service 完成确认、代申请和补录流转。
 
-- 对应提交：待提交
+- 对应提交：`14a9a9b`（四人第一阶段共识批准依据）

@@ -1,8 +1,8 @@
 # 接口文档
 
-> 审核模块接口当前状态：`PROPOSED`。成员二、成员三、成员四确认并在 `docs/change-log.md` 更新状态后，才允许按本文档实现共享接口。
+> 审核模块接口当前状态：`APPROVED`。四人第一阶段共识已在 `docs/requirement.md` 固化，成员三可以据此实现审核后端与各角色审核页面。本文中单独标为 `PROPOSED` 或“受依赖阻塞”的成员四接口不随本状态自动批准。
 
-本文档当前定义成员三提出的审核模块接口方案。其他成员新增接口时必须继续使用相同的返回格式、分页结构和错误码风格。
+本文档定义已批准的成员三审核模块接口契约。其他成员新增接口时必须继续使用相同的返回格式、分页结构和错误码风格。
 
 ## 1. 公共约定
 
@@ -49,7 +49,8 @@
 |---|---|---|---|
 | `page` | integer | 否 | 默认 1 |
 | `size` | integer | 否 | 默认 10，最大 100 |
-| `batchId` | long | 否 | 批次 ID |
+| `batchType` | string | 否 | `GREEN_CHANNEL/SUBSIDY`；传 `batchId` 时必填 |
+| `batchId` | long | 否 | 批次 ID，必须与 `batchType` 一起定位批次 |
 | `applicationType` | string | 否 | `GREEN_CHANNEL/LIVING_SUBSIDY/TRAVEL_SUBSIDY` |
 | `applicationNo` | string | 否 | 申请编号 |
 | `studentNo` | string | 否 | 学号 |
@@ -67,6 +68,8 @@
   "applicationNo": "GC202607170001",
   "applicationType": "GREEN_CHANNEL",
   "applicationTypeName": "绿色通道",
+  "batchType": "GREEN_CHANNEL",
+  "batchId": 1,
   "studentId": 2001,
   "studentNo": "20260001",
   "studentName": "张三",
@@ -321,7 +324,7 @@ PUT /api/approvals/{applicationId}/editable-fields
 ### 5.1 查询批次上报状态
 
 ```http
-GET /api/approval-submissions/status?batchId={batchId}
+GET /api/approval-submissions/status?batchType={batchType}&batchId={batchId}
 ```
 
 使用角色：`COUNSELOR/COLLEGE`
@@ -330,6 +333,7 @@ GET /api/approval-submissions/status?batchId={batchId}
 
 ```json
 {
+  "batchType": "GREEN_CHANNEL",
   "batchId": 1,
   "submissionLevel": "COUNSELOR",
   "applicationDeadline": "2026-08-20T23:59:59+08:00",
@@ -356,6 +360,7 @@ POST /api/approval-submissions/counselor/initial
 
 ```json
 {
+  "batchType": "GREEN_CHANNEL",
   "batchId": 1,
   "requestId": "1e2067f6-2f80-4acc-82f8-462621f611f8"
 }
@@ -445,7 +450,7 @@ POST /api/approvals/{applicationId}/cancel
 ## 8. 审核工作台
 
 ```http
-GET /api/approvals/dashboard?batchId={batchId}
+GET /api/approvals/dashboard?batchType={batchType}&batchId={batchId}
 ```
 
 使用角色：`COUNSELOR/COLLEGE/SCHOOL`
