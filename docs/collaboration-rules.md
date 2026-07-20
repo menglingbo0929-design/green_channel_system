@@ -578,8 +578,8 @@ POST /api/confirm/{applicationId}
 - `confirmedAmount` 必须大于 `0.00`，且不大于成员二返回的 `appliedAmount`；确认人、确认时间、单据编号和申报金额快照均由后端产生或读取，前端不得传入。
 - 确认成功返回 `confirmationId`、`applicationId`、`appliedAmount`、`confirmedAmount`、`voucherNo`、`confirmUserId`、`confirmedAt`、`applicationStatus`；其中 `applicationStatus` 固定为 `COMPLETED`。
 - `voucherNo` 固定为 `GC + 四位确认年份 + applicationId 六位补零`，例如申请 `1` 于 2026 年确认时为 `GC2026000001`。同一 `applicationId` 的有效确认记录只能有一条。
-- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_database.sql` 当前尚未包含 `request_id` 及后两个约束，与本条、`database-design.md` 和成员四 migration 冲突；在该基线 SQL 同步前，禁止把 6.1.1 标记为可在全新数据库完整验证。
-- 成员三的正式能力名为 `ApprovalCompletionService`；成员四代码中的 `ArrearsConfirmationCompletionPort` 只是调用该能力的本地适配边界，不要求成员三另建第二套状态机。
+- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_database.sql`、成员四 migration 与 `database-design.md` 必须保持这组字段和约束一致；`database/04_create_database.sql` 的确认测试数据必须为每条记录提供唯一 `request_id`，不得省略该幂等字段。
+- 成员三的正式能力名为 `ApprovalCompletionService.completeAfterConfirmation(applicationId, expectedVersion, requestId, operatorId)`；成员四代码中的 `ArrearsConfirmationCompletionPort` 使用同名方法作为本地适配边界，不要求成员三另建第二套状态机。
 
 ### 15.2 6.1.2 欠费单据：保持现有固定规则，不新增临时字段
 
@@ -678,3 +678,94 @@ arrears_application.arrears_reason_code VARCHAR(32) NOT NULL
 ### 16.5 完成边界
 
 成员四可独立完成 Controller、筛选 DTO、统计 VO、前端筛选页和对成员二集合查询 Service 的调用外壳。以下条件全部满足后，6.1.5 与 6.1.6 才能标记为 `IMPLEMENTED`：成员一合入学校统计权限能力；成员二合入统计聚合 Service、真实批次/组织/申请/礼包测试数据，以及已确认的欠费原因字段；接口使用真实数据在 Apifox 和前端联调成功。
+
+---
+
+## 17. 6.1.4 绿色通道线下补录固定约定
+
+### 17.1 对外接口与调用权限
+
+6.1.4 只使用以下四个学校端接口，路径和用途不得另起别名：
+
+```http
+GET  /api/supplements/students?studentNo={studentNo}
+GET  /api/supplements?pageNo={pageNo}&pageSize={pageSize}
+GET  /api/supplements/{applicationId}
+POST /api/supplements
+```
+
+- 四个接口均要求 `SCHOOL` 角色。正式实现必须从成员一 `CurrentUserProvider` 取得当前用户及数据范围；`X-User-Id` 只允许本地接口连通性调试，不能作为生产身份方案。
+- 学生查询只接受 `studentNo`，返回字段固定为 `studentId`、`studentNo`、`studentName`、`collegeName`、`majorName`、`gradeName`、`className`，不得返回身份证号、手机号等敏感字段。
+- 历史列表只查询 `application.source = SUPPLEMENT` 的记录，默认按 `create_time` 降序、同时间按 `application.id` 降序；`pageNo` 默认 `1`，`pageSize` 默认 `10` 且最大 `100`。
+- 历史列表允许的筛选参数固定为 `studentNo`、`applicationType`、`batchId`、`status`；详情接口只允许读取补录来源的申请，其他来源返回 404。
+
+### 17.2 创建请求的确定字段与校验
+
+`POST /api/supplements` 的 JSON 请求体固定为：
+
+```json
+{
+  "studentNo": "20260001",
+  "applicationType": "GREEN_CHANNEL",
+  "batchId": 1,
+  "applicationReason": "学生已在线下完成办理，现补录系统",
+  "supplementReason": "线下窗口先行受理",
+  "handledAt": "2026-07-20T09:30:00",
+  "arrearsItems": [
+    {"feeItemId": 1, "declaredAmount": 1200.00}
+  ],
+  "giftItems": [
+    {"giftItemId": 1, "quantity": 1}
+  ],
+  "subsidyAmount": null,
+  "requestId": "SUPPLEMENT-20260720-0001"
+}
+```
+
+- `applicationType` 只允许 `GREEN_CHANNEL`、`LIVING_SUBSIDY`、`TRAVEL_SUBSIDY`。客户端不得提交 `batchType`：后端将 `GREEN_CHANNEL` 唯一映射为 `batchType=GREEN_CHANNEL`，将两种补助唯一映射为 `batchType=SUBSIDY`。
+- `studentNo`、`batchId`、`applicationType`、`supplementReason`、`handledAt`、`requestId` 必填；`batchId` 必须大于 `0`；`handledAt` 不得晚于服务器当前时间；`requestId` 去除首尾空格后长度为 `1—64`。
+- `GREEN_CHANNEL` 必须至少包含一项 `arrearsItems` 或一项 `giftItems`，且 `subsidyAmount` 必须为 `null`；欠费项目的 `feeItemId` 和 `declaredAmount` 必须大于 `0`，礼包项目的 `giftItemId` 和 `quantity` 必须大于 `0`，同一请求内项目 ID 不得重复。
+- `LIVING_SUBSIDY`、`TRAVEL_SUBSIDY` 的 `subsidyAmount` 必须大于 `0.00`，`arrearsItems` 和 `giftItems` 必须为空。
+- 后端固定写入 `application.source=SUPPLEMENT`。存在欠费项目时最终状态固定为 `CONFIRM_PENDING`、当前层级固定为 `CONFIRMATION`；不存在欠费项目时最终状态固定为 `COMPLETED`、当前层级固定为 `SYSTEM`。客户端不得传入来源、状态、审核层级、操作者或创建时间。
+
+### 17.3 固定返回字段
+
+创建、详情和历史列表中的单条补录记录统一返回：
+
+```text
+applicationId
+applicationNo
+studentId
+studentNo
+studentName
+applicationType
+batchType
+batchId
+source
+status
+currentLevel
+version
+containsArrears
+supplementUserId
+supplementedAt
+supplementReason
+```
+
+- `source` 必须为 `SUPPLEMENT`；`containsArrears` 由真实欠费明细计算，不能由客户端单独指定。
+- `supplementUserId` 为当前学校操作人 ID；`supplementedAt` 采用请求中的 `handledAt`，用于保留实际线下办理时间。系统实际落库时间仍使用各表自己的 `create_time`、`update_time`。
+- 历史分页统一返回 MyBatis-Plus `Page<SupplementApplicationVO>`；没有数据时 `records=[]`、`total=0`，不得返回模拟记录。
+
+### 17.4 跨模块写入、事务与幂等边界
+
+- 成员四的 `SupplementApplicationServiceImpl.createSupplement` 是线下补录的外层事务发起方，并使用 `@Transactional(rollbackFor = Exception.class)`；成员二、成员三的实现必须以 `Propagation.REQUIRED` 加入同一事务。
+- 成员一负责学校身份和学生查询；成员二负责 `application`、欠费/礼包/补助明细、资源及 `application_operation_record` 的物理写入；成员三负责自动审核记录和状态流转。成员四不得为补录新建业务表、Mapper 或直接写上述共享表。
+- 成员二须实现补录创建和历史查询能力；创建时校验同一学生、批次、申请类型不得存在未删除的重复申请，并以 `requestId` 做创建幂等。线下已经完成的礼包、名额和补助资源直接确认为已占用，不再创建普通申请的待审核预占状态。
+- 成员三须提供 `completeSupplementReview(applicationId, containsArrears, expectedVersion, requestId, operatorId)`：写入校级自动审核记录，审核动作固定为 `APPROVE`，旧状态固定为 `DRAFT`，并按是否包含欠费流转到 `CONFIRM_PENDING/CONFIRMATION` 或 `COMPLETED/SYSTEM`。
+- 成员四本地的 `SupplementApplicationPort`、`SupplementCompletionPort` 仅是对上述负责人正式 Service 的适配边界，不构成第二套申请或审核实现。
+- 创建请求的 `requestId` 同时用于补录创建和该次自动审核的幂等关联；成员二按 `application_id + operation_type + request_id` 记录申请操作，成员三按其审核记录幂等规则处理重试。任一步失败必须整体回滚，不得留下只有申请没有自动审核记录的半成品。
+
+### 17.5 当前阻塞与完成判定
+
+截至 2026-07-20，成员二已合入普通申请和学校代申请的主表创建入口，但尚未合入补录申请的欠费/礼包/补助明细、资源确认、历史查询实现；成员三尚未合入 `completeSupplementReview`；成员一可信 `CurrentUserProvider` 和学生查询适配也未完成。因此成员四当前能够完成 Controller、DTO/VO、参数校验、事务编排、Port 边界和可验证页面，但真实补录创建、历史查询及权限成功场景必须返回 `503 Service Unavailable`。
+
+只有成员一身份/学生能力、成员二补录创建与历史查询、成员三自动审核流转全部合入，并使用真实 SQL 数据完成后端和前端联调后，6.1.4 才能在 `docs/change-log.md` 标记为 `IMPLEMENTED`。不得以应用能启动、页面能打开或 503 符合预期代替完整实现结论。
