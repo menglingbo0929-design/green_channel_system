@@ -11,7 +11,7 @@
 5. [status-flow.md](./status-flow.md)
 6. [decisions/approval-flow.md](./decisions/approval-flow.md)
 
-以下跨模块 Service 当前为 `PROPOSED`，相关成员确认后才允许实现和调用。
+以下第一阶段跨模块 Service 方向已经 `APPROVED`。实现必须保持表所有权、接口方向、状态规则和事务边界；其他成员的真实实现尚未合入时，不得以临时 Mapper、假数据或硬编码身份替代。
 
 ## 1. 成员三权限边界
 
@@ -98,6 +98,7 @@ public interface StudentScopeService {
 
 ```java
 public record BatchSnapshot(
+    BatchType batchType,
     Long batchId,
     BatchStatus status,
     LocalDateTime applicationEndTime,
@@ -110,7 +111,7 @@ public record BatchSnapshot(
 
 ```java
 public interface BatchQueryService {
-    BatchSnapshot getRequiredBatch(Long batchId);
+    BatchSnapshot getRequiredBatch(BatchType batchType, Long batchId);
 }
 ```
 
@@ -134,6 +135,7 @@ public interface ApplicationStateQueryService {
 public record ApplicationStateSnapshot(
     Long applicationId,
     Long studentId,
+    BatchType batchType,
     Long batchId,
     ApplicationType applicationType,
     ApplicationStatus status,
@@ -200,9 +202,17 @@ Service 提案：
 ```java
 public interface ApplicationResourceService {
 
-    void validateCounselorApproval(
+    void reserveOnSubmit(
         Long applicationId,
-        BigDecimal finalSubsidyAmount
+        String requestId,
+        Long operatorId
+    );
+
+    ResourceAdjustmentResult applyCounselorSubsidyAmount(
+        Long applicationId,
+        BigDecimal finalSubsidyAmount,
+        String requestId,
+        Long operatorId
     );
 
     void validateCollegeApproval(
@@ -210,20 +220,28 @@ public interface ApplicationResourceService {
     );
 
     void confirmOnSchoolApproval(
-        Long applicationId
+        Long applicationId,
+        String requestId,
+        Long operatorId
     );
 
     void handleReturn(
         Long applicationId,
-        Integer reservationHours
+        Integer reservationHours,
+        String requestId,
+        Long operatorId
     );
 
     void releaseOnReject(
-        Long applicationId
+        Long applicationId,
+        String requestId,
+        Long operatorId
     );
 
     void releaseOnCancel(
-        Long applicationId
+        Long applicationId,
+        String requestId,
+        Long operatorId
     );
 }
 ```
@@ -259,18 +277,48 @@ public interface ArrearsDocumentService {
 
 ## 5. 成员三对外提供的 Service
 
-成员三负责提供：
+成员三向其他模块提供以下已批准的跨模块 Service：
 
-```text
-ApprovalTransitionService
-ApprovalCompletionService
-ApprovalQueryService
-ApprovalFlowService
-ApplicationCancellationService
-SystemMessageService
+```java
+public interface ApprovalTransitionService {
+    ApplicationStatusResult submitInitial(
+        Long applicationId,
+        Integer expectedVersion,
+        String requestId,
+        Long operatorId
+    );
+
+    ApplicationStatusResult resubmitReturned(
+        Long applicationId,
+        Integer expectedVersion,
+        String requestId,
+        Long operatorId
+    );
+
+    ApplicationStatusResult completeSupplementReview(
+        Long applicationId,
+        boolean containsArrears,
+        Integer expectedVersion,
+        String requestId,
+        Long operatorId
+    );
+}
+
+public interface ApprovalCompletionService {
+    ApplicationStatusResult completeAfterConfirmation(
+        Long applicationId,
+        Integer expectedVersion,
+        String requestId,
+        Long operatorId
+    );
+}
+
+public interface ApprovalFlowQueryService {
+    ApprovalFlowSnapshot getFlow(Long applicationId);
+}
 ```
 
-其中状态流转 Service 只负责编排和校验，不直接写 `application`。
+其中状态流转 Service 负责编排、校验和成员三审核记录，不直接写 `application`。审核 Controller、取消编排、工作台查询和消息 Service 属于成员三模块内部能力，不额外改变跨模块契约。
 
 消息 Service 提案：
 
@@ -302,13 +350,12 @@ public interface SystemMessageService {
 }
 ```
 
-## 6. 确认流程
+## 6. 实施流程
 
-跨模块 Service 实现前：
+第一阶段契约已经批准，按以下顺序实施：
 
-1. 成员三在 `docs/change-log.md` 保持记录为 `PROPOSED`；
-2. 将本文件相应接口发给负责人确认；
-3. 负责人决定其模块内的包名、实现类、Mapper 和事务细节；
-4. 受影响成员确认后将变更记录更新为 `APPROVED`；
-5. 各表负责人分别实现自己拥有的代码；
-6. 实现和测试完成后更新为 `IMPLEMENTED`。
+1. 各表负责人分别实现自己拥有的 DDL、Entity、Mapper 和 Service；
+2. 成员三可并行实现纯状态机、本人持久层、审核与消息接口，以及使用 Mock 数据的审核页面；
+3. 成员一、成员二的真实依赖合入后完成权限、状态写入、资源和详情联调；
+4. 成员四通过成员三提供的 Service 联调欠费确认、学校代申请和补录；
+5. 完成真实数据联调和测试后，将对应变更记录更新为 `IMPLEMENTED`。
