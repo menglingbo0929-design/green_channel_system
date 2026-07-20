@@ -1,5 +1,18 @@
 # 接口文档
 
+## 成员二学生申请接口（已提供基础实现）
+
+| 方法 | 路径 | 状态 | 说明 |
+|---|---|---|---|
+| `POST` | `/api/applications/drafts` | 已实现 | 创建草稿；请求体含 `applicationType`、`batchType`、`batchId`、`requestId`、`applicationReason` |
+| `GET` | `/api/applications/mine` | 已实现 | 获取当前学生的有效申请 |
+| `GET` | `/api/applications/{id}` | 已实现 | 获取申请摘要 |
+| `PUT` | `/api/applications/{id}` | 已实现 | 仅草稿/退回状态可编辑，必须传 `version` |
+| `DELETE` | `/api/applications/{id}?version={version}` | 已实现 | 仅未提交草稿可逻辑删除 |
+| `POST` | `/api/applications/{id}/submit` | 待联调 | 依赖成员一身份/批次服务与成员三审核状态服务 |
+
+在成员一的登录上下文接入前，已实现的开发接口临时读取 `X-Student-Id` 和 `X-User-Id` 请求头；上线前必须替换为 `CurrentUserProvider`，不得信任客户端身份字段。
+
 > 审核模块接口当前状态：`PROPOSED`。成员二、成员三、成员四确认并在 `docs/change-log.md` 更新状态后，才允许按本文档实现共享接口。
 
 本文档当前定义成员三提出的审核模块接口方案。其他成员新增接口时必须继续使用相同的返回格式、分页结构和错误码风格。
