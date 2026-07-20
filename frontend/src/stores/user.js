@@ -32,7 +32,6 @@ const ROLE_DEFAULT_PAGE = {
 const ALL_MENUS = [
   { key: 'home',        label: '首页',         icon: 'home',           roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'], path: '/home' },
   { key: 'profile',     label: '个人中心',     icon: 'user',           roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'], path: '/profile' },
-  { key: 'student-mgmt',label: '新生信息管理', icon: 'school',          roles: ['SCHOOL'],                                    path: '/student-mgmt' },
   { key: 'apply-center',label: '学生申请中心', icon: 'edit-pen',        roles: ['STUDENT'],                                   path: '/student-center' },
   { key: 'my-apply',    label: '我的申请',     icon: 'document',        roles: ['STUDENT'],                                   path: '/my-apply' },
   { key: 'counselor',   label: '辅导员审核',   icon: 'check-circle',    roles: ['COUNSELOR'],                                 path: '/counselor-review' },

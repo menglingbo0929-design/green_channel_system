@@ -52,4 +52,56 @@ export function loginAPI(loginName, password) {
   return api.post('/user/login', { loginName, password })
 }
 
+// ========== 用户管理 API（基础数据） ==========
+
+/** 获取用户列表 */
+export function listUsersAPI() {
+  return api.get('/user/list')
+}
+
+/** 新增用户 */
+export function createUserAPI(data) {
+  return api.post('/user', data)
+}
+
+/** 编辑用户 */
+export function updateUserAPI(id, data) {
+  return api.put(`/user/${id}`, data)
+}
+
+/** 切换启用/停用 */
+export function toggleUserStatusAPI(id) {
+  return api.put(`/user/${id}/status`)
+}
+
+// ========== 组织结构 API ==========
+
+export const collegeAPI = {
+  list:   ()               => api.get('/college/list'),
+  create: (data)           => api.post('/college', data),
+  update: (id, data)       => api.put(`/college/${id}`, data),
+  toggle: (id)             => api.put(`/college/${id}/status`)
+}
+
+export const majorAPI = {
+  list:   (collegeId)      => api.get('/major/list', { params: { collegeId } }),
+  create: (data)           => api.post('/major', data),
+  update: (id, data)       => api.put(`/major/${id}`, data),
+  toggle: (id)             => api.put(`/major/${id}/status`)
+}
+
+export const gradeAPI = {
+  list:   ()               => api.get('/grade/list'),
+  create: (data)           => api.post('/grade', data),
+  update: (id, data)       => api.put(`/grade/${id}`, data),
+  toggle: (id)             => api.put(`/grade/${id}/status`)
+}
+
+export const classAPI = {
+  list:   (params)         => api.get('/class/list', { params }),
+  create: (data)           => api.post('/class', data),
+  update: (id, data)       => api.put(`/class/${id}`, data),
+  toggle: (id)             => api.put(`/class/${id}/status`)
+}
+
 export default api

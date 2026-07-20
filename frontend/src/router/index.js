@@ -3,6 +3,7 @@ import { useUserStore } from '../stores/user.js'
 import Login from '../views/Login.vue'
 import Layout from '../views/Layout.vue'
 import Home from '../views/Home.vue'
+import BaseData from '../views/BaseData.vue'
 
 /**
  * 路由配置
@@ -29,8 +30,7 @@ const routes = [
       { path: 'home', name: 'Home', component: Home, meta: { title: '首页' } },
       // 以下页面占位符：等对应 Vue 文件建好后替换 component
       { path: 'profile',     name: 'Profile',      component: () => import('../views/Home.vue'), meta: { title: '个人中心' } },
-      { path: 'student-mgmt',name: 'StudentMgmt',  component: () => import('../views/Home.vue'), meta: { title: '新生信息管理' } },
-      { path: 'student-center',name:'StudentCenter',component:() => import('../views/Home.vue'), meta: { title: '学生申请中心' } },
+      { path: 'student-center',name:'StudentCenter',component:()=> import('../views/Home.vue'), meta: { title: '学生申请中心' } },
       { path: 'my-apply',    name: 'MyApply',      component: () => import('../views/Home.vue'), meta: { title: '我的申请' } },
       { path: 'counselor-review',name:'CounselorReview',component:()=> import('../views/Home.vue'), meta: { title: '辅导员审核' } },
       { path: 'college-review',name:'CollegeReview',component:()=> import('../views/Home.vue'), meta: { title: '学院审核' } },
@@ -38,7 +38,7 @@ const routes = [
       { path: 'arrears',     name: 'Arrears',      component: () => import('../views/Home.vue'), meta: { title: '欠费确认' } },
       { path: 'supplement',  name: 'Supplement',   component: () => import('../views/Home.vue'), meta: { title: '申请补录' } },
       { path: 'stats',       name: 'Stats',        component: () => import('../views/Home.vue'), meta: { title: '统计报表' } },
-      { path: 'base-data',   name: 'BaseData',     component: () => import('../views/Home.vue'), meta: { title: '基础数据' } },
+      { path: 'base-data',   name: 'BaseData',     component: BaseData, meta: { title: '基础数据' } },
       { path: 'policy',      name: 'Policy',       component: () => import('../views/Home.vue'), meta: { title: '政策与说明' } }
     ]
   },
