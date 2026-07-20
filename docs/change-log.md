@@ -26,10 +26,11 @@
 - 影响状态：不改变 CONFIRM_PENDING、COMPLETED 或申请状态
 - 变更内容：固定路径、权限、单据字段、批量查询上限、打印时间和 JWT 前临时身份规则。
 - 当前实现范围：成员四已实现确认记录读取、分页、路由、单据组装与打印触发；不含任何模拟数据、临时表或跨模块直连。
-- 当前阻塞项：成员二尚未合入 `ArrearsVoucherApplicantQueryPort.findVoucherApplicantsByApplicationIds` 的真实申请/欠费项目快照实现；成员一尚未合入 `ArrearsVoucherAccessPort` 的学校权限、学生归属和确认人姓名实现。因此完整单据字段、权限校验、学生本人查看和成功响应联调目前均不可完成或验证。
-- 解除条件：成员一、成员二按 collaboration-rules.md 第 13.3 节提供上述真实 Port 实现、可调用方式和最小测试数据；成员四仅补接入与联调，不新增临时数据方案。
-- 使用者需要执行的操作：成员一、成员二按 collaboration-rules.md 第 13 节提供 Port 实现；成员四在依赖合入后执行接口联调并更新本记录状态。
-- 对应提交：待提交
+- 当前实现范围：成员二已在 `application.service.ArrearsConfirmationApplicationService` 实现 `ArrearsVoucherApplicantQueryPort.findVoucherApplicantsByApplicationIds`，一次最多读取 100 个申请的真实申请、欠费项目与金额，并通过成员一的 `StudentOrganizationSnapshotQuery` 批量补齐学生组织快照。
+- 当前阻塞项：成员一尚未合入 `StudentOrganizationSnapshotQuery` 和 `ArrearsVoucherAccessPort` 的学校权限、学生归属和确认人姓名实现。因此完整单据字段、权限校验、学生本人查看和成功响应联调目前均不可完成或验证。
+- 解除条件：成员一提供上述 Port 实现和最小测试数据；成员四接入成员二 Port 后完成单据联调，不新增临时数据方案。
+- 使用者需要执行的操作：成员一实现并合入上述两个 Port；成员四接入 `ArrearsVoucherApplicantQueryPort` 并联调；成员二配合排查真实数据问题。
+- 对应提交：本地待提交
 
 ## 2026-07-17｜成员四学校代申请接口契约
 
