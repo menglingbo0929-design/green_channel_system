@@ -128,6 +128,108 @@ CREATE TABLE `student` (
   INDEX `idx_student_counselor`(`counselor_id`) USING BTREE
 ) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
 
+-- 辅导员-学生关联表
+CREATE TABLE `counselor_student` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `counselor_user_id` bigint(20) NOT NULL COMMENT '辅导员用户ID，关联sys_user.id',
+  `student_id` bigint(20) NOT NULL COMMENT '学生ID，关联student.id',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_counselor_student`(`counselor_user_id`, `student_id`) USING BTREE,
+  INDEX `idx_cs_counselor`(`counselor_user_id`) USING BTREE,
+  INDEX `idx_cs_student`(`student_id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 绿色通道批次表
+CREATE TABLE `green_channel_batch` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `batch_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次编号',
+  `batch_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次名称，如 2026年绿色通道',
+  `start_time` datetime NOT NULL COMMENT '学生申请开始时间',
+  `end_time` datetime NOT NULL COMMENT '学生申请截止时间',
+  `college_deadline` datetime NOT NULL COMMENT '学院上报学校截止时间',
+  `status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT' COMMENT '批次状态：DRAFT=草稿 OPEN=开放申请 CLOSED=已关闭',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '备注',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_batch_code`(`batch_code`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 绿色通道批次适用年级关联表
+CREATE TABLE `batch_eligible_grade` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint(20) NOT NULL COMMENT '批次ID，关联green_channel_batch.id',
+  `grade_id` bigint(20) NOT NULL COMMENT '年级ID，关联grade.id',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_batch_grade`(`batch_id`, `grade_id`) USING BTREE,
+  INDEX `idx_beg_batch`(`batch_id`) USING BTREE,
+  INDEX `idx_beg_grade`(`grade_id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 补助批次表
+CREATE TABLE `subsidy_batch` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `batch_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次编号',
+  `batch_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次名称，如 2026年生活补助',
+  `batch_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '补助类型：LIVING_SUBSIDY=生活补助 TRAVEL_SUBSIDY=路费补助',
+  `start_time` datetime NOT NULL COMMENT '申请开始时间',
+  `end_time` datetime NOT NULL COMMENT '申请截止时间',
+  `status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT' COMMENT '批次状态：DRAFT=草稿 OPEN=开放申请 CLOSED=已关闭',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '备注',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_subsidy_batch_code`(`batch_code`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 补助批次适用年级关联表
+CREATE TABLE `subsidy_batch_eligible_grade` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint(20) NOT NULL COMMENT '补助批次ID，关联subsidy_batch.id',
+  `grade_id` bigint(20) NOT NULL COMMENT '年级ID，关联grade.id',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_subsidy_batch_grade`(`batch_id`, `grade_id`) USING BTREE,
+  INDEX `idx_sbeg_batch`(`batch_id`) USING BTREE,
+  INDEX `idx_sbeg_grade`(`grade_id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 学生标签表
+CREATE TABLE `student_tag` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `tag_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '标签编码',
+  `tag_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '标签名称，如 建档立卡/低保/孤儿/残疾',
+  `tag_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '标签分类：DIFFICULTY=困难类型 SUBSIDY=资助类型 SPECIAL=特殊群体',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_tag_code`(`tag_code`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 政策规则表
+CREATE TABLE `policy_rule` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `rule_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '规则编码',
+  `rule_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '规则名称',
+  `rule_content` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '规则内容/提示文案',
+  `batch_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '适用批次类型：GREEN_CHANNEL/LIVING_SUBSIDY/TRAVEL_SUBSIDY/ALL',
+  `sort_order` int(11) NULL DEFAULT 0 COMMENT '排序序号',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_rule_code`(`rule_code`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
 -- 欠费确认表
 CREATE TABLE `arrears_confirmation` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键、自增',
