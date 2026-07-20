@@ -143,9 +143,62 @@
           </el-tabs>
         </el-tab-pane>
 
-        <!-- Tab 3：新生信息（待建） -->
-        <el-tab-pane label="新生信息" name="students" disabled>
-          <el-empty description="新生信息管理开发中" />
+        <!-- ================================================================ -->
+        <!-- Tab 3：新生信息 -->
+        <!-- ================================================================ -->
+        <el-tab-pane label="新生信息" name="students">
+          <!-- 筛选区 -->
+          <div class="toolbar">
+            <div class="filter-row">
+              <el-input v-model="stuFilter.studentNo" placeholder="学号" clearable class="filter-input" @change="loadStudents" />
+              <el-input v-model="stuFilter.studentName" placeholder="姓名" clearable class="filter-input" @change="loadStudents" />
+              <el-select v-model="stuFilter.collegeId" placeholder="学院" clearable class="filter-input" @change="onCollegeChange">
+                <el-option v-for="c in colleges" :key="c.id" :label="c.collegeName" :value="c.id" />
+              </el-select>
+              <el-select v-model="stuFilter.majorId" placeholder="专业" clearable class="filter-input" @change="loadStudents" :disabled="!stuFilter.collegeId">
+                <el-option v-for="m in stuMajors" :key="m.id" :label="m.majorName" :value="m.id" />
+              </el-select>
+              <el-select v-model="stuFilter.gradeId" placeholder="年级" clearable class="filter-input" @change="loadStudents">
+                <el-option v-for="g in grades" :key="g.id" :label="g.gradeName" :value="g.id" />
+              </el-select>
+              <el-button type="primary" @click="loadStudents">查询</el-button>
+              <el-button @click="resetStuFilter">重置</el-button>
+            </div>
+            <div class="filter-right">
+              <el-button @click="downloadTemplate">下载模板</el-button>
+              <el-button type="primary" @click="openStuDialog()"><el-icon><Plus /></el-icon>新增学生</el-button>
+            </div>
+          </div>
+
+          <!-- 表格 -->
+          <el-table :data="students" stripe border class="data-table">
+            <el-table-column prop="studentNo" label="学号" width="120" />
+            <el-table-column prop="studentName" label="姓名" width="100" />
+            <el-table-column label="学院" width="140"><template #default="{row}">{{ getCollegeName(row.collegeId) }}</template></el-table-column>
+            <el-table-column label="专业" width="140"><template #default="{row}">{{ getMajorName(row.majorId) }}</template></el-table-column>
+            <el-table-column label="年级" width="80"><template #default="{row}">{{ getGradeName(row.gradeId) }}</template></el-table-column>
+            <el-table-column label="班级" width="100"><template #default="{row}">{{ getClassName(row.classId) }}</template></el-table-column>
+            <el-table-column prop="phone" label="联系电话" width="120" />
+            <el-table-column label="生源地贷款" width="100" align="center">
+              <template #default="{row}"><el-tag :type="row.originLoan?'warning':'info'" size="small">{{ row.originLoan?'有':'无' }}</el-tag></template>
+            </el-table-column>
+            <el-table-column label="校园地贷款" width="110" align="center">
+              <template #default="{row}"><el-tag :type="row.campusLoan?'warning':'info'" size="small">{{ row.campusLoan?'是':'否' }}</el-tag></template>
+            </el-table-column>
+            <el-table-column prop="difficultyLevel" label="困难等级" width="90" />
+            <el-table-column label="信息完善" width="90" align="center">
+              <template #default="{row}"><el-tag :type="row.infoComplete?'success':'danger'" size="small">{{ row.infoComplete?'是':'否' }}</el-tag></template>
+            </el-table-column>
+            <el-table-column label="状态" width="80" align="center">
+              <template #default="{row}"><el-tag :type="row.enabled?'success':'danger'" size="small">{{ row.enabled?'启用':'停用' }}</el-tag></template>
+            </el-table-column>
+            <el-table-column label="操作" width="160" fixed="right">
+              <template #default="{row}">
+                <el-button type="primary" link size="small" @click="openStuDialog(row)">编辑</el-button>
+                <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleStuToggle(row)">{{ row.enabled?'停用':'启用' }}</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -158,6 +211,36 @@
         <el-checkbox-group v-model="userForm.roleIds"><el-checkbox v-for="r in roleOptions" :key="r.id" :label="r.id">{{ r.roleName }}</el-checkbox></el-checkbox-group>
       </el-form-item>
       <el-form-item label="备注"><el-input v-model="userForm.remark" type="textarea" :rows="2" placeholder="可选备注" /></el-form-item>
+    </FormDialog>
+
+    <!-- ============== 弹窗：学生新增/编辑 ============== -->
+    <FormDialog v-model:visible="stuDialog" :title="stuIsEdit?'编辑学生':'新增学生'" :formData="stuForm" :rules="stuRules" :loading="stuSaving" @submit="handleStuSave">
+      <el-form-item label="学号" prop="studentNo"><el-input v-model="stuForm.studentNo" placeholder="请输入学号" /></el-form-item>
+      <el-form-item label="姓名" prop="studentName"><el-input v-model="stuForm.studentName" placeholder="请输入姓名" /></el-form-item>
+      <el-form-item label="学院" prop="collegeId">
+        <el-select v-model="stuForm.collegeId" placeholder="请选择学院" @change="onStuCollegeChange"><el-option v-for="c in colleges" :key="c.id" :label="c.collegeName" :value="c.id" /></el-select>
+      </el-form-item>
+      <el-form-item label="专业" prop="majorId">
+        <el-select v-model="stuForm.majorId" placeholder="请选择专业" :disabled="!stuForm.collegeId"><el-option v-for="m in stuFormMajors" :key="m.id" :label="m.majorName" :value="m.id" /></el-select>
+      </el-form-item>
+      <el-form-item label="年级" prop="gradeId">
+        <el-select v-model="stuForm.gradeId" placeholder="请选择年级"><el-option v-for="g in grades" :key="g.id" :label="g.gradeName" :value="g.id" /></el-select>
+      </el-form-item>
+      <el-form-item label="班级" prop="classId">
+        <el-select v-model="stuForm.classId" placeholder="请选择班级" :disabled="!stuForm.collegeId||!stuForm.gradeId"><el-option v-for="c in stuFormClasses" :key="c.id" :label="c.className" :value="c.id" /></el-select>
+      </el-form-item>
+      <el-form-item label="联系电话"><el-input v-model="stuForm.phone" placeholder="手机号" /></el-form-item>
+      <el-form-item label="生源地贷款">
+        <el-switch v-model="stuForm.originLoan" :active-value="1" :inactive-value="0" />
+      </el-form-item>
+      <el-form-item label="拟申请校园地贷款">
+        <el-switch v-model="stuForm.campusLoan" :active-value="1" :inactive-value="0" />
+      </el-form-item>
+      <el-form-item label="困难等级">
+        <el-select v-model="stuForm.difficultyLevel" placeholder="请选择" clearable>
+          <el-option label="特别困难" value="特别困难" /><el-option label="困难" value="困难" /><el-option label="一般困难" value="一般困难" />
+        </el-select>
+      </el-form-item>
     </FormDialog>
 
     <!-- ============== 弹窗：组织结构新增/编辑 ============== -->
@@ -203,7 +286,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import FormDialog from '../components/FormDialog.vue'
-import { listUsersAPI, createUserAPI, updateUserAPI, toggleUserStatusAPI, collegeAPI, majorAPI, gradeAPI, classAPI } from '../api/index.js'
+import { listUsersAPI, createUserAPI, updateUserAPI, toggleUserStatusAPI, collegeAPI, majorAPI, gradeAPI, classAPI, studentAPI } from '../api/index.js'
 
 // ========== Tab 状态 ==========
 const activeTab = ref('users')
@@ -248,6 +331,27 @@ function buildOrgData(){ switch(orgType.value){ case'college':return {collegeCod
 async function handleOrgToggle(type,row){ const act=row.enabled?'停用':'启用'; const name=row.collegeName||row.majorName||row.gradeName||row.className; try{ await ElMessageBox.confirm(`确定${act}「${name}」？`,null,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); const api={college:collegeAPI,major:majorAPI,grade:gradeAPI,class:classAPI}[type]; await api.toggle(row.id); ElMessage.success(act+'成功');loadAllOrg() }catch{ } }
 function loadAllOrg(){ loadColleges();loadMajors();loadGrades();loadClasses() }
 
+// ==================== 学生管理 ====================
+const students=ref([])
+const stuFilter=reactive({ studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null })
+const stuMajors=ref([])
+async function loadStudents(){ const p={};if(stuFilter.studentNo)p.studentNo=stuFilter.studentNo;if(stuFilter.studentName)p.studentName=stuFilter.studentName;if(stuFilter.collegeId)p.collegeId=stuFilter.collegeId;if(stuFilter.majorId)p.majorId=stuFilter.majorId;if(stuFilter.gradeId)p.gradeId=stuFilter.gradeId;if(stuFilter.classId)p.classId=stuFilter.classId; const {data}=await studentAPI.list(p);students.value=data.data }
+async function onCollegeChange(){ stuFilter.majorId=null;if(stuFilter.collegeId){const {data}=await majorAPI.list(stuFilter.collegeId);stuMajors.value=data.data}else stuMajors.value=[];loadStudents() }
+async function resetStuFilter(){ Object.assign(stuFilter,{studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null});stuMajors.value=[];loadStudents() }
+function getMajorName(id){ return majors.value.find(m=>m.id===id)?.majorName||'' }
+function getClassName(id){ return classes.value.find(c=>c.id===id)?.className||'' }
+function downloadTemplate(){ ElMessage.info('Excel模板下载功能开发中') }
+
+const stuDialog=ref(false);const stuIsEdit=ref(false);const stuEditId=ref(null);const stuSaving=ref(false)
+const stuForm=reactive({ studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null,phone:'',originLoan:0,campusLoan:0,difficultyLevel:'' })
+const stuRules={ studentNo:[{required:true,message:'请输入学号'}],studentName:[{required:true,message:'请输入姓名'}],collegeId:[{required:true,message:'请选择学院'}],majorId:[{required:true,message:'请选择专业'}],gradeId:[{required:true,message:'请选择年级'}],classId:[{required:true,message:'请选择班级'}] }
+const stuFormMajors=computed(()=>stuForm.collegeId?majors.value.filter(m=>m.collegeId===stuForm.collegeId):majors.value)
+const stuFormClasses=computed(()=>classes.value.filter(c=>(!stuForm.collegeId||c.collegeId===stuForm.collegeId)&&(!stuForm.gradeId||c.gradeId===stuForm.gradeId)))
+function openStuDialog(row){ stuIsEdit.value=!!row;stuEditId.value=row?.id; if(row){ Object.assign(stuForm,row) }else{ Object.assign(stuForm,{studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null,phone:'',originLoan:0,campusLoan:0,difficultyLevel:''}) } stuDialog.value=true }
+async function onStuCollegeChange(){ stuForm.majorId=null;stuForm.classId=null }
+async function handleStuSave(){ stuSaving.value=true; try{ const data={studentNo:stuForm.studentNo,studentName:stuForm.studentName,collegeId:stuForm.collegeId,majorId:stuForm.majorId,gradeId:stuForm.gradeId,classId:stuForm.classId,phone:stuForm.phone,originLoan:stuForm.originLoan,campusLoan:stuForm.campusLoan,difficultyLevel:stuForm.difficultyLevel}; stuIsEdit.value?await studentAPI.update(stuEditId.value,data):await studentAPI.create(data); ElMessage.success(stuIsEdit.value?'更新成功':'新增成功');stuDialog.value=false;loadStudents() }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ stuSaving.value=false } }
+async function handleStuToggle(row){ const act=row.enabled?'停用':'启用'; try{ await ElMessageBox.confirm(`确定${act}学生「${row.studentName}(${row.studentNo})」？`,null,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); await studentAPI.toggle(row.id); ElMessage.success(act+'成功');loadStudents() }catch{} }
+
 onMounted(()=>{ loadUsers();loadAllOrg() })
 </script>
 
@@ -260,9 +364,12 @@ onMounted(()=>{ loadUsers();loadAllOrg() })
 :deep(.el-tabs__item.is-active){ color:#1677FF }
 :deep(.el-tabs__active-bar){ background:#1677FF }
 .org-tabs :deep(.el-tabs__header){ margin-bottom:0;padding-left:0 }
-.toolbar { display:flex;justify-content:space-between;align-items:center;margin:16px 0 }
+.toolbar { display:flex;justify-content:space-between;align-items:flex-start;margin:16px 0;flex-wrap:wrap;gap:8px }
+.filter-row { display:flex;align-items:center;gap:8px;flex-wrap:wrap }
+.filter-right { display:flex;align-items:center;gap:8px }
 .search-input{ width:240px }
 .filter-select{ width:200px }
+.filter-input{ width:150px }
 .toolbar-hint{ font-size:14px;color:#6B7280 }
 .tag{ margin-right:4px }
 .data-table{ width:100% }

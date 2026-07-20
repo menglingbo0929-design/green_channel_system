@@ -22,4 +22,7 @@ public interface IUserService extends IService<User> {
 
     /** 切换启用/停用 */
     void toggleStatus(Long userId);
+
+    /** 修改密码 */
+    boolean changePassword(Long userId, String oldPassword, String newPassword);
 }

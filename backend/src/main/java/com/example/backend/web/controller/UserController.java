@@ -6,6 +6,7 @@ import com.example.backend.model.domain.User;
 import com.example.backend.model.dto.*;
 import com.example.backend.security.JwtTokenProvider;
 import com.example.backend.service.IUserService;
+import com.example.backend.security.CurrentUserProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ public class UserController {
     private final IUserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRoleMapper userRoleMapper;
+    private final CurrentUserProvider currentUserProvider;
 
     /** 登录 */
     @PostMapping("login")
@@ -65,5 +67,15 @@ public class UserController {
     public JsonResponse<Void> toggleStatus(@PathVariable Long id) {
         userService.toggleStatus(id);
         return JsonResponse.successMessage("操作成功");
+    }
+
+    /** 修改当前用户的密码 */
+    @PutMapping("password")
+    public JsonResponse<Void> changePassword(@Valid @RequestBody PasswordChangeRequest req) {
+        Long userId = currentUserProvider.getRequiredUser().getUserId();
+        boolean ok = userService.changePassword(userId,
+                req.getOldPassword(), req.getNewPassword());
+        if (!ok) return JsonResponse.failure("旧密码错误");
+        return JsonResponse.successMessage("密码修改成功");
     }
 }

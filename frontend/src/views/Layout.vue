@@ -93,16 +93,23 @@
         <router-view />
       </main>
     </div>
+
+    <!-- 修改密码弹窗 -->
+    <FormDialog v-model:visible="pwdDialog" title="修改密码" :formData="pwdForm" :rules="pwdRules" :loading="pwdSaving" submitText="确认修改" @submit="handlePwdSave">
+      <el-form-item label="旧密码" prop="oldPassword"><el-input v-model="pwdForm.oldPassword" type="password" show-password /></el-form-item>
+      <el-form-item label="新密码" prop="newPassword"><el-input v-model="pwdForm.newPassword" type="password" show-password /></el-form-item>
+      <el-form-item label="确认新密码" prop="confirmPassword"><el-input v-model="pwdForm.confirmPassword" type="password" show-password /></el-form-item>
+    </FormDialog>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 import { ElMessage } from 'element-plus'
-
-// Element Plus 图标（按需引用）
+import { changePasswordAPI } from '../api/index.js'
+import FormDialog from '../components/FormDialog.vue'
 import {
   HomeFilled, User, School, EditPen, Document,
   CircleCheck, Flag, Coin, Plus, TrendCharts,
@@ -114,7 +121,32 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const collapse = ref(false)
-const unreadCount = ref(0)  // TODO: 后续接消息接口
+const unreadCount = ref(0)
+
+// 修改密码弹窗
+const pwdDialog = ref(false)
+const pwdSaving = ref(false)
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+const pwdRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码' }],
+  newPassword: [{ required: true, message: '请输入新密码', min: 6 }],
+  confirmPassword: [
+    { required: true, message: '请确认新密码' },
+    { validator: (_, v, cb) => v === pwdForm.newPassword ? cb() : cb(new Error('两次密码不一致')) }
+  ]
+}
+async function handlePwdSave() {
+  pwdSaving.value = true
+  try {
+    await changePasswordAPI({ oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword })
+    ElMessage.success('密码修改成功，请重新登录')
+    pwdDialog.value = false
+    userStore.logout()
+    router.push('/login')
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '修改失败')
+  } finally { pwdSaving.value = false }
+}
 
 // 图标名 → 组件映射
 const iconMap = {
@@ -147,8 +179,10 @@ function handleCommand(cmd) {
   } else if (cmd === 'profile') {
     router.push('/profile')
   } else if (cmd === 'password') {
-    // TODO: 弹出修改密码弹窗
-    ElMessage.info('修改密码功能开发中')
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
+    pwdDialog.value = true
   }
 }
 </script>

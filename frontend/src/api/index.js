@@ -74,6 +74,11 @@ export function toggleUserStatusAPI(id) {
   return api.put(`/user/${id}/status`)
 }
 
+/** 修改密码 */
+export function changePasswordAPI(data) {
+  return api.put('/user/password', data)
+}
+
 // ========== 组织结构 API ==========
 
 export const collegeAPI = {
@@ -95,6 +100,15 @@ export const gradeAPI = {
   create: (data)           => api.post('/grade', data),
   update: (id, data)       => api.put(`/grade/${id}`, data),
   toggle: (id)             => api.put(`/grade/${id}/status`)
+}
+
+// ========== 学生管理 API ==========
+
+export const studentAPI = {
+  list:   (params)         => api.get('/student/list', { params }),
+  create: (data)           => api.post('/student', data),
+  update: (id, data)       => api.put(`/student/${id}`, data),
+  toggle: (id)             => api.put(`/student/${id}/status`)
 }
 
 export const classAPI = {

@@ -110,4 +110,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         user.setDeleted(user.getDeleted() == 0 ? 1L : 0L);
         userMapper.updateById(user);
     }
+
+    @Override
+    public boolean changePassword(Long userId, String oldPwd, String newPwd) {
+        User user = userMapper.selectById(userId);
+        if (user == null) return false;
+        if (!passwordEncoder.matches(oldPwd, user.getPassword())) return false;
+        user.setPassword(passwordEncoder.encode(newPwd));
+        userMapper.updateById(user);
+        return true;
+    }
 }

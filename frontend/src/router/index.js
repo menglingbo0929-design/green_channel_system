@@ -39,11 +39,13 @@ const routes = [
       { path: 'supplement',  name: 'Supplement',   component: () => import('../views/Home.vue'), meta: { title: '申请补录' } },
       { path: 'stats',       name: 'Stats',        component: () => import('../views/Home.vue'), meta: { title: '统计报表' } },
       { path: 'base-data',   name: 'BaseData',     component: BaseData, meta: { title: '基础数据' } },
-      { path: 'policy',      name: 'Policy',       component: () => import('../views/Home.vue'), meta: { title: '政策与说明' } }
+      { path: 'policy',      name: 'Policy',       component: () => import('../views/Home.vue'), meta: { title: '政策与说明' } },
+      { path: '403',         name: 'Forbidden',   component: () => import('../views/Error403.vue'), meta: { title: '无权限' } },
+      { path: '404',         name: 'NotFound',    component: () => import('../views/Error404.vue'), meta: { title: '页面不存在' } }
     ]
   },
-  // 404
-  { path: '/:pathMatch(.*)*', redirect: '/home' }
+  // 兜底到 404
+  { path: '/:pathMatch(.*)*', redirect: '/404' }
 ]
 
 const router = createRouter({
