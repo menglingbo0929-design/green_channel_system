@@ -14,6 +14,7 @@ const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref(null)
 const filters = reactive({ category: 'ALL', applicationType: '', keyword: '', page: 1, size: 10 })
+const errorMessage = (error, fallback) => error.response?.data?.message || error.message || fallback
 
 const categories = [
   { value: 'ALL', label: '全部' },
@@ -41,7 +42,7 @@ async function loadApplications() {
     records.value = data.records
     total.value = data.total
   } catch (error) {
-    ElMessage.error(error.message || '申请列表加载失败')
+    ElMessage.error(errorMessage(error, '申请列表加载失败'))
   } finally {
     loading.value = false
   }
@@ -65,7 +66,7 @@ async function openDetail(row) {
   try {
     detail.value = await getMyApplicationDetail(row.applicationId)
   } catch (error) {
-    ElMessage.error(error.message || '申请详情加载失败')
+    ElMessage.error(errorMessage(error, '申请详情加载失败'))
     detailOpen.value = false
   } finally {
     detailLoading.value = false
@@ -73,8 +74,11 @@ async function openDetail(row) {
 }
 
 function handlePrimaryAction(row) {
-  const action = row.status === 'DRAFT' ? '继续填写' : row.status?.endsWith('_RETURNED') ? '修改并重新提交' : '查看办理说明'
-  ElMessage.success(`${action}入口已就绪，将由申请中心承接后续操作`)
+  if (row.status === 'DRAFT' || row.status?.endsWith('_RETURNED')) {
+    ElMessage.info('申请编辑页由成员二模块承接，路由接入后将携带当前申请 ID 跳转。')
+    return
+  }
+  ElMessage.info('当前申请已进入后续办理阶段，请关注消息中心通知。')
 }
 
 function openVoucher() {
