@@ -1,17 +1,134 @@
 -- 数据库表结构
-CREATE TABLE `user`(
-                        id BIGINT AUTO_INCREMENT,
-                        login_name VARCHAR(255) COMMENT '用户名',
-                        `password` VARCHAR(64),
-                        last_login_time DATETIME,
-                        remark  VARCHAR(255),
-                        is_deleted   BOOL         NOT NULL DEFAULT 0 COMMENT '是否删除',
-                        gmt_created  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                        gmt_modified TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                        PRIMARY KEY (id)
-);
-INSERT INTO user(login_name,`password`,remark) VALUES ('admin','admin','测试数据:管理员用户');
 
+-- 用户表
+CREATE TABLE `sys_user` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `login_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '用户名',
+  `password` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `last_login_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `deleted` bigint(20) NOT NULL DEFAULT 0,
+  `gmt_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `gmt_modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 角色表
+CREATE TABLE `sys_role` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `role_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '角色编码',
+  `role_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '角色中文名',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_role_code`(`role_code`) USING BTREE
+) ENGINE = oceanbase CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+
+-- 用户角色关联表
+CREATE TABLE `sys_user_role` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `role_id` bigint(20) NOT NULL COMMENT '角色ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_user_id`(`user_id`) USING BTREE,
+  INDEX `idx_role_id`(`role_id`) USING BTREE,
+  UNIQUE INDEX `uk_user_role`(`user_id`, `role_id`) USING BTREE
+) ENGINE = oceanbase CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+
+-- 学院表
+CREATE TABLE `college` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `college_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学院编码',
+  `college_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学院名称',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态 0=停用 1=启用',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除 0=有效',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_college_code`(`college_code`) USING BTREE,
+  UNIQUE INDEX `uk_college_name`(`college_name`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 专业表
+CREATE TABLE `major` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `major_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '专业编码',
+  `major_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '专业名称',
+  `college_id` bigint(20) NOT NULL COMMENT '所属学院ID',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_major_code`(`major_code`) USING BTREE,
+  INDEX `idx_major_college`(`college_id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 年级表
+CREATE TABLE `grade` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `grade_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '年级编码，如 2024',
+  `grade_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '年级名称，如 2024级',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_grade_code`(`grade_code`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 班级表
+CREATE TABLE `class_info` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `class_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '班级编码',
+  `class_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '班级名称，如 计科2401',
+  `major_id` bigint(20) NOT NULL COMMENT '所属专业ID',
+  `grade_id` bigint(20) NOT NULL COMMENT '所属年级ID',
+  `college_id` bigint(20) NOT NULL COMMENT '所属学院ID（冗余，加速查询）',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_class_code`(`class_code`) USING BTREE,
+  INDEX `idx_class_major`(`major_id`) USING BTREE,
+  INDEX `idx_class_grade`(`grade_id`) USING BTREE,
+  INDEX `idx_class_college`(`college_id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 学生表
+CREATE TABLE `student` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `student_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学号',
+  `student_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '姓名',
+  `college_id` bigint(20) NOT NULL COMMENT '所属学院ID',
+  `major_id` bigint(20) NOT NULL COMMENT '所属专业ID',
+  `grade_id` bigint(20) NOT NULL COMMENT '所属年级ID',
+  `class_id` bigint(20) NOT NULL COMMENT '所属班级ID',
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '联系电话',
+  `origin_loan` tinyint(4) NULL DEFAULT 0 COMMENT '生源地贷款 0=无 1=有',
+  `campus_loan` tinyint(4) NULL DEFAULT 0 COMMENT '拟申请校园地贷款 0=否 1=是',
+  `subsidy_level` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '资助认定等级',
+  `difficulty_level` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '家庭困难等级',
+  `info_complete` tinyint(4) NULL DEFAULT 0 COMMENT '信息是否完善 0=否 1=是',
+  `user_id` bigint(20) NULL DEFAULT NULL COMMENT '关联sys_user.id，导入时自动创建',
+  `counselor_id` bigint(20) NULL DEFAULT NULL COMMENT '辅导员用户ID',
+  `enabled` tinyint(4) NOT NULL DEFAULT 1 COMMENT '启用状态',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '备注',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_student_no`(`student_no`) USING BTREE,
+  INDEX `idx_student_college`(`college_id`) USING BTREE,
+  INDEX `idx_student_major`(`major_id`) USING BTREE,
+  INDEX `idx_student_grade`(`grade_id`) USING BTREE,
+  INDEX `idx_student_class`(`class_id`) USING BTREE,
+  INDEX `idx_student_user`(`user_id`) USING BTREE,
+  INDEX `idx_student_counselor`(`counselor_id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 欠费确认表
 CREATE TABLE `arrears_confirmation` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键、自增',
   `application_id` bigint unsigned NOT NULL COMMENT '关联申请主表 ID',
@@ -28,6 +145,7 @@ CREATE TABLE `arrears_confirmation` (
   KEY `idx_application_id` (`application_id`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='欠费待确认绿色通道申请最终确认记录表(成员四维护)';
 
+-- 审核记录表
 CREATE TABLE `approval_record` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
   `application_id` bigint NOT NULL COMMENT '申请 ID',
@@ -49,6 +167,7 @@ CREATE TABLE `approval_record` (
   KEY `idx_approval_record_round` (`application_id`,`review_round`,`approval_level`,`action`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='绿色通道申请审核操作历史记录表(成员三维护)';
 
+-- 批量上报记录表
 CREATE TABLE `approval_submission_record` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
   `batch_id` bigint NOT NULL COMMENT '批次 ID',
@@ -70,6 +189,7 @@ CREATE TABLE `approval_submission_record` (
   KEY `idx_submission_batch` (`batch_id`,`submission_level`,`submit_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='辅导员/学院批量上报、退回单条补交记录表(成员三维护)';
 
+-- 系统消息表
 CREATE TABLE `system_message` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
   `receiver_user_id` bigint NOT NULL COMMENT '接收用户 ID',
@@ -85,6 +205,7 @@ CREATE TABLE `system_message` (
   KEY `idx_msg_business` (`business_type`,`business_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT '系统消息表：退回、拒绝、通过、截止时间、线下办理审核通知';
 
+-- 消息已读记录表
 CREATE TABLE `message_read_record` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
   `message_id` bigint NOT NULL COMMENT '消息 ID，关联 system_message 主键',
