@@ -1,1 +1,3 @@
 -- 数据库表结构
+-- 成员二表结构见 migrations/V20260720_001__create_member2_application_tables.sql。
+-- 该基线文件在所有成员表结构合并后由仓库负责人统一展开。

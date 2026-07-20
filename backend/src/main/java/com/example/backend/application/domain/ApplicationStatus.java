@@ -1,0 +1,3 @@
+package com.example.backend.application.domain;
+
+public enum ApplicationStatus { DRAFT, COUNSELOR_PENDING, COLLEGE_PENDING, SCHOOL_PENDING, CONFIRM_PENDING, APPROVED, COMPLETED, RETURNED, REJECTED, CANCELED }
