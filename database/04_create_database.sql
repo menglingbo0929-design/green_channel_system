@@ -1,5 +1,10 @@
 
 -- 本地开发测试数据
+
+-- 学生测试数据
+INSERT INTO `student` VALUES (1, '123', '奶龙', 9, 16, 3, 1, '10086', 1, 1, NULL, '困难', 0, NULL, NULL, 1, NULL, '2026-07-20 14:46:07', '2026-07-20 14:46:07', 0);
+
+-- 欠费确认测试数据
 INSERT INTO `arrears_confirmation`
 (`application_id`, `voucher_no`, `applied_amount`, `confirmed_amount`, `confirm_user_id`, `confirmed_at`)
 VALUES

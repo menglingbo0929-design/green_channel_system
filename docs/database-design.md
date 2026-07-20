@@ -33,7 +33,6 @@ application_operation_record, student_recommendation
 | `applied_amount` | `DECIMAL(12,2)` | 否 | 学生申报金额快照；确认时从成员二提供的读取 Service 获取 |
 | `confirmed_amount` | `DECIMAL(12,2)` | 否 | 学校最终确认的实际欠费金额 |
 | `confirm_user_id` | `BIGINT UNSIGNED` | 否 | 确认学校管理员的用户 ID |
-| `request_id` | `VARCHAR(64)` | 否 | 确认写操作的幂等请求号 |
 | `confirmed_at` | `DATETIME` | 否 | 最终确认时间 |
 | `created_at` | `DATETIME` | 否 | 创建时间 |
 | `updated_at` | `DATETIME` | 否 | 更新时间 |
@@ -43,7 +42,6 @@ application_operation_record, student_recommendation
 
 - `uk_arrears_confirmation_application_id_deleted(application_id, deleted)`：同一申请只能存在一条有效确认记录，作为重复确认的数据库最终防线；
 - `uk_arrears_confirmation_voucher_no(voucher_no)`：单据编号唯一；
-- `uk_arrears_confirmation_request_id(request_id)`：同一确认请求只允许写入一次；
 - `idx_arrears_confirmation_confirm_user_id(confirm_user_id)`：按确认人查询或审计时使用。
 
 业务规则：
