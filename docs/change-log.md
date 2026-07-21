@@ -1,6 +1,17 @@
 
 # 共享结构与接口变更记录
 
+## 2026-07-21｜成员二正式申请 Port 接入
+
+- 状态：PARTIALLY_IMPLEMENTED
+- 提出人：成员四（依据成员二 `member2-integration-handoff.md`）
+- 影响模块：成员一、成员二、成员三、成员四
+- 影响接口：`/api/school-proxy/**`、`/api/supplements/**` 及其对应正式 Port
+- 变更内容：成员四改为只注入成员二正式 `SchoolProxyApplicationPort` 和 `SupplementApplicationPort`；旧的成员四直接写表适配器取消 Spring Bean 注册。学校代申请与补录前端均补齐 `arrearsReasonCode` 固定枚举；学校代申请补齐附件上传调用，补录历史页补齐真实详情请求；学生快照补充组织 ID 字段。补录创建不再由成员四二次调用成员三自动审核，避免重复推进状态。
+- 当前边界：附件存储未接通时固定返回 `501 ATTACHMENT_STORAGE_UNAVAILABLE`；学校代申请提交的附件/资源前置能力未接通时固定返回 `503 SCHOOL_PROXY_SUBMISSION_UNAVAILABLE`；补录历史和详情仍等待成员一按 ID/批量学生组织快照。统计、筛选、报表仍等待成员一权限范围和成员二真实聚合。
+- 对应文档：`docs/member2-integration-handoff.md`、`docs/collaboration-rules.md` 第 23 节。
+- 对应提交：本次成员四接入提交。
+
 ## 2026-07-20｜成员三审核与消息持久层
 
 - 状态：IMPLEMENTED
