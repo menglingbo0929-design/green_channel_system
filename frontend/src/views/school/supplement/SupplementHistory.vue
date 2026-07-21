@@ -2,11 +2,6 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { fetchSupplementHistory } from '../../../api/supplement'
 
-/**
- * 6.1.4 补录历史子页面。
- *
- * 不内置任何模拟记录；成员二查询适配合入后直接展示真实补录记录。
- */
 const props = defineProps({
   userId: { type: [String, Number], required: true },
   refreshKey: { type: Number, default: 0 },
@@ -58,10 +53,7 @@ watch(() => props.refreshKey, searchFirstPage)
 
 <template>
   <section class="history-panel">
-    <header>
-      <h2>补录历史</h2>
-      <p>仅查询来源为 SUPPLEMENT 的真实申请。</p>
-    </header>
+    <header><h3>补录历史</h3><span>共 {{ page.total }} 条</span></header>
 
     <div class="filters">
       <label>学号<input v-model.trim="filter.studentNo" placeholder="精确学号" /></label>
@@ -101,9 +93,7 @@ watch(() => props.refreshKey, searchFirstPage)
             <td>{{ item.supplementedAt }}</td>
             <td>{{ item.supplementReason }}</td>
           </tr>
-          <tr v-if="!loading && page.records.length === 0">
-            <td colspan="7" class="empty">没有可展示的真实补录记录</td>
-          </tr>
+          <tr v-if="!loading && page.records.length === 0"><td colspan="7" class="empty">暂无补录记录</td></tr>
         </tbody>
       </table>
     </div>
@@ -117,13 +107,5 @@ watch(() => props.refreshKey, searchFirstPage)
 </template>
 
 <style scoped>
-.history-panel { margin-top: 28px; padding: 20px; border: 1px solid #dbe3de; border-radius: 10px; background: #fff; }
-.history-panel h2 { margin: 0 0 4px; }.history-panel header p { margin-top: 0; color: #647168; }
-.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 18px 0; }
-label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
-input, select { min-width: 145px; padding: 8px; border: 1px solid #b9c7be; border-radius: 6px; }
-button { padding: 9px 13px; border: 0; border-radius: 6px; color: #fff; background: #287a55; cursor: pointer; }
-button:disabled { opacity: .5; cursor: not-allowed; }
-.table-wrap { overflow-x: auto; }table { width: 100%; border-collapse: collapse; }th, td { padding: 10px; border-bottom: 1px solid #e2e8e4; text-align: left; white-space: nowrap; }th { background: #eef5f0; }.empty { padding: 24px; color: #7a857e; text-align: center; }
-.pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 14px; }.pager span { margin-right: auto; }
+.history-panel { margin-top: 22px; border: 1px solid #ebeef5; border-radius: 4px; background: #fff; }.history-panel > header { display: flex; align-items: center; justify-content: space-between; height: 54px; padding: 0 18px; border-bottom: 1px solid #ebeef5; }.history-panel h3 { margin: 0; font-size: 16px; }.history-panel header span { color: #909399; font-size: 13px; }.filters { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; padding: 18px; background: #fafcff; }label { display: grid; gap: 7px; color: #606266; font-size: 13px; }input, select { min-width: 145px; height: 34px; padding: 0 10px; border: 1px solid #dcdfe6; border-radius: 4px; outline: none; }button { height: 34px; padding: 0 14px; border: 1px solid #409eff; border-radius: 4px; color: #fff; background: #409eff; cursor: pointer; }button:disabled { opacity: .5; cursor: not-allowed; }.table-wrap { overflow-x: auto; }table { width: 100%; min-width: 900px; border-collapse: collapse; }th, td { padding: 10px 14px; border-bottom: 1px solid #ebeef5; text-align: left; white-space: nowrap; font-size: 13px; }th { color: #606266; background: #f5f7fa; }.empty { height: 78px; color: #909399; text-align: center; }.pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 14px 18px; }.pager span { margin-right: auto; color: #909399; font-size: 13px; }.pager button { min-width: 70px; color: #606266; background: #fff; border-color: #dcdfe6; }
 </style>
