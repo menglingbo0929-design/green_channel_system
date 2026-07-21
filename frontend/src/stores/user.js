@@ -41,9 +41,10 @@ const ALL_MENUS = [
   { key: 'messages-counselor', label: '消息中心', icon: 'bell',         roles: ['COUNSELOR'],                                 path: '/counselor/messages' },
   { key: 'messages-college', label: '消息中心', icon: 'bell',           roles: ['COLLEGE'],                                   path: '/college/messages' },
   { key: 'messages-school', label: '消息中心', icon: 'bell',            roles: ['SCHOOL'],                                    path: '/school/messages' },
-  { key: 'arrears',     label: '欠费确认',     icon: 'coin',            roles: ['SCHOOL'],                                    path: '/arrears' },
-  { key: 'supplement',  label: '申请补录',     icon: 'plus',            roles: ['SCHOOL'],                                    path: '/supplement' },
-  { key: 'stats',       label: '统计报表',     icon: 'chart-line',      roles: ['SCHOOL','COLLEGE'],                          path: '/stats' },
+  // 学校端欠费确认、代申请、线下补录和单据均在“学校业务处理页”内通过页签切换。
+  { key: 'school-business', label: '业务处理', icon: 'coin',            roles: ['SCHOOL'],                                    path: '/member4/school-business' },
+  // 统计看板只由学校管理员使用；学院审核端不再显示会跳转到 403 的入口。
+  { key: 'stats',       label: '统计报表',     icon: 'chart-line',      roles: ['SCHOOL'],                                    path: '/stats' },
   { key: 'base-data',   label: '基础数据',     icon: 'database',        roles: ['SCHOOL'],                                    path: '/base-data' },
   { key: 'application-config', label: '批次与申请配置', icon: 'setting', roles: ['SCHOOL', 'COLLEGE'],                       path: '/application-config' },
   { key: 'policy',      label: '政策与说明',   icon: 'info',            roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'],    path: '/policy' }
@@ -120,7 +121,11 @@ export const useUserStore = defineStore('user', () => {
     userId.value = ''
     loginName.value = ''
     roles.value = []
-    localStorage.clear()
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('loginName')
+    localStorage.removeItem('roles')
+    // 保留 login_history 等其他 key
   }
 
   /**
