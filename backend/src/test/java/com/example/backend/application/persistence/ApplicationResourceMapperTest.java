@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.example.backend.application.mapper.ApplicationResourceConfigMapper;
 import com.example.backend.application.mapper.ApplicationResourceMapper;
+import com.example.backend.application.mapper.ArrearsApplicationMapper;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 class ApplicationResourceMapperTest {
     @Autowired private ApplicationResourceMapper resourceMapper;
     @Autowired private ApplicationResourceConfigMapper configMapper;
+    @Autowired private ArrearsApplicationMapper arrearsMapper;
     @Autowired private JdbcTemplate jdbc;
 
     @Test
@@ -52,5 +54,16 @@ class ApplicationResourceMapperTest {
         assertEquals(1, configMapper.findCollegeGiftQuotas(8L).size());
         assertEquals(1, configMapper.insertGradeSubsidyQuota(8L, 22L, new BigDecimal("1000.00")));
         assertEquals(new BigDecimal("1000.00"), configMapper.findGradeSubsidyQuotas(8L).getFirst().quotaAmount());
+    }
+
+    @Test
+    void storesTheFixedArrearsReasonCodeInH2() {
+        jdbc.update("INSERT INTO fee_item(item_name,enabled) VALUES ('学费',TRUE)");
+        Long feeItemId = jdbc.queryForObject("SELECT MAX(id) FROM fee_item", Long.class);
+
+        assertEquals(1, arrearsMapper.insert(55L, feeItemId, new BigDecimal("800.00"), "MAJOR_ILLNESS"));
+        assertEquals("MAJOR_ILLNESS", jdbc.queryForObject(
+                "SELECT arrears_reason_code FROM arrears_application WHERE application_id=55", String.class));
+        assertEquals("MAJOR_ILLNESS", arrearsMapper.findItemsByApplicationId(55L).getFirst().arrearsReasonCode());
     }
 }

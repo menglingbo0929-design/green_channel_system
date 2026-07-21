@@ -6,11 +6,13 @@ import static org.mockito.Mockito.*;
 
 import com.example.backend.application.domain.*;
 import com.example.backend.application.dto.ApplicationDraftCommand;
+import com.example.backend.application.dto.ArrearsItemCommand;
 import com.example.backend.application.dto.GiftApplicationItemCommand;
 import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.*;
 import java.util.UUID;
 import java.util.List;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class ApplicationServiceTest {
@@ -58,5 +60,20 @@ class ApplicationServiceTest {
 
         assertEquals("APPLICATION_INVALID_STATUS", exception.getCode());
         verifyNoInteractions(resources);
+    }
+
+    @Test
+    void rejectsUnknownArrearsReasonCodeBeforeWritingDetails() {
+        Application application = new Application();
+        application.setId(30L); application.setApplicationType(ApplicationType.GREEN_CHANNEL);
+        application.setStatus(ApplicationStatus.DRAFT); application.setVersion(0);
+        when(applications.findRequired(30L)).thenReturn(application);
+
+        var exception = assertThrows(ApplicationException.class, () -> service.replaceArrearsItems(30L, 0,
+                List.of(new ArrearsItemCommand(9L, new BigDecimal("100.00"), "UNTRUSTED_VALUE")), 11L));
+
+        assertEquals("ARREARS_REASON_CODE_INVALID", exception.getCode());
+        verify(arrears).deleteActiveByApplicationId(30L);
+        verify(arrears, never()).insert(anyLong(), anyLong(), any(), any());
     }
 }
