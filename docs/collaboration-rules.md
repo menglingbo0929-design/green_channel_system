@@ -578,7 +578,7 @@ POST /api/confirm/{applicationId}
 - `confirmedAmount` 必须大于 `0.00`，且不大于成员二返回的 `appliedAmount`；确认人、确认时间、单据编号和申报金额快照均由后端产生或读取，前端不得传入。
 - 确认成功返回 `confirmationId`、`applicationId`、`appliedAmount`、`confirmedAmount`、`voucherNo`、`confirmUserId`、`confirmedAt`、`applicationStatus`；其中 `applicationStatus` 固定为 `COMPLETED`。
 - `voucherNo` 固定为 `GC + 四位确认年份 + applicationId 六位补零`，例如申请 `1` 于 2026 年确认时为 `GC2026000001`。同一 `applicationId` 的有效确认记录只能有一条。
-- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_database.sql`、成员四 migration 与 `database-design.md` 必须保持这组字段和约束一致；`database/04_create_database.sql` 的确认测试数据必须为每条记录提供唯一 `request_id`，不得省略该幂等字段。
+- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_tables.sql`、成员四 migration 与 `database-design.md` 必须保持这组字段和约束一致；`database/04_test_data.sql` 的确认测试数据必须为每条记录提供唯一 `request_id`，不得省略该幂等字段。
 - 成员三的正式能力名为 `ApprovalCompletionService.completeAfterConfirmation(applicationId, expectedVersion, requestId, operatorId)`；成员四代码中的 `ArrearsConfirmationCompletionPort` 使用同名方法作为本地适配边界，不要求成员三另建第二套状态机。
 
 ### 15.2 6.1.2 欠费单据：保持现有固定规则，不新增临时字段
@@ -859,7 +859,7 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 
 ### 20.2 2026-07-20 最新数据库更新对依赖的影响
 
-最新 `main` 已在 `database/02_create_database.sql` 增加 `counselor_student`、`green_channel_batch`、`batch_eligible_grade`、`subsidy_batch`、`subsidy_batch_eligible_grade`、`student_tag`、`policy_rule`，并在 `database/03_init_data.sql` 增加相应基础数据；`sys_user.login_name` 同时增加唯一索引。上述更新解决了基础组织、批次、标签和规则表不存在的问题，但**没有**自动形成成员四 Port 所需的 Spring Bean，也没有补齐 `arrears_application.arrears_reason_code`。
+最新 `main` 已在 `database/02_create_tables.sql` 增加 `counselor_student`、`green_channel_batch`、`batch_eligible_grade`、`subsidy_batch`、`subsidy_batch_eligible_grade`、`student_tag`、`policy_rule`，并在 `database/03_init_data.sql` 增加相应基础数据；`sys_user.login_name` 同时增加唯一索引。上述更新解决了基础组织、批次、标签和规则表不存在的问题，但**没有**自动形成成员四 Port 所需的 Spring Bean，也没有补齐 `arrears_application.arrears_reason_code`。
 
 因此不能因为表已存在就把 6.1.3—6.1.7 标记为完成：成员一仍须提供学生/组织/权限查询实现，成员二仍须提供代申请、补录、统计聚合和报表分页实现。成员四只通过正式 Service/Port 调用，不直接新建跨模块 Mapper 查询这些新增表。
 

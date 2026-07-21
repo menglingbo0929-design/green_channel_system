@@ -18,6 +18,18 @@ const routes = [
     meta: { title: '登录', public: true }
   },
   {
+    path: '/member4/school-business',
+    name: 'MemberFourSchoolBusiness',
+    component: () => import('../views/school/SchoolBusinessProcessing.vue'),
+    meta: { title: '学校业务处理页', roles: ['SCHOOL'] }
+  },
+  {
+    path: '/member4/statistics-dashboard',
+    name: 'MemberFourStatisticsDashboard',
+    component: () => import('../views/school/statistics/StatisticsDashboard.vue'),
+    meta: { title: '统计看板页', roles: ['SCHOOL'] }
+  },
+  {
     path: '/',
     component: Layout,
     children: [
