@@ -164,7 +164,8 @@ const iconMap = {
   'chart-line': TrendCharts,
   database:     Database,
   info:         InfoFilled,
-  bell:         Bell
+  bell:         Bell,
+  setting:      Setting
 }
 
 const currentPath = computed(() => route.path)

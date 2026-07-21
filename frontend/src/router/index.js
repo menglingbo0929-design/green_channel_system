@@ -7,6 +7,8 @@ import BaseData from '../views/BaseData.vue'
 import ApprovalWorkbench from '../views/approval/ApprovalWorkbench.vue'
 import MyApplications from '../views/approval/MyApplications.vue'
 import MessageCenter from '../views/approval/MessageCenter.vue'
+import ApplicationConfig from '../views/ApplicationConfig.vue'
+import StudentApplicationCenter from '../views/StudentApplicationCenter.vue'
 
 const routes = [
   {
@@ -22,7 +24,8 @@ const routes = [
       { path: '', redirect: '/home' },
       { path: 'home', name: 'Home', component: Home, meta: { title: '首页' } },
       { path: 'profile', name: 'Profile', component: () => import('../views/Home.vue'), meta: { title: '个人中心' } },
-      { path: 'student-center', name: 'StudentCenter', component: () => import('../views/Home.vue'), meta: { title: '学生申请中心', roles: ['STUDENT'] } },
+      { path: 'student-center', name: 'StudentCenter', component: StudentApplicationCenter, meta: { title: '学生申请中心', roles: ['STUDENT'] } },
+      { path: 'application-config', name: 'ApplicationConfig', component: ApplicationConfig, meta: { title: '批次与申请配置', roles: ['SCHOOL', 'COLLEGE'] } },
       {
         path: 'my-apply',
         alias: '/student/applications',
