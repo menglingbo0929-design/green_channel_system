@@ -21,14 +21,14 @@ public class LoginResponse {
      * 后续每次请求都放在 Authorization 请求头里带来：
      * Authorization: Bearer <token>
      */
-    @Schema(description = "JWT令牌")
+    @Schema(description = "JWT token")
     private String token;
 
     /** 用户 ID，前端可以用来显示"当前登录用户：xxx" */
-    @Schema(description = "用户ID")
+    @Schema(description = "User ID")
     private Long userId;
 
     /** 用户名，前端可以用来显示欢迎信息 */
-    @Schema(description = "用户名")
+    @Schema(description = "Username")
     private String loginName;
 }

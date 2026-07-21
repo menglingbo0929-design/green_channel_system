@@ -61,7 +61,7 @@
 
         <div class="topbar-right">
           <!-- 消息通知 -->
-          <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="topbar-badge">
+          <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="topbar-badge" @click="openMessages">
             <el-icon class="topbar-icon"><Bell /></el-icon>
           </el-badge>
 
@@ -104,16 +104,17 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive } from 'vue'
+import { computed, onMounted, ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 import { ElMessage } from 'element-plus'
 import { changePasswordAPI } from '../api/index.js'
+import { getMessages } from '../api/approval.js'
 import FormDialog from '../components/FormDialog.vue'
 import {
   HomeFilled, User, School, EditPen, Document,
   CircleCheck, Flag, Coin, Plus, TrendCharts,
-  Coin as Database, InfoFilled, Fold, Bell, ArrowDown, Setting
+  Coin as Database, InfoFilled, Fold, Bell, ArrowDown
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -122,6 +123,7 @@ const userStore = useUserStore()
 
 const collapse = ref(false)
 const unreadCount = ref(0)
+const currentRole = computed(() => userStore.roles[0] || '')
 
 // 修改密码弹窗
 const pwdDialog = ref(false)
@@ -162,6 +164,7 @@ const iconMap = {
   'chart-line': TrendCharts,
   database:     Database,
   info:         InfoFilled,
+  bell:         Bell,
   setting:      Setting
 }
 
@@ -171,6 +174,21 @@ const pageTitle = computed(() => route.meta.title || '')
 function navigateTo(path) {
   if (path) router.push(path)
 }
+
+function openMessages() {
+  if (currentRole.value) router.push(`/${currentRole.value.toLowerCase()}/messages`)
+}
+
+async function loadUnreadCount() {
+  try {
+    const page = await getMessages({ page: 1, size: 100, read: false })
+    unreadCount.value = page.total || 0
+  } catch {
+    unreadCount.value = 0
+  }
+}
+
+onMounted(loadUnreadCount)
 
 function handleCommand(cmd) {
   if (cmd === 'logout') {

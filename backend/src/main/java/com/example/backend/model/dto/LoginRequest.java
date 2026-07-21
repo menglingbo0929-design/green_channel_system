@@ -20,7 +20,7 @@ public class LoginRequest {
      * @NotBlank 确保字符串不为 null、不为空串、不全为空格
      *           如果校验失败，Spring 会自动返回 400 错误，不会进入 Controller
      */
-    @Schema(description = "用户名", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Username", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "用户名不能为空")
     private String loginName;
 
@@ -28,7 +28,7 @@ public class LoginRequest {
      * 密码（明文）
      * 前端传明文，后端用 BCrypt 加密后和数据库密文比对
      */
-    @Schema(description = "密码", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Password", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "密码不能为空")
     private String password;
 }
