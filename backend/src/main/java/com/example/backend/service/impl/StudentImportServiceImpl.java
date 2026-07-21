@@ -1,6 +1,7 @@
 package com.example.backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.example.backend.mapper.*;
 import com.example.backend.model.domain.*;
 import com.example.backend.model.dto.ImportResult;

@@ -194,10 +194,12 @@
             <el-table-column label="状态" width="80" align="center">
               <template #default="{row}"><el-tag :type="row.enabled?'success':'danger'" size="small">{{ row.enabled?'启用':'停用' }}</el-tag></template>
             </el-table-column>
-            <el-table-column label="操作" width="160" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right" align="center">
               <template #default="{row}">
-                <el-button type="primary" link size="small" @click="openStuDialog(row)">编辑</el-button>
-                <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleStuToggle(row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                <div class="op-btns">
+                  <el-button type="primary" link size="small" @click="openStuDialog(row)">编辑</el-button>
+                  <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleStuToggle(row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -381,7 +383,7 @@ async function onStuCollegeChange(){ stuForm.majorId=null;stuForm.classId=null }
 async function handleStuSave(){ stuSaving.value=true; try{ const data={studentNo:stuForm.studentNo,studentName:stuForm.studentName,collegeId:stuForm.collegeId,majorId:stuForm.majorId,gradeId:stuForm.gradeId,classId:stuForm.classId,phone:stuForm.phone,originLoan:stuForm.originLoan,campusLoan:stuForm.campusLoan,difficultyLevel:stuForm.difficultyLevel}; stuIsEdit.value?await studentAPI.update(stuEditId.value,data):await studentAPI.create(data); ElMessage.success(stuIsEdit.value?'更新成功':'新增成功');stuDialog.value=false;loadStudents() }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ stuSaving.value=false } }
 async function handleStuToggle(row){ const act=row.enabled?'停用':'启用'; try{ await ElMessageBox.confirm(`确定${act}学生「${row.studentName}(${row.studentNo})」？`,null,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); await studentAPI.toggle(row.id); ElMessage.success(act+'成功');loadStudents() }catch{} }
 
-onMounted(()=>{ loadUsers();loadAllOrg() })
+onMounted(()=>{ loadUsers();loadAllOrg();loadStudents() })
 </script>
 
 <style scoped>
@@ -401,6 +403,7 @@ onMounted(()=>{ loadUsers();loadAllOrg() })
 .filter-input{ width:150px }
 .toolbar-hint{ font-size:14px;color:#6B7280 }
 .tag{ margin-right:4px }
+.op-btns{ display:flex;gap:8px;white-space:nowrap }
 .data-table{ width:100% }
 :deep(.el-table__header th){ background:#F3F6FA;font-weight:600;font-size:14px;color:#374151;height:44px }
 :deep(.el-table td){ height:44px;font-size:14px }
