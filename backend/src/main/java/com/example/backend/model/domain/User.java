@@ -26,7 +26,6 @@ public class User {
 
     @Schema(description = "Logical deletion flag")
     @TableField("deleted")
-    @TableLogic(value = "0", delval = "1")
     private Long deleted;
 
     @Schema(description = "Created at")
