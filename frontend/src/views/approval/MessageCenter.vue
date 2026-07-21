@@ -28,7 +28,9 @@ async function markRead(message) {
   if (message.read) return
   try {
     await markMessageAsRead(message.messageId)
-    message.read = true
+    await loadMessages()
+    window.dispatchEvent(new CustomEvent('green-channel:message-read'))
+    ElMessage.success('消息已标记为已读')
   } catch (error) {
     ElMessage.error(error.response?.data?.message || error.message || '消息状态更新失败')
   }

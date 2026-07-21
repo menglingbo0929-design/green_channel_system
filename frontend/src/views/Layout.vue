@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, reactive } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 import { ElMessage } from 'element-plus'
@@ -188,7 +188,18 @@ async function loadUnreadCount() {
   }
 }
 
-onMounted(loadUnreadCount)
+function handleMessageRead() {
+  loadUnreadCount()
+}
+
+onMounted(() => {
+  loadUnreadCount()
+  window.addEventListener('green-channel:message-read', handleMessageRead)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('green-channel:message-read', handleMessageRead)
+})
 
 function handleCommand(cmd) {
   if (cmd === 'logout') {
