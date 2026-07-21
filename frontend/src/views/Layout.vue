@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, reactive } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 import { ElMessage } from 'element-plus'
@@ -114,7 +114,7 @@ import FormDialog from '../components/FormDialog.vue'
 import {
   HomeFilled, User, School, EditPen, Document,
   CircleCheck, Flag, Coin, Plus, TrendCharts,
-  Coin as Database, InfoFilled, Fold, Bell, ArrowDown
+  Coin as Database, InfoFilled, Fold, Bell, ArrowDown, Setting
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -164,7 +164,8 @@ const iconMap = {
   'chart-line': TrendCharts,
   database:     Database,
   info:         InfoFilled,
-  bell:         Bell
+  bell:         Bell,
+  setting:      Setting
 }
 
 const currentPath = computed(() => route.path)
@@ -187,7 +188,18 @@ async function loadUnreadCount() {
   }
 }
 
-onMounted(loadUnreadCount)
+function handleMessageRead() {
+  loadUnreadCount()
+}
+
+onMounted(() => {
+  loadUnreadCount()
+  window.addEventListener('green-channel:message-read', handleMessageRead)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('green-channel:message-read', handleMessageRead)
+})
 
 function handleCommand(cmd) {
   if (cmd === 'logout') {

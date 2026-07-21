@@ -17,7 +17,7 @@
             <el-table-column prop="loginName" label="用户名" width="140" />
             <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
             <el-table-column label="角色" width="200">
-              <template #default="{ row }"><el-tag v-for="r in row.roles" :key="r" size="small" class="tag">{{ roleLabel[r] || r }}</el-tag></template>
+              <template #default="{ row }"><el-tag v-if="row.roles?.[0]" size="small" class="tag">{{ roleLabel[row.roles[0]] || row.roles[0] }}</el-tag></template>
             </el-table-column>
             <el-table-column label="状态" width="90" align="center">
               <template #default="{ row }"><el-tag :type="row.deleted===0?'success':'danger'" size="small">{{ row.deleted===0?'启用':'停用' }}</el-tag></template>
@@ -211,8 +211,8 @@
     <FormDialog v-model:visible="userDialog" :title="userIsEdit?'编辑用户':'新增用户'" :formData="userForm" :rules="userRules" :loading="userSaving" @submit="handleUserSave">
       <el-form-item label="用户名" prop="loginName"><el-input v-model="userForm.loginName" placeholder="请输入用户名" maxlength="32" /></el-form-item>
       <el-form-item v-if="!userIsEdit" label="密码" prop="password"><el-input v-model="userForm.password" type="password" placeholder="请输入密码" show-password /></el-form-item>
-      <el-form-item label="角色" prop="roleIds">
-        <el-checkbox-group v-model="userForm.roleIds"><el-checkbox v-for="r in roleOptions" :key="r.id" :label="r.id">{{ r.roleName }}</el-checkbox></el-checkbox-group>
+      <el-form-item label="角色" prop="roleId">
+        <el-radio-group v-model="userForm.roleId"><el-radio v-for="r in roleOptions" :key="r.id" :value="r.id">{{ r.roleName }}</el-radio></el-radio-group>
       </el-form-item>
       <el-form-item label="备注"><el-input v-model="userForm.remark" type="textarea" :rows="2" placeholder="可选备注" /></el-form-item>
     </FormDialog>
@@ -305,11 +305,11 @@ const users = ref([]); const userSearch = ref('')
 const filteredUsers = computed(()=>{ const kw=userSearch.value.toLowerCase(); return kw?users.value.filter(u=>u.loginName.toLowerCase().includes(kw)):users.value })
 async function loadUsers(){ const {data}=await listUsersAPI(); users.value=data.data }
 const userDialog=ref(false); const userIsEdit=ref(false); const userEditId=ref(null); const userSaving=ref(false)
-const userForm=reactive({ loginName:'',password:'',roleIds:[],remark:'' })
-const userRules={ loginName:[{required:true,message:'请输入用户名',trigger:'blur'}],password:[{required:true,message:'请输入密码',trigger:'blur'}],roleIds:[{required:true,message:'请选择角色',trigger:'change'}] }
-function openUserCreate(){ userIsEdit.value=false;userEditId.value=null;userForm.loginName='';userForm.password='';userForm.roleIds=[];userForm.remark='';userRules.password[0].required=true;userDialog.value=true }
-function openUserEdit(row){ userIsEdit.value=true;userEditId.value=row.id;userForm.loginName=row.loginName;userForm.password='';userForm.roleIds=[...row.roleIds];userForm.remark=row.remark||'';userRules.password[0].required=false;userDialog.value=true }
-async function handleUserSave(){ userSaving.value=true; try{ userIsEdit.value?await updateUserAPI(userEditId.value,{loginName:userForm.loginName,remark:userForm.remark,roleIds:userForm.roleIds}):await createUserAPI({loginName:userForm.loginName,password:userForm.password,remark:userForm.remark,roleIds:userForm.roleIds}); ElMessage.success(userIsEdit.value?'更新成功':'新增成功');userDialog.value=false;loadUsers() }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ userSaving.value=false } }
+const userForm=reactive({ loginName:'',password:'',roleId:null,remark:'' })
+const userRules={ loginName:[{required:true,message:'请输入用户名',trigger:'blur'}],password:[{required:true,message:'请输入密码',trigger:'blur'}],roleId:[{required:true,message:'请选择角色',trigger:'change'}] }
+function openUserCreate(){ userIsEdit.value=false;userEditId.value=null;userForm.loginName='';userForm.password='';userForm.roleId=null;userForm.remark='';userRules.password[0].required=true;userDialog.value=true }
+function openUserEdit(row){ userIsEdit.value=true;userEditId.value=row.id;userForm.loginName=row.loginName;userForm.password='';userForm.roleId=row.roleIds?.[0] ?? null;userForm.remark=row.remark||'';userRules.password[0].required=false;userDialog.value=true }
+async function handleUserSave(){ const payload={loginName:userForm.loginName,remark:userForm.remark,roleIds:[userForm.roleId]}; userSaving.value=true; try{ userIsEdit.value?await updateUserAPI(userEditId.value,payload):await createUserAPI({...payload,password:userForm.password}); ElMessage.success(userIsEdit.value?'更新成功':'新增成功');userDialog.value=false;loadUsers() }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ userSaving.value=false } }
 async function handleUserToggle(row){ const act=row.deleted===0?'停用':'启用'; try{ await ElMessageBox.confirm(`确定${act}用户「${row.loginName}」？`,`${act}确认`,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); await toggleUserStatusAPI(row.id); ElMessage.success(act+'成功');loadUsers() }catch{ } }
 
 // ==================== 组织结构 ====================
