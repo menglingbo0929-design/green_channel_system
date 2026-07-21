@@ -3,12 +3,14 @@ import axios from 'axios'
 /**
  * 页面 8、9 共用请求客户端。
  *
- * 请求统一使用项目已经确定的 /api 前缀，由现有 Vite 代理转发到主后端。
+ * 页面 8、9 只访问成员四接口，因此使用 /member4-api 前缀。
+ * Vite 会把该前缀改写为 /api 并转发到成员四后端 8083，
+ * 不影响其他成员继续通过 /api 访问统一后端。
  * 每次请求直接读取成员一登录后保存的 JWT，因此刷新页面后也能继续访问
  * 受 Spring Security 保护的成员四接口。
  */
 const memberFourClient = axios.create({
-  baseURL: '/api',
+  baseURL: '/member4-api',
   timeout: 10_000,
 })
 

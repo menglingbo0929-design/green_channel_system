@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchPendingArrears } from '../../api/confirmation'
+import SchoolWorkspaceShell from '../../components/school/SchoolWorkspaceShell.vue'
 import ArrearsConfirmationList from './confirmation/ArrearsConfirmationList.vue'
 import ArrearsVoucher from './confirmation/ArrearsVoucher.vue'
 import SchoolProxyApplication from './supplement/SchoolProxyApplication.vue'
@@ -10,165 +12,100 @@ import arrearsConfirmationIcon from '../../figures/arrears-confirmation.png'
 import supplementRecordIcon from '../../figures/supplement-record.png'
 import voidedApplicationIcon from '../../figures/voided-application.png'
 
-/**
- * 页面 8：学校业务处理页。
- *
- * 本页面只连接成员四负责的欠费确认、学校代申请、线下补录和欠费单据接口。
- * “最终审核”区域属于成员三，本轮只保留页面位置，不请求成员三 Controller，
- * 也不在成员四页面中提交审核动作。
- */
+/** 页面八：学校业务处理。最终审核只跳转到成员三维护的审核工作台。 */
+const route = useRoute()
+const router = useRouter()
 const activeTab = ref('arrears')
-const loading = ref(false)
-const ownSummary = ref({ pendingArrearsCount: null })
+const ownSummary = ref({ pendingArrearsCount: 0 })
 
 const tabs = [
-  { key: 'review', label: '最终审核', owner: '成员三' },
+  { key: 'review', label: '最终审核' },
   { key: 'arrears', label: '欠费确认' },
   { key: 'proxy', label: '代申请' },
   { key: 'supplement', label: '线下补录' },
   { key: 'voucher', label: '单据' },
 ]
 
-const sidebarItems = [
-  { icon: '⌂', label: '首页' },
-  { icon: '○', label: '个人中心' },
-  { icon: '▦', label: '新生信息管理' },
-  { icon: '▤', label: '绿色通道申请' },
-  { icon: '▥', label: '我的申请' },
-  { icon: '□', label: '审核管理' },
-  { icon: '▧', label: '欠费确认', active: true },
-  { icon: '▣', label: '申请补录' },
-  { icon: '▥', label: '统计报表' },
-  { icon: '▦', label: '基础数据' },
-  { icon: '▤', label: '政策与说明' },
-]
+watch(() => route.query.tab, (tab) => {
+  if (tabs.some(item => item.key === tab)) activeTab.value = tab
+}, { immediate: true })
+
+function selectTab(tab) {
+  activeTab.value = tab
+  router.replace({ name: 'MemberFourSchoolBusiness', query: { ...route.query, tab } })
+}
+
+function openSchoolReview() {
+  router.push('/school-review')
+}
 
 const summaryCards = computed(() => [
-  {
-    label: '待学校审核',
-    value: '—',
-    color: '#1677ff',
-    icon: pendingReviewIcon,
-  },
-  {
-    label: '欠费待确认',
-    value: ownSummary.value.pendingArrearsCount ?? '—',
-    color: '#ff7a00',
-    icon: arrearsConfirmationIcon,
-  },
-  {
-    label: '今日补录',
-    value: '—',
-    color: '#00b96b',
-    icon: supplementRecordIcon,
-  },
-  {
-    label: '作废申请',
-    value: '—',
-    color: '#ff4d4f',
-    icon: voidedApplicationIcon,
-  },
+  { label: '待学校审核', value: '—', hint: '进入学校审核工作台处理', color: '#1677ff', icon: pendingReviewIcon },
+  { label: '欠费待确认', value: ownSummary.value.pendingArrearsCount, hint: '待确认欠费申请', color: '#ff7a00', icon: arrearsConfirmationIcon },
+  { label: '今日补录', value: '—', hint: '线下业务补录记录', color: '#00b96b', icon: supplementRecordIcon },
+  { label: '作废申请', value: '—', hint: '已作废业务记录', color: '#ff4d4f', icon: voidedApplicationIcon },
 ])
 
-/** 页面 8 顶部只读取成员四待确认列表的 total，不请求成员三审核看板。 */
 async function loadOwnSummary() {
-  loading.value = true
   const response = await fetchPendingArrears({ pageNo: 1, pageSize: 1 })
   ownSummary.value.pendingArrearsCount = Number(response.data.data?.total ?? 0)
-  loading.value = false
 }
 
 onMounted(loadOwnSummary)
 </script>
 
 <template>
-  <div class="school-business-page">
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="brand-mark">学</span>
-        <span>高校绿色通道系统</span>
-      </div>
-
-      <nav class="side-nav">
-        <button
-          v-for="item in sidebarItems"
-          :key="item.label"
-          type="button"
-          class="side-item"
-          :class="{ active: item.active }"
-        >
-          <span class="side-icon">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </button>
-      </nav>
-    </aside>
-
-    <section class="workspace">
-      <header class="topbar">
-        <div class="breadcrumb">
-          <button type="button" class="menu-button" aria-label="展开菜单">☰</button>
-          <span>首页</span>
-          <span class="slash">/</span>
-          <strong>学校业务处理页</strong>
-        </div>
-        <div class="top-actions">
-          <button type="button" class="notice-button" aria-label="消息通知">
-            ♧<span class="notice-count">3</span>
-          </button>
-          <span class="avatar">校</span>
-          <div class="account">
-            <strong>王磊</strong>
-            <span>学校管理员⌄</span>
-          </div>
-        </div>
-      </header>
-
-      <main class="page-content">
-        <div class="page-title">
+  <SchoolWorkspaceShell>
+    <div class="school-business-page">
+      <section class="page-heading-row">
+        <div>
           <h1>学校业务处理页</h1>
-          <p>统一处理学校最终审核、欠费确认、学校代申请、线下补录等业务管理。</p>
+          <p>统一处理学校最终审核、欠费确认、学校代申请和线下补录。</p>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="学校业务概览">
+        <article v-for="card in summaryCards" :key="card.label" class="summary-card">
+          <img :src="card.icon" :alt="card.label" />
+          <div>
+            <span>{{ card.label }}</span>
+            <strong :style="{ color: card.color }">{{ card.value }}</strong>
+            <small>{{ card.hint }}</small>
+          </div>
+        </article>
+      </section>
+
+      <section class="business-panel">
+        <div class="tab-bar" role="tablist">
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === tab.key"
+            :class="{ active: activeTab === tab.key }"
+            @click="selectTab(tab.key)"
+          >{{ tab.label }}</button>
         </div>
 
-        <section class="summary-grid">
-          <article v-for="card in summaryCards" :key="card.label" class="summary-card">
-            <img :src="card.icon" :alt="card.label" />
-            <div>
-              <span>{{ card.label }}</span>
-              <strong :style="{ color: card.color }">{{ card.value }}</strong>
-            </div>
-          </article>
+        <section v-if="activeTab === 'review'" class="review-entry">
+          <div class="review-entry-icon">✓</div>
+          <div>
+            <h2>学校最终审核</h2>
+            <p>学校审核列表、详情和审核弹窗由审核工作台统一维护。</p>
+          </div>
+          <el-button type="primary" @click="openSchoolReview">进入学校审核</el-button>
         </section>
 
-        <section class="business-panel">
-          <div class="tab-bar">
-            <button
-              v-for="tab in tabs"
-              :key="tab.key"
-              type="button"
-              :class="{ active: activeTab === tab.key }"
-              @click="activeTab = tab.key"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
-
-          <div v-if="activeTab === 'review'" class="review-content">
-            <section class="review-boundary">
-              <h2>学校最终审核</h2>
-              <p>该区域由成员三维护。本次成员四联调不请求审核列表、详情或提交接口，也不挂载成员三审核弹窗。</p>
-            </section>
-          </div>
-
-          <div v-else class="embedded-business">
-            <ArrearsConfirmationList v-if="activeTab === 'arrears'" />
-            <SchoolProxyApplication v-else-if="activeTab === 'proxy'" />
-            <SupplementApplication v-else-if="activeTab === 'supplement'" />
-            <ArrearsVoucher v-else-if="activeTab === 'voucher'" />
-          </div>
-        </section>
-      </main>
-    </section>
-  </div>
+        <div v-else class="embedded-business">
+          <ArrearsConfirmationList v-if="activeTab === 'arrears'" />
+          <SchoolProxyApplication v-else-if="activeTab === 'proxy'" />
+          <SupplementApplication v-else-if="activeTab === 'supplement'" />
+          <ArrearsVoucher v-else-if="activeTab === 'voucher'" />
+        </div>
+      </section>
+    </div>
+  </SchoolWorkspaceShell>
 </template>
 
 <style scoped>
@@ -227,4 +164,18 @@ onMounted(loadOwnSummary)
 @media (max-width: 1380px) {
   .summary-card { gap: 18px; padding: 20px; }
 }
+
+/* 页面八内容区：外壳由 SchoolWorkspaceShell 统一提供，此处只维护业务主体。 */
+.school-business-page { display: block; min-height: 100%; background: transparent; }
+.page-heading-row { display: flex; align-items: center; min-height: 58px; margin-bottom: 18px; }
+.page-heading-row h1 { margin: 0 0 8px; color: #1f2937; font-size: 24px; line-height: 1; }
+.page-heading-row p { margin: 0; color: #6b7280; font-size: 13px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+.metric-grid .summary-card { min-height: 120px; padding: 20px 24px; gap: 18px; border: 1px solid #e5e7eb; border-radius: 4px; box-shadow: none; }
+.metric-grid .summary-card img { width: 52px; height: 52px; }.metric-grid .summary-card div { gap: 4px; }
+.metric-grid .summary-card span { color: #4b5563; font-size: 14px; }.metric-grid .summary-card strong { font-size: 28px; }.metric-grid .summary-card small { color: #9ca3af; font-size: 12px; }
+.business-panel { min-height: 0; overflow: hidden; border-color: #e5e7eb; border-radius: 4px; }.tab-bar { height: 58px; gap: 12px; padding: 0 18px; border-bottom-color: #e5e7eb; }
+.tab-bar button { min-width: 96px; color: #4b5563; font-size: 15px; }.tab-bar button.active::after { right: 12px; left: 12px; height: 3px; }.embedded-business { padding: 22px 24px 28px; }
+.review-entry { display: flex; align-items: center; gap: 16px; padding: 28px 32px; background: #fff; }.review-entry-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; color: #1677ff; background: #e8f2ff; font-size: 22px; font-weight: 700; }.review-entry h2 { margin: 0 0 6px; color: #1f2937; font-size: 17px; }.review-entry p { margin: 0; color: #6b7280; font-size: 13px; }.review-entry .el-button { margin-left: auto; }
+@media (max-width: 1280px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
