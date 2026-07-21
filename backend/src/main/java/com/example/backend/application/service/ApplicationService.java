@@ -6,6 +6,7 @@ import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationMapper;
 import com.example.backend.application.mapper.ApplicationOperationMapper;
 import com.example.backend.application.mapper.ArrearsApplicationMapper;
+import com.example.backend.application.mapper.ApplicationResourceMapper;
 import com.example.backend.application.port.*;
 import java.time.LocalDate;
 import java.math.BigDecimal;
@@ -20,8 +21,9 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     private final ApplicationMapper applicationMapper;
     private final ApplicationOperationMapper operationMapper;
     private final ArrearsApplicationMapper arrearsMapper;
-    public ApplicationService(ApplicationMapper applicationMapper, ApplicationOperationMapper operationMapper, ArrearsApplicationMapper arrearsMapper) {
-        this.applicationMapper = applicationMapper; this.operationMapper = operationMapper; this.arrearsMapper = arrearsMapper;
+    private final ApplicationResourceMapper resourceMapper;
+    public ApplicationService(ApplicationMapper applicationMapper, ApplicationOperationMapper operationMapper, ArrearsApplicationMapper arrearsMapper, ApplicationResourceMapper resourceMapper) {
+        this.applicationMapper = applicationMapper; this.operationMapper = operationMapper; this.arrearsMapper = arrearsMapper; this.resourceMapper = resourceMapper;
     }
 
     @Override @Transactional
@@ -82,6 +84,37 @@ public class ApplicationService implements ApplicationCreationService, Applicati
         return storedItems;
     }
     public List<ArrearsItemSnapshot> findArrearsItems(Long applicationId) { required(applicationId); return arrearsMapper.findItemsByApplicationId(applicationId); }
+    @Transactional public List<GiftApplicationItemSnapshot> replaceGiftItems(Long applicationId, Integer version, List<GiftApplicationItemCommand> items, Long operatorId) {
+        Application application = requireEditable(applicationId, ApplicationType.GREEN_CHANNEL, version);
+        if (items.stream().map(GiftApplicationItemCommand::batchGiftItemId).distinct().count() != items.size()) {
+            throw new ApplicationException("APPLICATION_GIFT_ITEM_DUPLICATE", HttpStatus.BAD_REQUEST, "礼包物品不可重复");
+        }
+        Long batchId = application.getGreenChannelBatchId();
+        for (GiftApplicationItemCommand item : items) {
+            if (resourceMapper.countValidBatchGiftItem(item.batchGiftItemId(), batchId, item.quantity()) != 1) {
+                throw new ApplicationException("APPLICATION_GIFT_ITEM_INVALID", HttpStatus.BAD_REQUEST, "礼包物品不存在、不属于当前批次或超过单人上限");
+            }
+        }
+        Long giftApplicationId = resourceMapper.findGiftApplicationId(applicationId);
+        if (giftApplicationId == null) { resourceMapper.insertGiftApplication(applicationId); giftApplicationId = resourceMapper.lastInsertId(); }
+        resourceMapper.deleteGiftItems(giftApplicationId);
+        for (GiftApplicationItemCommand item : items) resourceMapper.insertGiftItem(giftApplicationId, item.batchGiftItemId(), item.quantity());
+        touchDraft(application, version, operatorId);
+        return resourceMapper.findGiftItems(applicationId);
+    }
+    public List<GiftApplicationItemSnapshot> findGiftItems(Long applicationId) { required(applicationId); return resourceMapper.findGiftItems(applicationId); }
+    @Transactional public SubsidyApplicationSnapshot replaceSubsidy(Long applicationId, Integer version, BigDecimal expectedAmount, Long operatorId) {
+        Application application = required(applicationId);
+        if (application.getApplicationType() == ApplicationType.GREEN_CHANNEL) {
+            throw new ApplicationException("APPLICATION_SUBSIDY_TYPE_INVALID", HttpStatus.BAD_REQUEST, "绿色通道申请不能维护补助金额");
+        }
+        requireEditable(applicationId, application.getApplicationType(), version);
+        if (resourceMapper.findSubsidy(applicationId) == null) resourceMapper.insertSubsidy(applicationId, expectedAmount);
+        else resourceMapper.updateSubsidy(applicationId, expectedAmount);
+        touchDraft(application, version, operatorId);
+        return resourceMapper.findSubsidy(applicationId);
+    }
+    public SubsidyApplicationSnapshot findSubsidy(Long applicationId) { required(applicationId); return resourceMapper.findSubsidy(applicationId); }
     @Override public ApplicationStateSnapshot getRequiredState(Long id) { return snapshot(required(id)); }
     @Override @Transactional public ApplicationStateSnapshot updateState(Long id, ApplicationStatus expected, ApplicationStatus target, ApprovalLevel level, Integer version, Long operatorId) {
         if (applicationMapper.updateState(id, expected, target, level, version, operatorId) != 1) throw conflict("APPLICATION_VERSION_CONFLICT", "申请状态或版本已变化");
@@ -95,6 +128,19 @@ public class ApplicationService implements ApplicationCreationService, Applicati
         required(applicationId); return arrearsMapper.countActiveByApplicationId(applicationId) > 0;
     }
     private Application required(Long id) { Application a = applicationMapper.findRequired(id); if (a == null) throw new ApplicationException("APPLICATION_NOT_FOUND", HttpStatus.NOT_FOUND, "申请不存在"); return a; }
+    private Application requireEditable(Long id, ApplicationType type, Integer version) {
+        Application application = required(id);
+        if (application.getApplicationType() != type || (application.getStatus() != ApplicationStatus.DRAFT && !isReturned(application.getStatus()))) {
+            throw new ApplicationException("APPLICATION_INVALID_STATUS", HttpStatus.CONFLICT, "当前申请不能维护此类明细");
+        }
+        if (!application.getVersion().equals(version)) throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
+        return application;
+    }
+    private void touchDraft(Application application, Integer version, Long operatorId) {
+        if (applicationMapper.updateDraft(application.getId(), application.getApplicationReason(), version, operatorId) != 1) {
+            throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
+        }
+    }
     private void validateBatch(ApplicationType type, BatchType batchType) {
         if ((type == ApplicationType.GREEN_CHANNEL) != (batchType == BatchType.GREEN_CHANNEL)) throw new ApplicationException("APPLICATION_BATCH_TYPE_INVALID", HttpStatus.BAD_REQUEST, "申请类型与批次类型不匹配");
     }

@@ -35,6 +35,10 @@ export const studentApplicationAPI = {
   deleteDraft: (id, version) => api.delete(`/applications/${id}`, { params: { version }, headers: developmentIdentity() }),
   arrears: (id) => api.get(`/applications/${id}/arrears`, { headers: developmentIdentity() }).then(payload),
   replaceArrears: (id, data) => api.put(`/applications/${id}/arrears`, data, { headers: developmentIdentity() }).then(payload),
+  gifts: (id) => api.get(`/applications/${id}/gifts`, { headers: developmentIdentity() }).then(payload),
+  replaceGifts: (id, data) => api.put(`/applications/${id}/gifts`, data, { headers: developmentIdentity() }).then(payload),
+  subsidy: (id) => api.get(`/applications/${id}/subsidy`, { headers: developmentIdentity() }).then(payload),
+  replaceSubsidy: (id, data) => api.put(`/applications/${id}/subsidy`, data, { headers: developmentIdentity() }).then(payload),
 }
 
 export function createRequestId() {

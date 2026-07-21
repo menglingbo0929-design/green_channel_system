@@ -24,5 +24,9 @@ public class ApplicationController {
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) public void delete(@PathVariable Long id, @RequestParam Integer version, @RequestHeader("X-User-Id") Long userId) { service.deleteDraft(id, version, userId); }
     @GetMapping("/{id}/arrears") public List<ArrearsItemSnapshot> arrears(@PathVariable Long id) { return service.findArrearsItems(id); }
     @PutMapping("/{id}/arrears") public List<ArrearsItemSnapshot> replaceArrears(@PathVariable Long id, @Valid @RequestBody UpdateArrearsRequest request, @RequestHeader("X-User-Id") Long userId) { return service.replaceArrearsItems(id, request.version(), request.items(), userId); }
+    @GetMapping("/{id}/gifts") public List<GiftApplicationItemSnapshot> gifts(@PathVariable Long id) { return service.findGiftItems(id); }
+    @PutMapping("/{id}/gifts") public List<GiftApplicationItemSnapshot> replaceGifts(@PathVariable Long id, @Valid @RequestBody UpdateGiftRequest request, @RequestHeader("X-User-Id") Long userId) { return service.replaceGiftItems(id, request.version(), request.items(), userId); }
+    @GetMapping("/{id}/subsidy") public SubsidyApplicationSnapshot subsidy(@PathVariable Long id) { return service.findSubsidy(id); }
+    @PutMapping("/{id}/subsidy") public SubsidyApplicationSnapshot replaceSubsidy(@PathVariable Long id, @Valid @RequestBody UpdateSubsidyRequest request, @RequestHeader("X-User-Id") Long userId) { return service.replaceSubsidy(id, request.version(), request.expectedAmount(), userId); }
     public record UpdateDraftRequest(@NotNull Integer version, @NotBlank String applicationReason) { }
 }

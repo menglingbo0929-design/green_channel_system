@@ -6,16 +6,19 @@ import static org.mockito.Mockito.*;
 
 import com.example.backend.application.domain.*;
 import com.example.backend.application.dto.ApplicationDraftCommand;
+import com.example.backend.application.dto.GiftApplicationItemCommand;
 import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.*;
 import java.util.UUID;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ApplicationServiceTest {
     private final ApplicationMapper applications = mock(ApplicationMapper.class);
     private final ApplicationOperationMapper operations = mock(ApplicationOperationMapper.class);
     private final ArrearsApplicationMapper arrears = mock(ArrearsApplicationMapper.class);
-    private final ApplicationService service = new ApplicationService(applications, operations, arrears);
+    private final ApplicationResourceMapper resources = mock(ApplicationResourceMapper.class);
+    private final ApplicationService service = new ApplicationService(applications, operations, arrears, resources);
 
     @Test
     void createsGreenChannelDraftAndRecordsIdempotency() {
@@ -41,5 +44,19 @@ class ApplicationServiceTest {
         verifyNoInteractions(applications);
         verify(operations).findApplicationIdByRequestId(anyString());
         verifyNoMoreInteractions(operations);
+    }
+
+    @Test
+    void rejectsGiftDetailsForNonGreenChannelApplications() {
+        Application application = new Application();
+        application.setId(30L); application.setApplicationType(ApplicationType.LIVING_SUBSIDY);
+        application.setStatus(ApplicationStatus.DRAFT); application.setVersion(0);
+        when(applications.findRequired(30L)).thenReturn(application);
+
+        var exception = assertThrows(ApplicationException.class, () -> service.replaceGiftItems(30L, 0,
+                List.of(new GiftApplicationItemCommand(9L, 1)), 11L));
+
+        assertEquals("APPLICATION_INVALID_STATUS", exception.getCode());
+        verifyNoInteractions(resources);
     }
 }
