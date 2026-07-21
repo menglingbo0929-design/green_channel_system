@@ -22,4 +22,8 @@ public interface ApplicationMapper {
     int updateState(Long id, ApplicationStatus expectedStatus, ApplicationStatus targetStatus, ApprovalLevel targetLevel, Integer expectedVersion, Long operatorId);
     @Update("UPDATE application SET status=#{targetStatus},current_level=#{targetLevel},review_round=review_round+1,version=version+1,update_by=#{operatorId} WHERE id=#{id} AND status=#{expectedStatus} AND version=#{expectedVersion} AND deleted=0")
     int incrementReviewRoundAndUpdateState(Long id, ApplicationStatus expectedStatus, ApplicationStatus targetStatus, ApprovalLevel targetLevel, Integer expectedVersion, Long operatorId);
+    @Update("UPDATE application SET supplement_reason=#{reason}, supplemented_at=#{handledAt} WHERE id=#{id} AND source='SUPPLEMENT' AND deleted=0")
+    int updateSupplementMetadata(@Param("id") Long id, @Param("reason") String reason, @Param("handledAt") java.time.LocalDateTime handledAt);
+    @Select("SELECT * FROM application WHERE id=#{id} AND source=#{source} AND deleted=0")
+    Application findBySource(@Param("id") Long id, @Param("source") ApplicationSource source);
 }

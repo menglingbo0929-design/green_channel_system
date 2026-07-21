@@ -10,6 +10,7 @@ import com.example.backend.application.mapper.ApplicationResourceMapper;
 import com.example.backend.application.port.*;
 import java.time.LocalDate;
 import java.math.BigDecimal;
+import java.util.Set;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ApplicationService implements ApplicationCreationService, ApplicationStateQueryService,
         ApplicationStateWriteService, ApplicationDetailService {
+    private static final Set<String> ARREARS_REASON_CODES = Set.of(
+            "FAMILY_FINANCIAL_DIFFICULTY", "FAMILY_EMERGENCY", "MAJOR_ILLNESS", "DISASTER_ACCIDENT", "OTHER");
     private final ApplicationMapper applicationMapper;
     private final ApplicationOperationMapper operationMapper;
     private final ArrearsApplicationMapper arrearsMapper;
@@ -33,6 +36,10 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     @Override @Transactional
     public ApplicationStateSnapshot createSchoolProxyApplication(Long studentId, Long operatorId, ApplicationDraftCommand command) {
         return create(studentId, operatorId, command, ApplicationSource.SCHOOL_PROXY);
+    }
+    /** 学校线下补录复用同一主表、唯一约束和 requestId 幂等逻辑。 */
+    @Transactional public ApplicationStateSnapshot createSupplementApplication(Long studentId, Long operatorId, ApplicationDraftCommand command) {
+        return create(studentId, operatorId, command, ApplicationSource.SUPPLEMENT);
     }
     private ApplicationStateSnapshot create(Long studentId, Long operatorId, ApplicationDraftCommand command, ApplicationSource source) {
         Long existingId = operationMapper.findApplicationIdByRequestId(command.requestId());
@@ -77,7 +84,10 @@ public class ApplicationService implements ApplicationCreationService, Applicati
         if (total.compareTo(new BigDecimal("8000.00")) > 0) throw new ApplicationException("APPLICATION_ARREARS_AMOUNT_EXCEEDED", HttpStatus.BAD_REQUEST, "欠费申报总额不得超过 8000 元");
         if (items.stream().map(ArrearsItemCommand::feeItemId).distinct().count() != items.size()) throw new ApplicationException("APPLICATION_ARREARS_ITEM_DUPLICATE", HttpStatus.BAD_REQUEST, "欠费项目不可重复");
         arrearsMapper.deleteActiveByApplicationId(applicationId);
-        for (ArrearsItemCommand item : items) arrearsMapper.insert(applicationId, item.feeItemId(), item.declaredAmount());
+        for (ArrearsItemCommand item : items) {
+            validateArrearsReasonCode(item.arrearsReasonCode());
+            arrearsMapper.insert(applicationId, item.feeItemId(), item.declaredAmount(), normalizeArrearsReasonCode(item.arrearsReasonCode()));
+        }
         List<ArrearsItemSnapshot> storedItems = arrearsMapper.findItemsByApplicationId(applicationId);
         if (storedItems.size() != items.size()) throw new ApplicationException("APPLICATION_ARREARS_ITEM_INVALID", HttpStatus.BAD_REQUEST, "欠费项目不存在或已停用");
         if (applicationMapper.updateDraft(applicationId, application.getApplicationReason(), version, operatorId) != 1) throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
@@ -149,6 +159,12 @@ public class ApplicationService implements ApplicationCreationService, Applicati
                 || status == ApplicationStatus.COLLEGE_RETURNED
                 || status == ApplicationStatus.SCHOOL_RETURNED;
     }
+    private void validateArrearsReasonCode(String value) {
+        if (value != null && !value.isBlank() && !ARREARS_REASON_CODES.contains(value)) {
+            throw new ApplicationException("ARREARS_REASON_CODE_INVALID", HttpStatus.BAD_REQUEST, "欠费原因码不在允许范围内");
+        }
+    }
+    private String normalizeArrearsReasonCode(String value) { return value == null || value.isBlank() ? "OTHER" : value; }
     private String nextApplicationNo() { return "GC" + LocalDate.now().toString().replace("-", "") + String.format("%06d", System.nanoTime() % 1_000_000); }
     private Long batchId(Application a) { return a.getBatchType() == BatchType.GREEN_CHANNEL ? a.getGreenChannelBatchId() : a.getSubsidyBatchId(); }
     private ApplicationStateSnapshot snapshot(Application a) { return new ApplicationStateSnapshot(a.getId(), a.getStudentId(), a.getBatchType(), batchId(a), a.getApplicationType(), a.getStatus(), a.getCurrentLevel(), a.getReviewRound(), a.getVersion()); }

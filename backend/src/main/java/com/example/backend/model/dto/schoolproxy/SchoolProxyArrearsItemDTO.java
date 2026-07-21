@@ -10,4 +10,6 @@ import java.math.BigDecimal;
 public class SchoolProxyArrearsItemDTO {
     @NotNull private Long feeItemId;
     @NotNull @Positive private BigDecimal declaredAmount;
+    /** 固定原因码；不传时统一按 OTHER 入库，兼容存量调用方。 */
+    private String arrearsReasonCode;
 }

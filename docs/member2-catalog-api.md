@@ -60,6 +60,15 @@
 - 已被 `arrears_application` 使用的欠费项目不可删除；已被 `batch_gift_item` 使用的礼包物品不可删除。
 - `includeDisabled=false` 时只返回启用记录。
 
+学生、学校代申请与线下补录写入的欠费明细支持以下字段（`arrearsReasonCode` 可省略，省略时保存为 `OTHER`）：
+
+```json
+{ "feeItemId": 1, "declaredAmount": 1200.00, "arrearsReasonCode": "FAMILY_FINANCIAL_DIFFICULTY" }
+```
+
+- 固定值仅允许 `FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`。
+- 传入其他值返回 `ARREARS_REASON_CODE_INVALID`（HTTP 400）。该字段将用于后续按真实最终申请集合统计欠费原因，不能以自由文本申请理由替代。
+
 批次礼包物品请求：
 
 ```json
@@ -95,3 +104,4 @@
 | `GIFT_QUOTA_EXISTS` / `GIFT_QUOTA_VERSION_CONFLICT` | 409 | 礼包名额重复，或名额/版本冲突 |
 | `SUBSIDY_QUOTA_EXISTS` / `SUBSIDY_QUOTA_VERSION_CONFLICT` | 409 | 补助额度重复，或额度/版本冲突 |
 | `QUOTA_TARGET_NOT_FOUND` / `GRADE_NOT_ELIGIBLE_FOR_BATCH` | 400 | 分配对象无效，或年级不适用于批次 |
+| `ARREARS_REASON_CODE_INVALID` | 400 | 欠费原因码不属于固定枚举 |
