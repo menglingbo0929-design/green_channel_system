@@ -41,6 +41,23 @@ export const studentApplicationAPI = {
   replaceSubsidy: (id, data) => api.put(`/applications/${id}/subsidy`, data, { headers: developmentIdentity() }).then(payload),
 }
 
+export const resourceConfigAPI = {
+  batchGiftItems: (batchId) => api.get('/application-resources/batch-gift-items', { params: { batchId } }).then(payload),
+  createBatchGiftItem: (data) => api.post('/application-resources/batch-gift-items', data).then(payload),
+  updateBatchGiftItem: (id, data) => api.put(`/application-resources/batch-gift-items/${id}`, data).then(payload),
+  deleteBatchGiftItem: (id) => api.delete(`/application-resources/batch-gift-items/${id}`),
+  giftQuotas: (batchId, scope) => api.get('/application-resources/gift-quotas', { params: { batchId, scope } }).then(payload),
+  createGiftQuota: (data) => api.post('/application-resources/gift-quotas', data).then(payload),
+  updateGiftQuota: (id, scope, data) => api.put(`/application-resources/gift-quotas/${id}`, data, { params: { scope } }).then(payload),
+  deleteGiftQuota: (id, scope) => api.delete(`/application-resources/gift-quotas/${id}`, { params: { scope } }),
+  subsidyQuotas: (batchId, scope) => api.get('/application-resources/subsidy-quotas', { params: { batchId, scope } }).then(payload),
+  createSubsidyQuota: (data) => api.post('/application-resources/subsidy-quotas', data).then(payload),
+  updateSubsidyQuota: (id, scope, data) => api.put(`/application-resources/subsidy-quotas/${id}`, data, { params: { scope } }).then(payload),
+  deleteSubsidyQuota: (id, scope) => api.delete(`/application-resources/subsidy-quotas/${id}`, { params: { scope } }),
+  colleges: () => api.get('/application-resources/colleges').then(payload),
+  grades: () => api.get('/application-resources/grades').then(payload),
+}
+
 export function createRequestId() {
   return globalThis.crypto?.randomUUID?.() || `web-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
