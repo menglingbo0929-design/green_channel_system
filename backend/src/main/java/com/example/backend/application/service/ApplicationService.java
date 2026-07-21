@@ -56,9 +56,9 @@ public class ApplicationService implements ApplicationCreationService, Applicati
 
     public List<ApplicationSummary> findMine(Long studentId) {
         return applicationMapper.findMine(studentId).stream().map(a -> new ApplicationSummary(a.getId(), a.getApplicationNo(),
-                a.getApplicationType(), a.getStatus(), a.getVersion(), a.getApplicationReason())).toList();
+                a.getApplicationType(), a.getStatus(), a.getVersion(), a.getApplicationReason(), batchId(a))).toList();
     }
-    public ApplicationSummary findOne(Long id) { Application a = required(id); return new ApplicationSummary(a.getId(), a.getApplicationNo(), a.getApplicationType(), a.getStatus(), a.getVersion(), a.getApplicationReason()); }
+    public ApplicationSummary findOne(Long id) { Application a = required(id); return new ApplicationSummary(a.getId(), a.getApplicationNo(), a.getApplicationType(), a.getStatus(), a.getVersion(), a.getApplicationReason(), batchId(a)); }
     @Transactional public ApplicationSummary updateDraft(Long id, String reason, Integer version, Long operatorId) {
         if (applicationMapper.updateDraft(id, reason, version, operatorId) != 1) throw conflict("APPLICATION_VERSION_CONFLICT", "申请状态或版本已变化");
         return findOne(id);
@@ -150,6 +150,7 @@ public class ApplicationService implements ApplicationCreationService, Applicati
                 || status == ApplicationStatus.SCHOOL_RETURNED;
     }
     private String nextApplicationNo() { return "GC" + LocalDate.now().toString().replace("-", "") + String.format("%06d", System.nanoTime() % 1_000_000); }
-    private ApplicationStateSnapshot snapshot(Application a) { Long batchId = a.getBatchType() == BatchType.GREEN_CHANNEL ? a.getGreenChannelBatchId() : a.getSubsidyBatchId(); return new ApplicationStateSnapshot(a.getId(), a.getStudentId(), a.getBatchType(), batchId, a.getApplicationType(), a.getStatus(), a.getCurrentLevel(), a.getReviewRound(), a.getVersion()); }
+    private Long batchId(Application a) { return a.getBatchType() == BatchType.GREEN_CHANNEL ? a.getGreenChannelBatchId() : a.getSubsidyBatchId(); }
+    private ApplicationStateSnapshot snapshot(Application a) { return new ApplicationStateSnapshot(a.getId(), a.getStudentId(), a.getBatchType(), batchId(a), a.getApplicationType(), a.getStatus(), a.getCurrentLevel(), a.getReviewRound(), a.getVersion()); }
     private ApplicationException conflict(String code, String message) { return new ApplicationException(code, HttpStatus.CONFLICT, message); }
 }
