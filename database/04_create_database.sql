@@ -2,7 +2,10 @@
 -- 本地开发测试数据
 
 -- 学生测试数据
-INSERT INTO `student` VALUES (1, '123', '奶龙', 9, 16, 3, 1, '10086', 1, 1, NULL, '困难', 0, NULL, NULL, 1, NULL, '2026-07-20 14:46:07', '2026-07-20 14:46:07', 0);
+INSERT INTO `student` VALUES (1, '123', '奶龙', 9, 16, 3, 1, '10086', 1, 1, NULL, '困难', 0, 5, 4, 1, NULL, '2026-07-20 14:46:07', '2026-07-20 14:46:07', 0);
+
+-- 辅导员-学生关联测试数据
+INSERT INTO `counselor_student` VALUES (1, 4, 1, '2026-07-20 14:46:07');
 
 -- 欠费确认测试数据
 INSERT INTO `arrears_confirmation`
