@@ -371,7 +371,7 @@ function handleUpload(e) {
   const formData = new FormData(); formData.append('file', file)
   ElMessage.info('正在导入...')
   studentAPI.import(formData).then(res => {
-    const r = res.data
+    const r = res.data.data
     ElMessage.success(`完成：${r.success}条成功，${r.skipped}条跳过`)
     if (r.errors?.length) {
       setTimeout(() => {
