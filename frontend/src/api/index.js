@@ -108,7 +108,9 @@ export const studentAPI = {
   list:   (params)         => api.get('/student/list', { params }),
   create: (data)           => api.post('/student', data),
   update: (id, data)       => api.put(`/student/${id}`, data),
-  toggle: (id)             => api.put(`/student/${id}/status`)
+  toggle: (id)             => api.put(`/student/${id}/status`),
+  import: (formData)       => api.post('/student/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  template: ()             => api.get('/student/template', { responseType: 'blob' })
 }
 
 export const classAPI = {

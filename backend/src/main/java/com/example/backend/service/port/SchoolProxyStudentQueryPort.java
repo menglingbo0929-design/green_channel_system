@@ -2,12 +2,20 @@ package com.example.backend.service.port;
 
 import com.example.backend.model.vo.schoolproxy.SchoolProxyStudentVO;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
- * 成员一提供的按学号查学生能力；成员四不得直接查询 student 表。
- *
- * <p>TODO(成员一)：基于真实 student 和组织表实现有效学生查询，并结合
- * CurrentUserProvider 校验学校数据范围；成员四不得用临时学生数据替代。</p>
+ * 成员一按学号/ID 查询学生快照；成员四不得直接查询 student 表。
  */
 public interface SchoolProxyStudentQueryPort {
+
+    /** 按学号查单个学生 */
     SchoolProxyStudentVO findEnabledStudentByStudentNo(String studentNo);
+
+    /** 按学生 ID 查 */
+    SchoolProxyStudentVO findEnabledStudentById(Long studentId);
+
+    /** 批量查 */
+    List<SchoolProxyStudentVO> findEnabledStudentsByIds(Collection<Long> studentIds);
 }

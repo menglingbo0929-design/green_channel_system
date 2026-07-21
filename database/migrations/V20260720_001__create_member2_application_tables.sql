@@ -104,6 +104,8 @@ CREATE TABLE application (
     review_round INT NOT NULL DEFAULT 0,
     version INT NOT NULL DEFAULT 0,
     application_reason VARCHAR(1000) NULL,
+    supplement_reason VARCHAR(500) NULL,
+    supplemented_at DATETIME NULL,
     submit_time DATETIME NULL,
     create_by BIGINT NULL,
     update_by BIGINT NULL,
@@ -123,12 +125,14 @@ CREATE TABLE arrears_application (
     application_id BIGINT NOT NULL,
     fee_item_id BIGINT NOT NULL,
     declared_amount DECIMAL(12,2) NOT NULL,
+    arrears_reason_code VARCHAR(32) NOT NULL DEFAULT 'OTHER',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id), UNIQUE KEY uk_arrears_application_app_item_deleted (application_id, fee_item_id, deleted),
     KEY idx_arrears_application_application_id (application_id),
-    CONSTRAINT chk_arrears_application_amount CHECK (declared_amount > 0)
+    CONSTRAINT chk_arrears_application_amount CHECK (declared_amount > 0),
+    CONSTRAINT chk_arrears_reason_code CHECK (arrears_reason_code IN ('FAMILY_FINANCIAL_DIFFICULTY','FAMILY_EMERGENCY','MAJOR_ILLNESS','DISASTER_ACCIDENT','OTHER'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE gift_application (

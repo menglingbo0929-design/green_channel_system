@@ -1,7 +1,10 @@
 package com.example.backend.web.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.backend.common.JsonResponse;
+import com.example.backend.config.VerificationCodeStore;
 import com.example.backend.mapper.StudentMapper;
+import com.example.backend.mapper.UserMapper;
 import com.example.backend.mapper.UserRoleMapper;
 import com.example.backend.model.domain.Student;
 import com.example.backend.model.domain.User;
@@ -9,7 +12,6 @@ import com.example.backend.model.dto.*;
 import com.example.backend.security.JwtTokenProvider;
 import com.example.backend.service.IUserService;
 import com.example.backend.security.ICurrentUserProvider;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,8 @@ public class UserController {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRoleMapper userRoleMapper;
     private final StudentMapper studentMapper;
+    private final UserMapper userMapper;
+    private final VerificationCodeStore codeStore;
     private final ICurrentUserProvider currentUserProvider;
 
     /** 登录 */
@@ -52,6 +56,40 @@ public class UserController {
                 user.getId(), user.getLoginName(), roles, studentId, collegeId);
         LoginResponse loginResponse = new LoginResponse(
                 token, user.getId(), user.getLoginName());
+        return JsonResponse.success(loginResponse, "登录成功");
+    }
+
+    /** 短信验证码登录 */
+    @PostMapping("login-by-code")
+    public JsonResponse<LoginResponse> loginByCode(@Valid @RequestBody LoginByCodeRequest request) {
+        if (!codeStore.verify(request.getPhone(), request.getCode())) {
+            return JsonResponse.failure("验证码错误或已过期");
+        }
+
+        // 先根据手机号找学生
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getPhone, request.getPhone())
+                        .eq(Student::getDeleted, 0));
+        if (student == null) {
+            return JsonResponse.failure("该手机号未关联学生");
+        }
+
+        // 通过学生的 user_id 获取登录用户
+        if (student.getUserId() == null) {
+            return JsonResponse.failure("该学生尚未创建登录账号");
+        }
+        User user = userMapper.selectById(student.getUserId());
+        if (user == null || user.getDeleted() != 0) {
+            return JsonResponse.failure("账号不存在或已停用");
+        }
+
+        List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
+        String token = jwtTokenProvider.generateToken(
+                user.getId(), user.getLoginName(), roles,
+                student.getId(), student.getCollegeId());
+
+        LoginResponse loginResponse = new LoginResponse(token, user.getId(), user.getLoginName());
         return JsonResponse.success(loginResponse, "登录成功");
     }
 
