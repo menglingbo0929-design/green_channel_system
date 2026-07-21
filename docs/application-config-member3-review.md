@@ -154,7 +154,7 @@ ResourceAdjustmentResult applyCounselorSubsidyAmount(
 
 ### 6. 补充“补充申请自动审核”接口
 
-文档提到补充申请会调用成员三状态服务，但尚未给出具体契约。建议增加：
+该项评审建议已经采纳；成员三现已按以下正式契约提供并实现补录自动审核：
 
 ```java
 ApplicationStatusResult completeSupplementReview(

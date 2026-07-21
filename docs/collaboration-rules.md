@@ -766,9 +766,9 @@ supplementReason
 
 ### 17.5 当前阻塞与完成判定
 
-截至 2026-07-20，成员三已经合入 `ApprovalTransitionService.completeSupplementReview`，成员四已经通过 `ApprovalCompletionPortAdapter` 将其适配为 `SupplementCompletionPort`，因此“自动写审核记录并推进补录状态”不再是阻塞项。成员一已经合入可信 `CurrentUserProvider`，但尚未提供可用的 `SchoolProxyStudentQueryPort` 学生查询 Bean；成员二尚未提供 `SupplementApplicationPort` 所需的补录明细/资源写入、详情和历史分页 Bean。成员四当前完成 Controller、DTO/VO、事务编排、成员三状态适配和页面八补录确认弹窗；学生查询和成员二申请写入能力合入后再演示真实补录。
+截至 2026-07-21，成员三已经提供 `ApprovalTransitionService.completeSupplementReview`，并实现 `SupplementCompletionPortAdapter` 加入成员四外层事务，因此“自动写审核记录并推进补录状态”不再是阻塞项。成员二已经提供补录创建、明细写入和直接调用成员三正式审批 Service 的实现；当前剩余阻塞是成员一按学号及按 ID/批量学生组织快照、成员二补录详情和历史读模型，以及真实数据端到端联调。成员二直接调用正式审批 Service 时，成员四不得再次调用 `SupplementCompletionPort`，避免重复推进。
 
-只有成员一身份/学生能力、成员二补录创建与历史查询、成员三自动审核流转全部合入，并使用真实 SQL 数据完成后端和前端联调后，6.1.4 才能标记为 `IMPLEMENTED`。
+只有成员一身份/学生能力、成员二补录详情与历史查询以及当前已完成的成员二创建、成员三自动审核流转全部使用真实 SQL 数据完成后端和前端联调后，6.1.4 才能整体标记为 `IMPLEMENTED`。
 
 ---
 
