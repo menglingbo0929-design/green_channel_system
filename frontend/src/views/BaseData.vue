@@ -166,6 +166,8 @@
             </div>
             <div class="filter-right">
               <el-button @click="downloadTemplate">下载模板</el-button>
+              <el-button type="warning" @click="triggerUpload">批量导入</el-button>
+              <input ref="fileInput" type="file" accept=".xlsx,.xls" style="display:none" @change="handleUpload" />
               <el-button type="primary" @click="openStuDialog()"><el-icon><Plus /></el-icon>新增学生</el-button>
             </div>
           </div>
@@ -192,10 +194,12 @@
             <el-table-column label="状态" width="80" align="center">
               <template #default="{row}"><el-tag :type="row.enabled?'success':'danger'" size="small">{{ row.enabled?'启用':'停用' }}</el-tag></template>
             </el-table-column>
-            <el-table-column label="操作" width="160" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right" align="center">
               <template #default="{row}">
-                <el-button type="primary" link size="small" @click="openStuDialog(row)">编辑</el-button>
-                <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleStuToggle(row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                <div class="op-btns">
+                  <el-button type="primary" link size="small" @click="openStuDialog(row)">编辑</el-button>
+                  <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleStuToggle(row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -340,7 +344,34 @@ async function onCollegeChange(){ stuFilter.majorId=null;if(stuFilter.collegeId)
 async function resetStuFilter(){ Object.assign(stuFilter,{studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null});stuMajors.value=[];loadStudents() }
 function getMajorName(id){ return majors.value.find(m=>m.id===id)?.majorName||'' }
 function getClassName(id){ return classes.value.find(c=>c.id===id)?.className||'' }
-function downloadTemplate(){ ElMessage.info('Excel模板下载功能开发中') }
+const fileInput = ref(null)
+function triggerUpload() { fileInput.value?.click() }
+
+function downloadTemplate() {
+  studentAPI.template().then(res => {
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const a = document.createElement('a'); a.href = url
+    a.download = '学生导入模板.xlsx'; a.click()
+    window.URL.revokeObjectURL(url)
+  }).catch(() => ElMessage.error('模板下载失败'))
+}
+
+function handleUpload(e) {
+  const file = e.target.files?.[0]; if (!file) return
+  const formData = new FormData(); formData.append('file', file)
+  ElMessage.info('正在导入...')
+  studentAPI.import(formData).then(res => {
+    const r = res.data
+    ElMessage.success(`完成：${r.success}条成功，${r.skipped}条跳过`)
+    if (r.errors?.length) {
+      setTimeout(() => {
+        ElMessageBox.alert(r.errors.slice(0,10).join('<br>'), '跳过详情', { dangerouslyUseHTMLString:true, confirmButtonText:'知道了' })
+      }, 800)
+    }
+    loadStudents()
+  }).catch(() => ElMessage.error('导入失败，请检查文件格式'))
+  e.target.value = ''  // 清空以便重复选择同一文件
+}
 
 const stuDialog=ref(false);const stuIsEdit=ref(false);const stuEditId=ref(null);const stuSaving=ref(false)
 const stuForm=reactive({ studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null,phone:'',originLoan:0,campusLoan:0,difficultyLevel:'' })
@@ -352,7 +383,7 @@ async function onStuCollegeChange(){ stuForm.majorId=null;stuForm.classId=null }
 async function handleStuSave(){ stuSaving.value=true; try{ const data={studentNo:stuForm.studentNo,studentName:stuForm.studentName,collegeId:stuForm.collegeId,majorId:stuForm.majorId,gradeId:stuForm.gradeId,classId:stuForm.classId,phone:stuForm.phone,originLoan:stuForm.originLoan,campusLoan:stuForm.campusLoan,difficultyLevel:stuForm.difficultyLevel}; stuIsEdit.value?await studentAPI.update(stuEditId.value,data):await studentAPI.create(data); ElMessage.success(stuIsEdit.value?'更新成功':'新增成功');stuDialog.value=false;loadStudents() }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ stuSaving.value=false } }
 async function handleStuToggle(row){ const act=row.enabled?'停用':'启用'; try{ await ElMessageBox.confirm(`确定${act}学生「${row.studentName}(${row.studentNo})」？`,null,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); await studentAPI.toggle(row.id); ElMessage.success(act+'成功');loadStudents() }catch{} }
 
-onMounted(()=>{ loadUsers();loadAllOrg() })
+onMounted(()=>{ loadUsers();loadAllOrg();loadStudents() })
 </script>
 
 <style scoped>
@@ -372,6 +403,7 @@ onMounted(()=>{ loadUsers();loadAllOrg() })
 .filter-input{ width:150px }
 .toolbar-hint{ font-size:14px;color:#6B7280 }
 .tag{ margin-right:4px }
+.op-btns{ display:flex;gap:8px;white-space:nowrap }
 .data-table{ width:100% }
 :deep(.el-table__header th){ background:#F3F6FA;font-weight:600;font-size:14px;color:#374151;height:44px }
 :deep(.el-table td){ height:44px;font-size:14px }
