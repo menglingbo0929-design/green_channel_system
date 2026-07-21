@@ -2,6 +2,8 @@ package com.example.backend.service;
 
 import com.example.backend.model.dto.BatchSnapshot;
 
+import java.util.List;
+
 /**
  * 批次查询服务 —— 成员一向成员二、三、四提供
  *
@@ -28,10 +30,9 @@ public interface BatchQueryService {
 
     /**
      * 判断某年级是否在批次的适用范围内
-     *
-     * @param batchId 批次 ID
-     * @param gradeId 年级 ID
-     * @return true=该年级可参与此批次
      */
     boolean isGradeEligible(Long batchId, Long gradeId);
+
+    /** 查询所有启用且开放的批次（供前端下拉框） */
+    List<BatchSnapshot> listOpenBatches();
 }

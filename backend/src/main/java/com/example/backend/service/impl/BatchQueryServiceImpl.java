@@ -48,6 +48,19 @@ public class BatchQueryServiceImpl implements BatchQueryService {
     }
 
     @Override
+    public List<BatchSnapshot> listOpenBatches() {
+        return greenChannelBatchMapper.selectList(
+                new LambdaQueryWrapper<GreenChannelBatch>()
+                        .eq(GreenChannelBatch::getStatus, "OPEN")
+                        .eq(GreenChannelBatch::getEnabled, 1)
+                        .eq(GreenChannelBatch::getDeleted, 0)
+                        .orderByDesc(GreenChannelBatch::getCreateTime))
+                .stream()
+                .map(this::toSnapshot)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public boolean isGradeEligible(Long batchId, Long gradeId) {
         return batchEligibleGradeMapper.exists(
                 new LambdaQueryWrapper<BatchEligibleGrade>()
