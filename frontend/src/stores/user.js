@@ -120,7 +120,11 @@ export const useUserStore = defineStore('user', () => {
     userId.value = ''
     loginName.value = ''
     roles.value = []
-    localStorage.clear()
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('loginName')
+    localStorage.removeItem('roles')
+    // 保留 login_history 等其他 key
   }
 
   /**
