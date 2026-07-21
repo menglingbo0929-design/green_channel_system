@@ -23,10 +23,12 @@
               <template #default="{ row }"><el-tag :type="row.deleted===0?'success':'danger'" size="small">{{ row.deleted===0?'启用':'停用' }}</el-tag></template>
             </el-table-column>
             <el-table-column prop="lastLoginTime" label="最后登录" width="170" />
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right" align="center">
               <template #default="{ row }">
-                <el-button type="primary" link size="small" @click="openUserEdit(row)">编辑</el-button>
-                <el-button :type="row.deleted===0?'warning':'success'" link size="small" @click="handleUserToggle(row)">{{ row.deleted===0?'停用':'启用' }}</el-button>
+                <div class="op-btns">
+                  <el-button type="primary" link size="small" @click="openUserEdit(row)">编辑</el-button>
+                  <el-button :type="row.deleted===0?'warning':'success'" link size="small" @click="handleUserToggle(row)">{{ row.deleted===0?'停用':'启用' }}</el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -50,10 +52,12 @@
                 <el-table-column label="状态" width="80" align="center">
                   <template #default="{ row }"><el-tag :type="row.enabled?'success':'danger'" size="small">{{ row.enabled?'启用':'停用' }}</el-tag></template>
                 </el-table-column>
-                <el-table-column label="操作" width="160">
+                <el-table-column label="操作" width="180" align="center">
                   <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openOrgDialog('college', row)">编辑</el-button>
+                    <div class="op-btns">
+                      <el-button type="primary" link size="small" @click="openOrgDialog('college', row)">编辑</el-button>
                     <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleOrgToggle('college',row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                  </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -77,10 +81,12 @@
                 <el-table-column label="状态" width="80" align="center">
                   <template #default="{ row }"><el-tag :type="row.enabled?'success':'danger'" size="small">{{ row.enabled?'启用':'停用' }}</el-tag></template>
                 </el-table-column>
-                <el-table-column label="操作" width="160">
+                <el-table-column label="操作" width="180" align="center">
                   <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openOrgDialog('major', row)">编辑</el-button>
+                    <div class="op-btns">
+                      <el-button type="primary" link size="small" @click="openOrgDialog('major', row)">编辑</el-button>
                     <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleOrgToggle('major',row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                  </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -99,10 +105,12 @@
                 <el-table-column label="状态" width="80" align="center">
                   <template #default="{ row }"><el-tag :type="row.enabled?'success':'danger'" size="small">{{ row.enabled?'启用':'停用' }}</el-tag></template>
                 </el-table-column>
-                <el-table-column label="操作" width="160">
+                <el-table-column label="操作" width="180" align="center">
                   <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openOrgDialog('grade', row)">编辑</el-button>
+                    <div class="op-btns">
+                      <el-button type="primary" link size="small" @click="openOrgDialog('grade', row)">编辑</el-button>
                     <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleOrgToggle('grade',row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                  </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -132,10 +140,12 @@
                 <el-table-column label="状态" width="80" align="center">
                   <template #default="{ row }"><el-tag :type="row.enabled?'success':'danger'" size="small">{{ row.enabled?'启用':'停用' }}</el-tag></template>
                 </el-table-column>
-                <el-table-column label="操作" width="160">
+                <el-table-column label="操作" width="180" align="center">
                   <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openOrgDialog('class', row)">编辑</el-button>
+                    <div class="op-btns">
+                      <el-button type="primary" link size="small" @click="openOrgDialog('class', row)">编辑</el-button>
                     <el-button :type="row.enabled?'warning':'success'" link size="small" @click="handleOrgToggle('class',row)">{{ row.enabled?'停用':'启用' }}</el-button>
+                  </div>
                   </template>
                 </el-table-column>
               </el-table>
