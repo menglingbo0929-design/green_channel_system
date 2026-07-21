@@ -29,8 +29,11 @@ public interface ApplicationResourceMapper {
     @Insert("INSERT INTO gift_application_item(gift_application_id,batch_gift_item_id,quantity) VALUES(#{giftApplicationId},#{batchGiftItemId},#{quantity})")
     int insertGiftItem(@Param("giftApplicationId") Long giftApplicationId, @Param("batchGiftItemId") Long batchGiftItemId, @Param("quantity") Integer quantity);
 
-    @Select("SELECT COUNT(*) FROM batch_gift_item WHERE id=#{id} AND batch_id=#{batchId} AND deleted=0 AND per_student_limit>=#{quantity}")
+    @Select("SELECT COUNT(*) FROM batch_gift_item WHERE id=#{id} AND batch_id=#{batchId} AND deleted=0 " +
+            "AND per_student_limit>=#{quantity} AND stock_total-reserved_count>=#{quantity}")
     int countValidBatchGiftItem(@Param("id") Long id, @Param("batchId") Long batchId, @Param("quantity") Integer quantity);
+    @Select("SELECT id FROM batch_gift_item WHERE batch_id=#{batchId} AND gift_item_id=#{giftItemId} AND deleted=0 LIMIT 1")
+    Long findBatchGiftItemId(@Param("batchId") Long batchId, @Param("giftItemId") Long giftItemId);
 
     @Select("SELECT expected_amount AS expectedAmount, final_amount AS finalAmount FROM subsidy_application WHERE application_id=#{applicationId} AND deleted=0")
     SubsidyApplicationSnapshot findSubsidy(Long applicationId);

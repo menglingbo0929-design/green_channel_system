@@ -1,8 +1,8 @@
 # 成员二基础配置接口
 
-更新日期：2026-07-20
+更新日期：2026-07-21
 
-本文件记录成员二可独立运行的费用和礼包基础配置后端接口。它们只读写成员二负责的 `fee_item`、`fee_amount_option`、`gift_item` 及其引用关系；不查询学生、组织、批次或审核数据。
+本文件记录成员二可独立运行的费用、礼包与资源配置后端接口。它们只读写成员二负责的配置、库存和配额表；批次、学院、年级仅通过成员一公开 Service 查询和校验，不直接访问成员一的数据表。
 
 > 当前项目尚未接入成员一的可信身份上下文。因此这些接口的管理员鉴权不是已交付能力；在接入前仅限开发环境使用。
 
@@ -22,6 +22,16 @@
 | `POST` | `/api/gift-items` | 新增礼包物品 |
 | `PUT` | `/api/gift-items/{id}` | 修改名称或启用状态 |
 | `DELETE` | `/api/gift-items/{id}` | 逻辑删除未被批次配置引用的物品 |
+| `GET` | `/api/application-resources/batch-gift-items?batchId={id}` | 查询批次礼包库存和单人上限 |
+| `POST` | `/api/application-resources/batch-gift-items` | 新增批次礼包物品关联 |
+| `PUT` / `DELETE` | `/api/application-resources/batch-gift-items/{id}` | 乐观锁更新 / 删除未使用的关联 |
+| `GET` | `/api/application-resources/gift-quotas?batchId={id}&scope=COLLEGE|GRADE` | 查询学院或年级礼包名额 |
+| `POST` | `/api/application-resources/gift-quotas` | 新增礼包名额分配 |
+| `PUT` / `DELETE` | `/api/application-resources/gift-quotas/{id}?scope=...` | 乐观锁更新 / 删除未占用名额 |
+| `GET` | `/api/application-resources/subsidy-quotas?batchId={id}&scope=COLLEGE|GRADE` | 查询学院或年级补助额度 |
+| `POST` | `/api/application-resources/subsidy-quotas` | 新增补助额度分配 |
+| `PUT` / `DELETE` | `/api/application-resources/subsidy-quotas/{id}?scope=...` | 乐观锁更新 / 删除未占用额度 |
+| `GET` | `/api/application-resources/colleges`、`/grades` | 成员一 Service 提供的启用学院/年级选项 |
 
 ## 请求与校验
 
@@ -50,6 +60,32 @@
 - 已被 `arrears_application` 使用的欠费项目不可删除；已被 `batch_gift_item` 使用的礼包物品不可删除。
 - `includeDisabled=false` 时只返回启用记录。
 
+学生、学校代申请与线下补录写入的欠费明细支持以下字段（`arrearsReasonCode` 可省略，省略时保存为 `OTHER`）：
+
+```json
+{ "feeItemId": 1, "declaredAmount": 1200.00, "arrearsReasonCode": "FAMILY_FINANCIAL_DIFFICULTY" }
+```
+
+- 固定值仅允许 `FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`。
+- 传入其他值返回 `ARREARS_REASON_CODE_INVALID`（HTTP 400）。该字段将用于后续按真实最终申请集合统计欠费原因，不能以自由文本申请理由替代。
+
+批次礼包物品请求：
+
+```json
+{ "batchId": 1, "giftItemId": 2, "stockTotal": 100, "perStudentLimit": 1 }
+```
+
+礼包名额请求（补助额度将 `quotaTotal` 改为金额字段 `quotaAmount`）：
+
+```json
+{ "batchId": 1, "scope": "COLLEGE", "targetId": 8, "quotaTotal": 30 }
+```
+
+- 更新库存、名额或额度必须携带当前 `version`，且不能低于已预占量。
+- 删除库存关联前不能有礼包申请明细；删除配额前不得有预占或已使用量。
+- 年级维度还会通过成员一 `isGradeEligible(batchId, gradeId)` 校验其属于该批次。
+- 当前成员一仅提供单批次查询 Service，管理端以显式 `batchId` 加载资源；批次下拉列表需待成员一提供列表 Service 后接入。
+
 ## 错误码
 
 | 错误码 | HTTP 状态 | 含义 |
@@ -63,3 +99,9 @@
 | `GIFT_ITEM_NOT_FOUND` | 404 | 礼包物品不存在或已删除 |
 | `GIFT_ITEM_NAME_EXISTS` | 409 | 礼包物品名称重复 |
 | `GIFT_ITEM_IN_USE` | 409 | 礼包物品已在批次配置中使用 |
+| `BATCH_NOT_FOUND` | 400 | 批次不存在或不可用 |
+| `BATCH_GIFT_ITEM_EXISTS` / `BATCH_GIFT_ITEM_VERSION_CONFLICT` | 409 | 批次物品重复，或库存/版本冲突 |
+| `GIFT_QUOTA_EXISTS` / `GIFT_QUOTA_VERSION_CONFLICT` | 409 | 礼包名额重复，或名额/版本冲突 |
+| `SUBSIDY_QUOTA_EXISTS` / `SUBSIDY_QUOTA_VERSION_CONFLICT` | 409 | 补助额度重复，或额度/版本冲突 |
+| `QUOTA_TARGET_NOT_FOUND` / `GRADE_NOT_ELIGIBLE_FOR_BATCH` | 400 | 分配对象无效，或年级不适用于批次 |
+| `ARREARS_REASON_CODE_INVALID` | 400 | 欠费原因码不属于固定枚举 |

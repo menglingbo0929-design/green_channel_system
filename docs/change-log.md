@@ -71,9 +71,9 @@
 - 影响表：`arrears_confirmation`；不修改成员三审核表、成员一角色表或成员二申请表
 - 影响接口：成员四本地 `ArrearsConfirmationCompletionPort.completeAfterConfirmation` 对齐成员三 `ApprovalCompletionService.completeAfterConfirmation`
 - 影响状态：确认成功后的目标状态仍为 `CONFIRM_PENDING -> COMPLETED`，不新增状态值
-- 变更内容：`database/02_create_database.sql` 补齐 `request_id`、有效确认记录唯一约束、单据号唯一约束和请求号唯一约束；`database/04_create_database.sql` 的 100 条确认测试数据补齐唯一 `request_id`；成员四 migration、Entity、数据库设计与基线 SQL 保持一致。
+- 变更内容：`database/02_create_tables.sql` 补齐 `request_id`、有效确认记录唯一约束、单据号唯一约束和请求号唯一约束；`database/04_test_data.sql` 的 100 条确认测试数据补齐唯一 `request_id`；成员四 migration、Entity、数据库设计与基线 SQL 保持一致。
 - 当前阻塞项：成员三正式 `ApprovalCompletionService`、成员二待确认申请读取和成员一可信身份实现尚未合入，因此确认业务仍不能完成真实跨模块联调。
-- 使用者需要执行的操作：新环境按 `01_create_database.sql`、`02_create_database.sql`、`04_create_database.sql` 顺序建库和导入测试数据；已有数据库继续按成员四 migration 处理，不回改已执行 migration。
+- 使用者需要执行的操作：新环境按 `01_create_database.sql`、`02_create_tables.sql`、`04_test_data.sql` 顺序建库和导入测试数据；已有数据库继续按成员四 migration 处理，不回改已执行 migration。
 - 对应提交：待提交
 
 ## 2026-07-19｜成员四统计功能与统计筛选接口契约

@@ -3,76 +3,80 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import AllocationDialog from '../components/application/AllocationDialog.vue'
-import { catalogAPI } from '../api/application.js'
+import { catalogAPI, resourceConfigAPI } from '../api/application.js'
 
-const activeTab = ref('fees')
-const loading = ref(false)
-const fees = ref([])
-const amounts = ref([])
-const gifts = ref([])
-const feeDialog = ref(false)
-const amountDialog = ref(false)
-const giftDialog = ref(false)
-const allocationOpen = ref(false)
-const editingId = ref(null)
-const feeForm = reactive({ name: '', enabled: true })
-const amountForm = reactive({ feeItemId: null, amount: null, enabled: true })
-const giftForm = reactive({ name: '', enabled: true })
-const feeOptions = computed(() => fees.value.filter(item => item.enabled))
-
-function errorMessage(error, fallback) { return error.response?.data?.message || error.message || fallback }
-function reset(form) { Object.keys(form).forEach(key => { form[key] = key === 'enabled' ? true : null }); if ('name' in form) form.name = '' }
-
+const activeTab = ref('fees'); const loading = ref(false); const resourceLoading = ref(false)
+const fees = ref([]); const amounts = ref([]); const gifts = ref([]); const colleges = ref([]); const grades = ref([])
+const resourceBatchId = ref(null); const batchGiftItems = ref([]); const giftQuotas = ref([]); const subsidyQuotas = ref([])
+const feeDialog = ref(false); const amountDialog = ref(false); const giftDialog = ref(false); const batchGiftDialog = ref(false); const allocationOpen = ref(false)
+const editingId = ref(null); const editingBatchGift = ref(null); const editingAllocation = ref(null)
+const feeForm = reactive({ name: '', enabled: true }); const amountForm = reactive({ feeItemId: null, amount: null, enabled: true }); const giftForm = reactive({ name: '', enabled: true })
+const batchGiftForm = reactive({ giftItemId: null, stockTotal: null, perStudentLimit: 1, version: null })
+const feeOptions = computed(() => fees.value.filter(item => item.enabled)); const giftOptions = computed(() => gifts.value.filter(item => item.enabled))
+function errorMessage(error, fallback = '操作失败') { return error.response?.data?.message || error.message || fallback }
+function resetEditing() { editingId.value = null }
 async function loadData() {
   loading.value = true
   try {
-    const [feeData, amountData, giftData] = await Promise.all([
-      catalogAPI.listFeeItems(), catalogAPI.listFeeAmountOptions(), catalogAPI.listGiftItems(),
-    ])
-    fees.value = feeData || []
-    amounts.value = amountData || []
-    gifts.value = giftData || []
+    const [feeData, amountData, giftData, collegeData, gradeData] = await Promise.all([catalogAPI.listFeeItems(), catalogAPI.listFeeAmountOptions(), catalogAPI.listGiftItems(), resourceConfigAPI.colleges(), resourceConfigAPI.grades()])
+    fees.value = feeData || []; amounts.value = amountData || []; gifts.value = giftData || []; colleges.value = collegeData || []; grades.value = gradeData || []
+    if (resourceBatchId.value) await loadResources()
   } catch (error) { ElMessage.error(errorMessage(error, '配置数据加载失败')) } finally { loading.value = false }
 }
-
-function openFee(row) { editingId.value = row?.id ?? null; Object.assign(feeForm, row ? { name: row.name, enabled: row.enabled } : { name: '', enabled: true }); feeDialog.value = true }
-function openAmount(row) { editingId.value = row?.id ?? null; Object.assign(amountForm, row ? { feeItemId: row.feeItemId, amount: row.amount, enabled: row.enabled } : { feeItemId: fees.value.find(item => item.enabled)?.id ?? null, amount: null, enabled: true }); amountDialog.value = true }
-function openGift(row) { editingId.value = row?.id ?? null; Object.assign(giftForm, row ? { name: row.name, enabled: row.enabled } : { name: '', enabled: true }); giftDialog.value = true }
-
-async function saveFee() { try { if (!feeForm.name?.trim()) return ElMessage.warning('请输入欠费项目名称'); editingId.value ? await catalogAPI.updateFeeItem(editingId.value, feeForm) : await catalogAPI.createFeeItem(feeForm); ElMessage.success('欠费项目已保存'); feeDialog.value = false; loadData() } catch (error) { ElMessage.error(errorMessage(error, '保存失败')) } }
-async function saveAmount() { try { if (!amountForm.feeItemId || !amountForm.amount) return ElMessage.warning('请选择项目并填写金额'); editingId.value ? await catalogAPI.updateFeeAmountOption(editingId.value, amountForm) : await catalogAPI.createFeeAmountOption(amountForm); ElMessage.success('金额档位已保存'); amountDialog.value = false; loadData() } catch (error) { ElMessage.error(errorMessage(error, '保存失败')) } }
-async function saveGift() { try { if (!giftForm.name?.trim()) return ElMessage.warning('请输入礼包物品名称'); editingId.value ? await catalogAPI.updateGiftItem(editingId.value, giftForm) : await catalogAPI.createGiftItem(giftForm); ElMessage.success('礼包物品已保存'); giftDialog.value = false; loadData() } catch (error) { ElMessage.error(errorMessage(error, '保存失败')) } }
+async function loadResources() {
+  if (!resourceBatchId.value) return ElMessage.warning('请输入需要配置的批次 ID')
+  resourceLoading.value = true
+  try {
+    const [items, collegeGift, gradeGift, collegeSubsidy, gradeSubsidy] = await Promise.all([
+      resourceConfigAPI.batchGiftItems(resourceBatchId.value), resourceConfigAPI.giftQuotas(resourceBatchId.value, 'COLLEGE'), resourceConfigAPI.giftQuotas(resourceBatchId.value, 'GRADE'),
+      resourceConfigAPI.subsidyQuotas(resourceBatchId.value, 'COLLEGE'), resourceConfigAPI.subsidyQuotas(resourceBatchId.value, 'GRADE'),
+    ])
+    batchGiftItems.value = items || []
+    giftQuotas.value = [...(collegeGift || []), ...(gradeGift || [])].map(item => ({ ...item, resource: 'GIFT' }))
+    subsidyQuotas.value = [...(collegeSubsidy || []), ...(gradeSubsidy || [])].map(item => ({ ...item, resource: 'SUBSIDY' }))
+  } catch (error) { batchGiftItems.value = []; giftQuotas.value = []; subsidyQuotas.value = []; ElMessage.error(errorMessage(error, '资源配置加载失败')) } finally { resourceLoading.value = false }
+}
+function openFee(row) { resetEditing(); editingId.value = row?.id ?? null; Object.assign(feeForm, row ? { name: row.name, enabled: row.enabled } : { name: '', enabled: true }); feeDialog.value = true }
+function openAmount(row) { resetEditing(); editingId.value = row?.id ?? null; Object.assign(amountForm, row ? { feeItemId: row.feeItemId, amount: row.amount, enabled: row.enabled } : { feeItemId: feeOptions.value[0]?.id ?? null, amount: null, enabled: true }); amountDialog.value = true }
+function openGift(row) { resetEditing(); editingId.value = row?.id ?? null; Object.assign(giftForm, row ? { name: row.name, enabled: row.enabled } : { name: '', enabled: true }); giftDialog.value = true }
+function openBatchGift(row) { editingBatchGift.value = row || null; Object.assign(batchGiftForm, row ? { giftItemId: row.giftItemId, stockTotal: row.stockTotal, perStudentLimit: row.perStudentLimit, version: row.version } : { giftItemId: giftOptions.value[0]?.id ?? null, stockTotal: null, perStudentLimit: 1, version: null }); batchGiftDialog.value = true }
+function openAllocation(row) { editingAllocation.value = row || null; allocationOpen.value = true }
+async function saveFee() { try { if (!feeForm.name?.trim()) return ElMessage.warning('请输入欠费项目名称'); editingId.value ? await catalogAPI.updateFeeItem(editingId.value, feeForm) : await catalogAPI.createFeeItem(feeForm); ElMessage.success('欠费项目已保存'); feeDialog.value = false; loadData() } catch (error) { ElMessage.error(errorMessage(error)) } }
+async function saveAmount() { try { if (!amountForm.feeItemId || !amountForm.amount) return ElMessage.warning('请选择项目并填写金额'); editingId.value ? await catalogAPI.updateFeeAmountOption(editingId.value, amountForm) : await catalogAPI.createFeeAmountOption(amountForm); ElMessage.success('金额档位已保存'); amountDialog.value = false; loadData() } catch (error) { ElMessage.error(errorMessage(error)) } }
+async function saveGift() { try { if (!giftForm.name?.trim()) return ElMessage.warning('请输入礼包物品名称'); editingId.value ? await catalogAPI.updateGiftItem(editingId.value, giftForm) : await catalogAPI.createGiftItem(giftForm); ElMessage.success('礼包物品已保存'); giftDialog.value = false; loadData() } catch (error) { ElMessage.error(errorMessage(error)) } }
+async function saveBatchGift() { try { if (!resourceBatchId.value || !batchGiftForm.giftItemId || batchGiftForm.stockTotal === null) return ElMessage.warning('请填写批次 ID、物品和库存'); if (editingBatchGift.value) await resourceConfigAPI.updateBatchGiftItem(editingBatchGift.value.id, { stockTotal: batchGiftForm.stockTotal, perStudentLimit: batchGiftForm.perStudentLimit, version: batchGiftForm.version }); else await resourceConfigAPI.createBatchGiftItem({ batchId: resourceBatchId.value, giftItemId: batchGiftForm.giftItemId, stockTotal: batchGiftForm.stockTotal, perStudentLimit: batchGiftForm.perStudentLimit }); ElMessage.success('批次礼包配置已保存'); batchGiftDialog.value = false; loadResources() } catch (error) { ElMessage.error(errorMessage(error)) } }
 async function remove(kind, row) {
-  try { await ElMessageBox.confirm(`确认删除“${row.name || `¥${row.amount}`}”吗？`, '删除确认', { type: 'warning' }); if (kind === 'fee') await catalogAPI.deleteFeeItem(row.id); if (kind === 'amount') await catalogAPI.deleteFeeAmountOption(row.id); if (kind === 'gift') await catalogAPI.deleteGiftItem(row.id); ElMessage.success('已删除'); loadData() } catch (error) { if (error !== 'cancel') ElMessage.error(errorMessage(error, '删除失败')) }
+  try { await ElMessageBox.confirm(`确认删除“${row.name || row.giftItemName || row.targetName || `¥${row.amount}`}”吗？`, '删除确认', { type: 'warning' });
+    if (kind === 'fee') await catalogAPI.deleteFeeItem(row.id); if (kind === 'amount') await catalogAPI.deleteFeeAmountOption(row.id); if (kind === 'gift') await catalogAPI.deleteGiftItem(row.id); if (kind === 'batchGift') await resourceConfigAPI.deleteBatchGiftItem(row.id); if (kind === 'giftQuota') await resourceConfigAPI.deleteGiftQuota(row.id, row.scope); if (kind === 'subsidyQuota') await resourceConfigAPI.deleteSubsidyQuota(row.id, row.scope)
+    ElMessage.success('已删除'); if (['fee','amount','gift'].includes(kind)) loadData(); else loadResources()
+  } catch (error) { if (error !== 'cancel') ElMessage.error(errorMessage(error)) }
 }
 function feeName(id) { return fees.value.find(item => item.id === id)?.name || `项目 #${id}` }
+function remaining(row, resource) { return resource === 'GIFT' ? row.quotaTotal - row.reservedCount : Number(row.quotaAmount) - Number(row.reservedAmount) }
 onMounted(loadData)
 </script>
 
 <template>
   <div class="page-container config-page">
-    <section class="page-heading-row"><div><h1>批次与申请配置</h1><p>维护欠费项目、金额档位与礼包物品；数据直接读取成员二配置接口。</p></div><div class="page-actions"><el-button @click="loadData"><el-icon><Refresh /></el-icon>刷新</el-button></div></section>
-    <el-alert class="business-notice" type="info" :closable="false" show-icon title="当前联调范围：基础配置接口"><template #default>批次、礼包库存/规则、名额与补助额度尚未提供可用后端接口，页面不会显示模拟业务数据。</template></el-alert>
-    <section class="content-card config-card" v-loading="loading">
-      <el-tabs v-model="activeTab" class="config-tabs">
-        <el-tab-pane label="批次设置" name="batch"><el-empty description="批次查询与维护接口尚未接入"><el-button type="primary" disabled>新建批次</el-button></el-empty></el-tab-pane>
-        <el-tab-pane label="欠费配置" name="fees">
-          <div class="config-toolbar"><span>欠费项目与预设金额档位。学生端总申报金额由后端限制为不超过 ¥8,000。</span><div><el-button @click="openAmount()">新增金额档位</el-button><el-button type="primary" @click="openFee()"><el-icon><Plus /></el-icon>新增欠费项目</el-button></div></div>
-          <el-table :data="fees" border class="standard-table" empty-text="暂无欠费项目"><el-table-column prop="name" label="欠费项目" min-width="220"/><el-table-column label="启用状态" width="120"><template #default="{row}"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag></template></el-table-column><el-table-column label="操作" width="150"><template #default="{row}"><div class="table-actions"><el-button link type="primary" @click="openFee(row)">编辑</el-button><el-button link type="danger" @click="remove('fee', row)">删除</el-button></div></template></el-table-column></el-table>
-          <h2 class="subsection-title">金额档位</h2>
-          <el-table :data="amounts" border class="standard-table" empty-text="暂无金额档位"><el-table-column label="欠费项目" min-width="220"><template #default="{row}">{{ feeName(row.feeItemId) }}</template></el-table-column><el-table-column label="金额" width="180"><template #default="{row}">¥{{ Number(row.amount).toFixed(2) }}</template></el-table-column><el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag></template></el-table-column><el-table-column label="操作" width="150"><template #default="{row}"><div class="table-actions"><el-button link type="primary" @click="openAmount(row)">编辑</el-button><el-button link type="danger" @click="remove('amount', row)">删除</el-button></div></template></el-table-column></el-table>
-        </el-tab-pane>
-        <el-tab-pane label="礼包配置" name="gifts"><div class="config-toolbar"><span>当前接口仅包含物品名称和启用状态；库存、单人上限及批次关联待后端实现。</span><el-button type="primary" @click="openGift()"><el-icon><Plus /></el-icon>新增礼包物品</el-button></div><el-table :data="gifts" border class="standard-table" empty-text="暂无礼包物品"><el-table-column prop="name" label="物品名称" min-width="240"/><el-table-column label="启用状态" width="120"><template #default="{row}"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag></template></el-table-column><el-table-column label="操作" width="150"><template #default="{row}"><div class="table-actions"><el-button link type="primary" @click="openGift(row)">编辑</el-button><el-button link type="danger" @click="remove('gift', row)">删除</el-button></div></template></el-table-column></el-table></el-tab-pane>
-        <el-tab-pane label="名额与补助额度" name="quota"><el-empty description="资源总量、预占量、已使用量和剩余量接口尚未接入"><el-button type="primary" @click="allocationOpen = true">打开分配弹窗</el-button></el-empty></el-tab-pane>
-      </el-tabs>
-    </section>
+    <section class="page-heading-row"><div><h1>批次与申请配置</h1><p>维护成员二拥有的费用、礼包库存、名额和补助额度。</p></div><div class="page-actions"><el-button @click="loadData"><el-icon><Refresh /></el-icon>刷新</el-button></div></section>
+    <el-alert class="business-notice" type="info" :closable="false" show-icon title="跨模块数据边界"><template #default>批次、学院、年级不直接读写成员一数据表；资源配置以批次 ID 查询，并由成员一 Service 校验。</template></el-alert>
+    <section class="content-card config-card" v-loading="loading"><el-tabs v-model="activeTab" class="config-tabs">
+      <el-tab-pane label="批次设置" name="batch"><el-empty description="批次维护由成员一负责；请在下方资源区域输入已存在的批次 ID。"/></el-tab-pane>
+      <el-tab-pane label="欠费配置" name="fees"><div class="config-toolbar"><span>学生端总申报金额由后端限制为不超过 ¥8,000。</span><div><el-button @click="openAmount()">新增金额档位</el-button><el-button type="primary" @click="openFee()"><el-icon><Plus /></el-icon>新增欠费项目</el-button></div></div><el-table :data="fees" border class="standard-table" empty-text="暂无欠费项目"><el-table-column prop="name" label="欠费项目"/><el-table-column label="状态" width="100"><template #default="{row}"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag></template></el-table-column><el-table-column label="操作" width="140"><template #default="{row}"><el-button link type="primary" @click="openFee(row)">编辑</el-button><el-button link type="danger" @click="remove('fee',row)">删除</el-button></template></el-table-column></el-table><h2 class="subsection-title">金额档位</h2><el-table :data="amounts" border class="standard-table" empty-text="暂无金额档位"><el-table-column label="欠费项目"><template #default="{row}">{{ feeName(row.feeItemId) }}</template></el-table-column><el-table-column label="金额"><template #default="{row}">¥{{ Number(row.amount).toFixed(2) }}</template></el-table-column><el-table-column label="状态" width="100"><template #default="{row}"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag></template></el-table-column><el-table-column label="操作" width="140"><template #default="{row}"><el-button link type="primary" @click="openAmount(row)">编辑</el-button><el-button link type="danger" @click="remove('amount',row)">删除</el-button></template></el-table-column></el-table></el-tab-pane>
+      <el-tab-pane label="礼包配置" name="gifts"><div class="config-toolbar"><span>先维护物品目录，再按批次配置库存和单人上限。</span><el-button type="primary" @click="openGift()"><el-icon><Plus /></el-icon>新增礼包物品</el-button></div><el-table :data="gifts" border class="standard-table" empty-text="暂无礼包物品"><el-table-column prop="name" label="物品名称"/><el-table-column label="状态" width="100"><template #default="{row}"><el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag></template></el-table-column><el-table-column label="操作" width="140"><template #default="{row}"><el-button link type="primary" @click="openGift(row)">编辑</el-button><el-button link type="danger" @click="remove('gift',row)">删除</el-button></template></el-table-column></el-table><div class="resource-heading"><el-input-number v-model="resourceBatchId" :min="1" :precision="0" placeholder="批次 ID"/><el-button @click="loadResources">加载批次资源</el-button><el-button type="primary" :disabled="!resourceBatchId" @click="openBatchGift()">配置批次物品</el-button></div><el-table v-loading="resourceLoading" :data="batchGiftItems" border class="standard-table" empty-text="请加载批次资源"><el-table-column prop="giftItemName" label="物品"/><el-table-column prop="stockTotal" label="库存"/><el-table-column prop="reservedCount" label="已预占"/><el-table-column prop="usedCount" label="已使用"/><el-table-column prop="perStudentLimit" label="单人上限"/><el-table-column label="操作" width="140"><template #default="{row}"><el-button link type="primary" @click="openBatchGift(row)">编辑</el-button><el-button link type="danger" @click="remove('batchGift',row)">删除</el-button></template></el-table-column></el-table></el-tab-pane>
+      <el-tab-pane label="名额与补助额度" name="quota"><div class="resource-heading"><el-input-number v-model="resourceBatchId" :min="1" :precision="0" placeholder="批次 ID"/><el-button @click="loadResources">加载资源</el-button><el-button type="primary" :disabled="!resourceBatchId" @click="openAllocation()">新增分配</el-button></div><h2 class="subsection-title">礼包名额</h2><el-table v-loading="resourceLoading" :data="giftQuotas" border class="standard-table" empty-text="请加载批次资源"><el-table-column prop="scope" label="维度" width="100"><template #default="{row}">{{ row.scope === 'COLLEGE' ? '学院' : '年级' }}</template></el-table-column><el-table-column prop="targetName" label="对象"/><el-table-column prop="quotaTotal" label="总名额"/><el-table-column prop="reservedCount" label="预占"/><el-table-column prop="usedCount" label="已使用"/><el-table-column label="剩余"><template #default="{row}">{{ remaining(row,'GIFT') }}</template></el-table-column><el-table-column label="操作" width="140"><template #default="{row}"><el-button link type="primary" @click="openAllocation(row)">编辑</el-button><el-button link type="danger" @click="remove('giftQuota',row)">删除</el-button></template></el-table-column></el-table><h2 class="subsection-title">生活 / 路费补助额度</h2><el-table v-loading="resourceLoading" :data="subsidyQuotas" border class="standard-table" empty-text="请加载批次资源"><el-table-column prop="scope" label="维度" width="100"><template #default="{row}">{{ row.scope === 'COLLEGE' ? '学院' : '年级' }}</template></el-table-column><el-table-column prop="targetName" label="对象"/><el-table-column label="总额度"><template #default="{row}">¥{{ Number(row.quotaAmount).toFixed(2) }}</template></el-table-column><el-table-column label="预占"><template #default="{row}">¥{{ Number(row.reservedAmount).toFixed(2) }}</template></el-table-column><el-table-column label="已使用"><template #default="{row}">¥{{ Number(row.usedAmount).toFixed(2) }}</template></el-table-column><el-table-column label="剩余"><template #default="{row}">¥{{ Number(remaining(row,'SUBSIDY')).toFixed(2) }}</template></el-table-column><el-table-column label="操作" width="140"><template #default="{row}"><el-button link type="primary" @click="openAllocation(row)">编辑</el-button><el-button link type="danger" @click="remove('subsidyQuota',row)">删除</el-button></template></el-table-column></el-table></el-tab-pane>
+    </el-tabs></section>
     <el-dialog v-model="feeDialog" :title="editingId ? '编辑欠费项目' : '新增欠费项目'" width="480px"><el-form label-width="90px"><el-form-item label="项目名称" required><el-input v-model="feeForm.name" maxlength="64"/></el-form-item><el-form-item label="启用"><el-switch v-model="feeForm.enabled"/></el-form-item></el-form><template #footer><el-button @click="feeDialog=false">取消</el-button><el-button type="primary" @click="saveFee">保存</el-button></template></el-dialog>
-    <el-dialog v-model="amountDialog" :title="editingId ? '编辑金额档位' : '新增金额档位'" width="480px"><el-form label-width="90px"><el-form-item label="欠费项目" required><el-select v-model="amountForm.feeItemId" :disabled="!!editingId"><el-option v-for="item in feeOptions" :key="item.id" :label="item.name" :value="item.id"/></el-select></el-form-item><el-form-item label="金额" required><el-input-number v-model="amountForm.amount" :min="0.01" :precision="2" :step="100"/></el-form-item><el-form-item label="启用"><el-switch v-model="amountForm.enabled"/></el-form-item></el-form><template #footer><el-button @click="amountDialog=false">取消</el-button><el-button type="primary" @click="saveAmount">保存</el-button></template></el-dialog>
+    <el-dialog v-model="amountDialog" :title="editingId ? '编辑金额档位' : '新增金额档位'" width="480px"><el-form label-width="90px"><el-form-item label="欠费项目" required><el-select v-model="amountForm.feeItemId"><el-option v-for="item in feeOptions" :key="item.id" :label="item.name" :value="item.id"/></el-select></el-form-item><el-form-item label="金额" required><el-input-number v-model="amountForm.amount" :min="0.01" :precision="2" :step="100"/></el-form-item><el-form-item label="启用"><el-switch v-model="amountForm.enabled"/></el-form-item></el-form><template #footer><el-button @click="amountDialog=false">取消</el-button><el-button type="primary" @click="saveAmount">保存</el-button></template></el-dialog>
     <el-dialog v-model="giftDialog" :title="editingId ? '编辑礼包物品' : '新增礼包物品'" width="480px"><el-form label-width="90px"><el-form-item label="物品名称" required><el-input v-model="giftForm.name" maxlength="64"/></el-form-item><el-form-item label="启用"><el-switch v-model="giftForm.enabled"/></el-form-item></el-form><template #footer><el-button @click="giftDialog=false">取消</el-button><el-button type="primary" @click="saveGift">保存</el-button></template></el-dialog>
-    <AllocationDialog v-model="allocationOpen" />
+    <el-dialog v-model="batchGiftDialog" :title="editingBatchGift ? '编辑批次礼包物品' : '配置批次礼包物品'" width="480px"><el-form label-width="110px"><el-form-item label="礼包物品" required><el-select v-model="batchGiftForm.giftItemId" :disabled="!!editingBatchGift"><el-option v-for="item in giftOptions" :key="item.id" :label="item.name" :value="item.id"/></el-select></el-form-item><el-form-item label="库存总量" required><el-input-number v-model="batchGiftForm.stockTotal" :min="0" :precision="0"/></el-form-item><el-form-item label="单人上限" required><el-input-number v-model="batchGiftForm.perStudentLimit" :min="1" :precision="0"/></el-form-item></el-form><template #footer><el-button @click="batchGiftDialog=false">取消</el-button><el-button type="primary" @click="saveBatchGift">保存</el-button></template></el-dialog>
+    <AllocationDialog v-model="allocationOpen" :batch-id="resourceBatchId" :colleges="colleges" :grades="grades" :editing="editingAllocation" @saved="loadResources"/>
   </div>
 </template>
 
 <style scoped>
-.config-page { padding: 0 0 24px; }.business-notice { margin-bottom: 16px; }.config-tabs :deep(.el-tabs__header) { margin: 0; padding: 0 20px; }.config-tabs :deep(.el-tabs__content) { padding: 20px; }.config-toolbar { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; color: #6b7280; font-size: 12px; }.config-toolbar > div { display: flex; gap: 12px; }.subsection-title { margin: 24px 0 12px; font-size: 16px; line-height: 24px; }
+.config-page { padding: 0 0 24px; }.business-notice { margin-bottom: 16px; }.config-tabs :deep(.el-tabs__header) { margin: 0; padding: 0 20px; }.config-tabs :deep(.el-tabs__content) { padding: 20px; }.config-toolbar,.resource-heading { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #6b7280; font-size: 12px; }.config-toolbar > div { display:flex; gap:12px; }.resource-heading { justify-content:flex-start; }.subsection-title { margin: 24px 0 12px; font-size:16px; }
+/* 所有配置表的最后一列均为操作列：覆盖全局按钮最小宽度，避免编辑/删除被挤成两行。 */
+.config-page :deep(.standard-table .el-table__body .el-table__cell:last-child .cell) { display: flex; align-items: center; justify-content: center; gap: 8px; overflow: visible; }
+.config-page :deep(.standard-table .el-table__body .el-table__cell:last-child .el-button) { min-width: 48px; height: 28px; margin-left: 0; padding: 0 6px; }
 </style>
