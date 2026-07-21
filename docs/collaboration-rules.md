@@ -578,7 +578,7 @@ POST /api/confirm/{applicationId}
 - `confirmedAmount` 必须大于 `0.00`，且不大于成员二返回的 `appliedAmount`；确认人、确认时间、单据编号和申报金额快照均由后端产生或读取，前端不得传入。
 - 确认成功返回 `confirmationId`、`applicationId`、`appliedAmount`、`confirmedAmount`、`voucherNo`、`confirmUserId`、`confirmedAt`、`applicationStatus`；其中 `applicationStatus` 固定为 `COMPLETED`。
 - `voucherNo` 固定为 `GC + 四位确认年份 + applicationId 六位补零`，例如申请 `1` 于 2026 年确认时为 `GC2026000001`。同一 `applicationId` 的有效确认记录只能有一条。
-- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_database.sql`、成员四 migration 与 `database-design.md` 必须保持这组字段和约束一致；`database/04_create_database.sql` 的确认测试数据必须为每条记录提供唯一 `request_id`，不得省略该幂等字段。
+- `arrears_confirmation` 的最终物理字段包括 `request_id VARCHAR(64) NOT NULL`，并具有 `uk_arrears_confirmation_application_id_deleted`、`uk_arrears_confirmation_voucher_no`、`uk_arrears_confirmation_request_id` 三个唯一约束。`database/02_create_tables.sql`、成员四 migration 与 `database-design.md` 必须保持这组字段和约束一致；`database/04_test_data.sql` 的确认测试数据必须为每条记录提供唯一 `request_id`，不得省略该幂等字段。
 - 成员三的正式能力名为 `ApprovalCompletionService.completeAfterConfirmation(applicationId, expectedVersion, requestId, operatorId)`；成员四代码中的 `ArrearsConfirmationCompletionPort` 使用同名方法作为本地适配边界，不要求成员三另建第二套状态机。
 
 ### 15.2 6.1.2 欠费单据：保持现有固定规则，不新增临时字段
@@ -766,7 +766,7 @@ supplementReason
 
 ### 17.5 当前阻塞与完成判定
 
-截至 2026-07-20，成员二尚未合入补录明细/资源/历史查询，成员三尚未合入 `completeSupplementReview`，成员一可信身份和学生查询适配也未完成。成员四当前完成 Controller、DTO/VO、事务编排和 Port；依赖齐全后再演示真实补录。
+截至 2026-07-20，成员三已经合入 `ApprovalTransitionService.completeSupplementReview`，成员四已经通过 `ApprovalCompletionPortAdapter` 将其适配为 `SupplementCompletionPort`，因此“自动写审核记录并推进补录状态”不再是阻塞项。成员一已经合入可信 `CurrentUserProvider`，但尚未提供可用的 `SchoolProxyStudentQueryPort` 学生查询 Bean；成员二尚未提供 `SupplementApplicationPort` 所需的补录明细/资源写入、详情和历史分页 Bean。成员四当前完成 Controller、DTO/VO、事务编排、成员三状态适配和页面八补录确认弹窗；学生查询和成员二申请写入能力合入后再演示真实补录。
 
 只有成员一身份/学生能力、成员二补录创建与历史查询、成员三自动审核流转全部合入，并使用真实 SQL 数据完成后端和前端联调后，6.1.4 才能标记为 `IMPLEMENTED`。
 
@@ -842,13 +842,13 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 
 | 任务 | 成员一必须提供 | 成员二必须提供 | 成员三必须提供 | 当前状态与解除条件 |
 |---|---|---|---|---|
-| 6.1.1 欠费最终确认 | `CurrentUserProvider` 或等价可信登录上下文，返回学校用户、角色和数据范围；提供学生组织快照 | `ArrearsConfirmationApplicationPort`：分页/详情读取真实 `CONFIRM_PENDING` 申请，返回申请编号、学生、申报金额和 `application.version` | `ApprovalCompletionService.completeAfterConfirmation`，由 `ArrearsConfirmationCompletionPort` 适配，在成员四确认事务中完成 `CONFIRM_PENDING -> COMPLETED` | 成员二已有基础读取实现，但仍依赖成员一学生组织快照；成员一身份/快照和成员三完成 Service 合入后，用真实 SQL 完成列表、详情、确认和状态联调 |
-| 6.1.2 欠费单据 | `StudentOrganizationSnapshotQuery`；`ArrearsVoucherAccessPort` 的学校权限、学生本人归属和确认人姓名查询 | `ArrearsVoucherApplicantQueryPort.findVoucherApplicantsByApplicationIds`，批量返回申请、学生组织、欠费项目和金额快照 | 无新增写操作；只读取已经完成的确认结果 | 成员二基础批量查询已存在；成员一两个能力合入并提供最小测试数据后，验证学校列表/详情/打印和学生本人查询 |
-| 6.1.3 学校代申请 | `SchoolProxyStudentQueryPort` 真实学生查询及 `CurrentUserProvider` 学校权限 | `SchoolProxyApplicationPort`：创建 `SCHOOL_PROXY/DRAFT`、写欠费/礼包明细、上传附件、预占资源和正式提交 | 正式提交时写 `SUBMIT` 审核记录并将申请推进到 `COUNSELOR_PENDING` | 三方实现当前均未形成可注入的完整 Bean；全部合入后按“查学生→建草稿→传附件→提交”完成一次真实流程 |
-| 6.1.4 线下补录 | `SchoolProxyStudentQueryPort` 真实学生查询及学校身份/数据范围 | `SupplementApplicationPort`：补录草稿、欠费/礼包/补助明细、资源确认、详情和历史分页 | `SupplementCompletionPort.completeSupplementReview`：写校级自动通过记录并流转到 `CONFIRM_PENDING/CONFIRMATION` 或 `COMPLETED/SYSTEM` | 三个 Port 的真实实现均未合入；实现加入同一事务并使用真实 SQL 完成创建、详情和历史联调后解除阻塞 |
-| 6.1.5 统计功能 | `StatisticsAccessPort`：学校角色和统计数据范围校验 | `ApplicationStatisticsQueryPort.queryFinalStatistics`：按最终状态集合聚合申请、组织、批次、欠费、礼包、确认金额；补齐 `arrears_reason_code` 和真实测试数据 | 无新增依赖 | 权限 Port、聚合 Port、欠费原因字段和真实数据全部合入后，核对人数、金额、礼包、原因及历史批次统计 |
-| 6.1.6 统计筛选 | 与 6.1.5 共用 `StatisticsAccessPort` | 在同一个 `ApplicationStatisticsQueryPort` 中准确支持批次、学院、专业、年级、班级、申请类型、最终状态、欠费项目和申请时间筛选 | 无新增依赖 | 与 6.1.5 一并解除；所有筛选组合必须基于真实集合查询完成 Apifox 和前端联调 |
-| 6.1.7 报表明细/导出/打印 | 与 6.1.5 共用 `StatisticsAccessPort` | `StatisticsReportQueryPort.queryReportPage`：按统一筛选、字段和排序契约分页返回 `StatisticsReportRowVO` | 无新增依赖 | 成员一权限 Bean、成员二报表分页 Bean 和真实 SQL 数据合入后，验证明细、历史批次、xlsx 打开和浏览器打印；其他成员合并时确认公共 POI 依赖 |
+| 6.1.1 欠费最终确认 | 已有可信 `CurrentUserProvider`；仍须提供 `StudentOrganizationSnapshotQuery` 和学校数据范围校验 | 基础分页/详情接口已存在；成员四已新增 `ApplicationReadPortAdapter` 接通分页及详情对象转换，但详情中的学生组织字段仍依赖成员一快照 Bean | `ApprovalCompletionService.completeAfterConfirmation` 已合入；成员四已用 `ApprovalCompletionPortAdapter` 适配，在确认事务中完成 `CONFIRM_PENDING -> COMPLETED` | 页面 8 与 `/api/confirm/**` 已接线，成员二读取和成员三状态流转已接通；当前无法完整验证的是学生组织详情与学校权限。成员一快照/权限 Bean 合入后再完成真实确认闭环 |
+| 6.1.2 欠费单据 | `CurrentUserProvider` 已存在；仍缺 `StudentOrganizationSnapshotQuery`，以及 `ArrearsVoucherAccessPort` 的学校权限、学生本人归属和确认人姓名适配 | 批量快照入口已存在；成员四已在 `ApplicationReadPortAdapter` 中接通 `ArrearsVoucherApplicantQueryPort` 对象转换 | 无新增写操作；只读取已经完成的确认结果 | 页面 8 与 `/api/arrears-vouchers/**` 已接线；当前仍因成员一快照和访问控制 Bean 缺失，不能完整验证列表/详情/打印和学生本人查询 |
+| 6.1.3 学校代申请 | `CurrentUserProvider` 已存在；仍缺 `SchoolProxyStudentQueryPort` 真实学生查询和学校数据范围适配 | 已有 `ApplicationCreationService.createSchoolProxyApplication` 基础主表创建能力，但仍缺可注入的完整 `SchoolProxyApplicationPort`，包括明细、附件、资源预占和正式提交 | 已有 `ApprovalTransitionService.submitInitial` 状态能力，但必须由成员二完整提交入口在保存明细后调用 | 当前不是三方完全空缺，而是成员一学生 Bean、成员二完整代申请 Bean 尚未形成；两者合入后按“查学生→建草稿→传附件→提交”验证真实流程 |
+| 6.1.4 线下补录 | `CurrentUserProvider` 已存在；仍缺 `SchoolProxyStudentQueryPort` 真实学生查询和学校数据范围适配 | 仍缺 `SupplementApplicationPort`：补录草稿、欠费/礼包/补助明细、资源确认、详情和历史分页 | `ApprovalTransitionService.completeSupplementReview` 已合入；成员四已用 `ApprovalCompletionPortAdapter` 适配为 `SupplementCompletionPort` | 成员三自动审核阻塞已解除；当前只剩成员一学生查询 Bean 和成员二补录申请 Bean。两者合入后，在同一事务中验证创建、自动审核、详情和历史分页 |
+| 6.1.5 统计功能 | `CurrentUserProvider` 已存在；仍缺 `StatisticsAccessPort` 的学校角色与数据范围适配 | 仍缺 `ApplicationStatisticsQueryPort.queryFinalStatistics` 集合聚合 Bean、`arrears_reason_code` 字段和对应真实数据 | 无新增依赖 | 成员四 Controller、筛选 DTO、VO 和页面外壳已完成；权限 Bean、聚合 Bean、欠费原因字段和真实数据全部合入后，核对人数、金额、礼包、原因及历史批次统计 |
+| 6.1.6 统计筛选 | 与 6.1.5 共用仍未实现的 `StatisticsAccessPort` | 仍须在同一个 `ApplicationStatisticsQueryPort` 中支持批次、学院、专业、年级、班级、申请类型、最终状态、欠费项目和申请时间筛选 | 无新增依赖 | 参数和返回格式已经确定，真实筛选 SQL 尚未合入；与 6.1.5 一并完成 Apifox 和前端联调后解除阻塞 |
+| 6.1.7 报表明细/导出/打印 | 与 6.1.5 共用仍未实现的 `StatisticsAccessPort` | 仍缺 `StatisticsReportQueryPort.queryReportPage` 分页 Bean和真实报表数据 | 无新增依赖 | 成员四明细/历史/打印/Excel 代码已完成，公共 `pom.xml` 已按第 22 节仅追加 Apache POI 5.3.0；当前剩余阻塞为成员一权限 Bean、成员二报表分页 Bean 和真实 SQL 数据 |
 
 ### 20.1 统一完成判定
 
@@ -856,3 +856,65 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 2. 负责人必须提供最小真实 SQL/测试数据和实现类位置；成员四不建立临时表、不返回模拟记录、不跨模块直接调用他人 Mapper。
 3. 对应后端接口、Apifox 请求和前端验证页全部跑通后，才能在 `docs/change-log.md` 把该任务更新为 `IMPLEMENTED`。
 4. 某个依赖已经部分实现时，必须在“当前状态与解除条件”中明确剩余缺口，不能继续使用“等其他人完成”这种不确定表述。
+
+### 20.2 2026-07-20 最新数据库更新对依赖的影响
+
+最新 `main` 已在 `database/02_create_tables.sql` 增加 `counselor_student`、`green_channel_batch`、`batch_eligible_grade`、`subsidy_batch`、`subsidy_batch_eligible_grade`、`student_tag`、`policy_rule`，并在 `database/03_init_data.sql` 增加相应基础数据；`sys_user.login_name` 同时增加唯一索引。上述更新解决了基础组织、批次、标签和规则表不存在的问题，但**没有**自动形成成员四 Port 所需的 Spring Bean，也没有补齐 `arrears_application.arrears_reason_code`。
+
+因此不能因为表已存在就把 6.1.3—6.1.7 标记为完成：成员一仍须提供学生/组织/权限查询实现，成员二仍须提供代申请、补录、统计聚合和报表分页实现。成员四只通过正式 Service/Port 调用，不直接新建跨模块 Mapper 查询这些新增表。
+
+### 20.3 成员一尚未提供的能力单列
+
+成员一可信登录 `ICurrentUserProvider` 已经存在，不再列为缺口。成员一当前仍须提供以下 **4 个可注入 Spring Bean**；只有接口、注释或空方法不算完成：
+
+| 成员一必须提供 | 对应任务 | 当前已有内容 | 仍缺的确定内容 | 解决方式与完成判定 |
+|---|---|---|---|---|
+| `StudentOrganizationSnapshotQuery` | 6.1.1 欠费最终确认、6.1.2 欠费单据 | `student` 以及学院、专业、年级、班级等组织数据由成员一维护；成员四已经定义批量快照查询契约 | 尚无可注入实现，不能根据一组 `studentId` 返回 `studentId`、学号、姓名、学院、专业、年级、班级 | 成员一在自己的 Service 中批量查询学生和组织表，实现该接口并注册为 Spring Bean；用两个以上 `studentId` 验证返回顺序和字段完整后视为完成 |
+| `SchoolProxyStudentQueryPort` | 6.1.3 学校代申请、6.1.4 线下补录 | 成员一已有学生基础数据；成员四已固定按学号查询并返回 `SchoolProxyStudentVO` 的契约 | 尚无按学号查询启用学生并校验当前学校用户数据范围的可注入实现 | 成员一复用自己的学生查询 Service 实现该接口并注册为 Spring Bean；能够查询存在的启用学生、查不到时返回空结果，并完成学校数据范围过滤后视为完成 |
+| `ArrearsVoucherAccessPort` | 6.1.2 欠费单据查询、详情与打印 | `ICurrentUserProvider` 已能取得可信当前用户；成员四已固定访问校验和确认人姓名查询方法 | 尚未实现学校角色校验、学生本人是否拥有申请的校验、确认人 ID 到姓名的批量转换 | 成员一基于登录用户、学生归属和 `sys_user` 查询实现 `checkSchoolUser`、`checkStudentOwnsApplication`、`findUserNamesByIds`，注册为 Spring Bean；学校和学生两种访问路径均通过真实数据验证后视为完成 |
+| `StatisticsAccessPort` | 6.1.5 统计功能、6.1.6 统计筛选、6.1.7 报表明细/导出/打印 | `ICurrentUserProvider` 已提供可信登录身份；成员四已固定统计权限接口 | 尚未提供当前用户是否具有 `SCHOOL` 角色及其学校统计数据范围的可注入实现 | 成员一从可信登录上下文和角色/组织关系中实现该接口并注册为 Spring Bean，不读取前端传入角色；学校管理员能取得本校范围且其他角色不能取得学校统计范围后视为完成 |
+
+成员一的处理方式很直接：不需要改成员四业务代码，只需在自己维护的学生、组织、用户和权限 Service 上实现上述 4 个接口，加 `@Service` 或 `@Component` 形成可注入 Bean，再分别使用真实数据库记录完成一次查询和权限验证。成员一现有 `StudentProfileQueryService`、`StudentScopeService`、`OrganizationQueryService` 仍只有注释或被注释掉的方法，不能作为上述 Bean 的完成证据。成员四不得替成员一直接查询 `student`、`college`、`major`、`grade`、`class_info` 或 `sys_user` 表来绕过这些缺口。
+
+---
+
+## 21. 页面 8、页面 9 前后端接线边界
+
+### 21.1 页面 8 学校业务处理页
+
+- 页面文件固定为 `frontend/src/views/school/SchoolBusinessProcessing.vue`。
+- 本轮只接成员四接口：`/api/confirm/**`、`/api/arrears-vouchers/**`、`/api/school-proxy/**`、`/api/supplements/**`。
+- “最终审核”属于成员三。本轮页面 8 不导入成员三 `ReviewDialog`，不请求成员三审核列表、详情或提交 Controller；该 Tab 只保留页面位置和归属说明。
+- 页面默认打开“欠费确认”，顶部“欠费待确认”只读取成员四 `/api/confirm/list` 返回的 `total`；其他负责人尚未提供的卡片数字显示 `—`，不得写死模拟数字。
+- 欠费确认和线下补录继续使用成员四 `BusinessConfirmDialog`；它与成员三审核弹窗是两种不同业务动作。
+
+### 21.2 页面 9 统计看板页
+
+- 页面文件固定为 `frontend/src/views/school/statistics/StatisticsDashboard.vue`。
+- 只调用成员四 `/api/statistics/applications/summary` 和 `/api/statistics/reports/{details,history,print,export}`。
+- 数字卡、ECharts、明细、Excel 和打印全部使用后端返回值；`ApplicationStatisticsQueryPort` 和 `StatisticsReportQueryPort` 未合入时不生成模拟统计数据。
+
+### 21.3 登录和开发代理
+
+- 页面 8、9 的成员四 API 统一使用 `frontend/src/api/memberFourClient.js`，自动携带成员一登录后保存在 `localStorage.token` 的 JWT。
+- 开发环境新增独立 `/member4-api` 代理到 `127.0.0.1:8083`，并重写为后端 `/api`；不得修改其他成员正在使用的 `/api -> 8080` 代理。
+- 页面不再提供“临时用户 ID”输入框；当前后端仍要求的 `X-User-Id` 取成员一登录 Store 的 `userId`，待成员四 Controller 完全改用可信当前用户后删除该请求头。
+
+---
+
+## 22. 公共 `pom.xml` 追加规则
+
+1. 公共构建文件只允许为已经批准的功能**追加新的 `<dependency>` 块**；禁止借功能开发修改 Spring Boot parent、`java.version`、MyBatis-Plus、Spring Security、JWT、数据库驱动或其他已有依赖的版本、scope、artifactId 和配置。
+2. 禁止删除、替换、重排已有依赖，禁止把“追加某个库”扩大为框架升级、降级或依赖清理。
+3. 每个新增依赖必须在相邻 XML 注释和本文件中写明负责人、功能编号、用途和固定版本；未形成明确用途和固定版本时不得写入 POM。
+4. 本次唯一批准的公共构建追加为：
+
+```xml
+<dependency>
+    <groupId>org.apache.poi</groupId>
+    <artifactId>poi-ooxml</artifactId>
+    <version>5.3.0</version>
+</dependency>
+```
+
+该依赖仅供成员四 6.1.7 生成真正的 `.xlsx` 文件。此次修改不得同时调整 POM 中任何既有内容。
