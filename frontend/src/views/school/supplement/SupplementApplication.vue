@@ -5,12 +5,6 @@ import BusinessConfirmDialog from '../../../components/school/BusinessConfirmDia
 import { useUserStore } from '../../../stores/user'
 import SupplementHistory from './SupplementHistory.vue'
 
-/**
- * 6.1.4 线下补录联调页面。
- *
- * 页面只负责构造第 17 节规定的请求体和展示真实接口结果。成员一、二、三的
- * 依赖全部合入后调用真实接口，不生成模拟申请编号。
- */
 const userStore = useUserStore()
 const student = ref(null)
 const result = ref(null)
@@ -119,17 +113,13 @@ const applicationTypeNames = {
 </script>
 
 <template>
-  <main class="supplement-demo">
-    <header>
-      <p class="eyebrow">成员四 · 6.1.4 联调页</p>
-      <h1>绿色通道线下补录</h1>
-      <p>用于把已经在线下完成办理的申请补录进系统，并自动形成待欠费确认或已完成状态。</p>
+  <section class="supplement-page">
+    <header class="module-heading">
+      <div><h2>线下补录</h2><p>录入已在线下完成办理的申请，系统按业务类型进入对应后续流程。</p></div>
     </header>
 
-    <p class="dependency-note">真实创建依赖成员一学生/身份、成员二申请明细/资源、成员三自动审核，演示前须同时完成合入。</p>
-
     <section class="form-panel">
-      <h2>1. 确认学生</h2>
+      <h3>学生信息</h3>
       <div class="row">
         <label>学生学号<input v-model.trim="form.studentNo" placeholder="例如 20260001" /></label>
         <button type="button" :disabled="loading" @click="searchStudent">按学号查询</button>
@@ -139,7 +129,7 @@ const applicationTypeNames = {
         <span>{{ student.collegeName }} / {{ student.majorName }} / {{ student.gradeName }} / {{ student.className }}</span>
       </article>
 
-      <h2>2. 填写线下办理内容</h2>
+      <h3>补录内容</h3>
       <div class="grid">
         <label>申请类型
           <select v-model="form.applicationType">
@@ -178,7 +168,7 @@ const applicationTypeNames = {
     </section>
 
     <section v-if="result" class="result-card">
-      <h2>补录成功</h2>
+      <h3>补录成功</h3>
       <p>申请编号：{{ result.applicationNo }}；来源：{{ result.source }}</p>
       <p>最终状态：{{ result.status }}；当前层级：{{ result.currentLevel }}；版本：{{ result.version }}</p>
     </section>
@@ -204,16 +194,12 @@ const applicationTypeNames = {
       :submitting="loading"
       @confirm="submitSupplement"
     />
-  </main>
+  </section>
 </template>
 
 <style scoped>
-.supplement-demo { max-width: 1120px; margin: 0 auto; padding: 36px 24px; color: #233044; text-align: left; }
-.eyebrow { margin-bottom: 4px; color: #2f7d57; font-weight: 700; }h1 { margin: 0 0 8px; }.dependency-note { padding: 12px; border-left: 4px solid #d97706; background: #fffbeb; color: #92400e; }
-.form-panel { margin-top: 24px; padding: 22px; border-radius: 10px; background: #f4f8f5; }.form-panel h2 { margin-top: 24px; }.form-panel h2:first-child { margin-top: 0; }
-.row, .detail-row, .detail-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }.wide { grid-column: span 3; }
-label { display: grid; flex: 1; gap: 6px; font-size: 13px; font-weight: 600; }input, select, textarea { padding: 9px; border: 1px solid #b9c7be; border-radius: 6px; font: inherit; }textarea { resize: vertical; }
-button { padding: 9px 13px; border: 0; border-radius: 6px; color: #fff; background: #287a55; cursor: pointer; }button:disabled { opacity: .55; cursor: not-allowed; }.remove { background: #a83b3b; }.submit { margin-top: 22px; padding: 11px 18px; }
-.student-card, .result-card { display: grid; gap: 5px; margin-top: 14px; padding: 14px; border: 1px solid #cddbd2; border-radius: 8px; background: #fff; }.detail-header { justify-content: space-between; margin-top: 20px; }.detail-row { margin: 10px 0; }
-@media (max-width: 760px) { .grid { grid-template-columns: 1fr; }.wide { grid-column: span 1; } }
+.supplement-page { color: #303133; }.module-heading { margin-bottom: 18px; }.module-heading h2 { margin: 0 0 7px; font-size: 18px; }.module-heading p { margin: 0; color: #909399; font-size: 13px; }.form-panel { margin-top: 0; padding: 22px; border: 1px solid #ebeef5; border-radius: 4px; background: #fff; }.form-panel h3 { margin: 0 0 18px; color: #303133; font-size: 16px; }.form-panel h3:not(:first-child) { margin-top: 30px; padding-top: 24px; border-top: 1px solid #ebeef5; }
+.row, .detail-row, .detail-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }.row label { max-width: 360px; }.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 20px; }.wide { grid-column: span 3; }
+label { display: grid; flex: 1; gap: 7px; color: #606266; font-size: 13px; font-weight: 400; }input, select, textarea { padding: 8px 10px; border: 1px solid #dcdfe6; border-radius: 4px; font: inherit; outline: none; }input:focus,select:focus,textarea:focus { border-color: #409eff; }textarea { resize: vertical; }
+button { height: 34px; padding: 0 14px; border: 1px solid #409eff; border-radius: 4px; color: #fff; background: #409eff; cursor: pointer; }button:disabled { opacity: .55; cursor: not-allowed; }.remove { border-color: #f56c6c; color: #f56c6c; background: #fff; }.submit { margin-top: 24px; padding: 0 20px; }.student-card { display: grid; gap: 5px; margin-top: 14px; padding: 14px; border: 1px solid #d9ecff; border-radius: 4px; background: #ecf5ff; }.result-card { display: grid; gap: 5px; margin-top: 18px; padding: 16px 18px; border: 1px solid #e1f3d8; border-radius: 4px; background: #f0f9eb; }.result-card h3 { margin: 0; color: #67c23a; font-size: 16px; }.result-card p { margin: 0; color: #606266; font-size: 13px; }.detail-header { justify-content: space-between; margin-top: 24px; padding-top: 20px; border-top: 1px solid #ebeef5; }.detail-header h3 { margin: 0; border: 0 !important; padding: 0 !important; }.detail-row { margin: 12px 0; padding: 12px; border-radius: 4px; background: #f8fafc; }@media (max-width: 760px) { .grid { grid-template-columns: 1fr; }.wide { grid-column: span 1; } }
 </style>

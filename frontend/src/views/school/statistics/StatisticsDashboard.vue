@@ -8,6 +8,7 @@ import {
   fetchStatisticsReport,
 } from '../../../api/statistics'
 import { useUserStore } from '../../../stores/user'
+import SchoolWorkspaceShell from '../../../components/school/SchoolWorkspaceShell.vue'
 
 /**
  * 页面 9：学校统计看板页。
@@ -73,20 +74,6 @@ const visibleColumns = computed(() => {
   if (report.value.columns?.length) return report.value.columns
   return availableColumns.filter(column => selectedColumns.value.includes(column.key))
 })
-
-const sidebarItems = [
-  { icon: '⌂', label: '首页' },
-  { icon: '○', label: '个人中心' },
-  { icon: '▦', label: '新生信息管理' },
-  { icon: '▤', label: '绿色通道申请' },
-  { icon: '▥', label: '我的申请' },
-  { icon: '□', label: '审核管理' },
-  { icon: '￥', label: '欠费确认' },
-  { icon: '✎', label: '申请补录' },
-  { icon: '▥', label: '统计报表', active: true },
-  { icon: '▦', label: '基础数据' },
-  { icon: '▧', label: '政策与说明' },
-]
 
 const batchOptions = computed(() => summary.value?.batchHistoryStatistics ?? [])
 const collegeOptions = computed(() => summary.value?.collegeApplicantCounts ?? [])
@@ -312,22 +299,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="statistics-page">
-    <aside class="sidebar">
-      <div class="brand"><span class="brand-mark">学</span><span>高校绿色通道系统</span></div>
-      <nav class="side-nav">
-        <button v-for="item in sidebarItems" :key="item.label" type="button" class="side-item" :class="{ active: item.active }">
-          <span class="side-icon">{{ item.icon }}</span><span>{{ item.label }}</span>
-        </button>
-      </nav>
-    </aside>
-
-    <section class="workspace">
-      <header class="topbar">
-        <div class="breadcrumb"><button class="menu-button" type="button">☰</button><span>首页</span><span>/</span><span>统计报表</span><span>/</span><strong>统计看板页</strong></div>
-        <div class="account-area"><span class="notice">♢<b>12</b></span><span class="avatar">校</span><div><strong>王老师</strong><small>学校管理员⌄</small></div></div>
-      </header>
-
+  <SchoolWorkspaceShell>
+    <div class="statistics-page">
       <main class="page-content">
         <!-- 按页面 8 修正：页名区域不使用白色卡片、边框、圆角或阴影。 -->
         <section class="page-heading">
@@ -380,12 +353,12 @@ onBeforeUnmount(() => {
           <footer class="pager"><span>共 {{ report.total }} 条</span><select v-model.number="pageSize"><option :value="10">10条/页</option><option :value="20">20条/页</option><option :value="50">50条/页</option></select><button :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">‹</button><button class="current">{{ currentPage }}</button><button :disabled="currentPage >= (report.pages || 1)" @click="changePage(currentPage + 1)">›</button><span>前往</span><input :value="currentPage" type="number" min="1" :max="report.pages || 1" @change="changePage($event.target.value)" /><span>页</span></footer>
         </section>
       </main>
-    </section>
 
     <div v-if="columnDialogVisible" class="dialog-mask" @click.self="columnDialogVisible = false">
       <section class="column-dialog"><header><h2>{{ dialogMode === 'export' ? '选择导出列' : '个人列方案' }}</h2><button @click="columnDialogVisible = false">×</button></header><div class="column-options"><label v-for="column in availableColumns" :key="column.key"><input v-model="selectedColumns" type="checkbox" :value="column.key" />{{ column.title }}</label></div><footer><button @click="columnDialogVisible = false">取消</button><button class="primary" @click="applyColumns">应用</button></footer></section>
     </div>
-  </div>
+    </div>
+  </SchoolWorkspaceShell>
 </template>
 
 <style scoped>
@@ -394,7 +367,7 @@ onBeforeUnmount(() => {
 :global(body) { min-width: 1280px; margin: 0; background: #f4f7fb; color: #202733; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; }
 :global(button), :global(input), :global(select) { font: inherit; }
 :global(#app) { width: 100%; max-width: none; min-height: 100vh; margin: 0; text-align: initial; }
-.statistics-page { min-height: 100vh; background: #f4f7fb; }
+.statistics-page { min-height: calc(100vh - 60px); margin: -24px; padding: 6px 18px 24px; background: #f4f7fb; }
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 20; width: 242px; overflow-y: auto; color: #fff; background: linear-gradient(180deg, #074d83, #023966); }
 .brand { display: flex; align-items: center; gap: 10px; height: 72px; padding: 0 14px; border-bottom: 1px solid rgba(255,255,255,.12); font-size: 18px; font-weight: 700; white-space: nowrap; }
 .brand-mark { display: grid; width: 42px; height: 48px; place-items: center; border: 2px solid #fff; border-radius: 9px 9px 16px 16px; }
