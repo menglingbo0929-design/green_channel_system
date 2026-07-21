@@ -22,10 +22,10 @@ import { loginAPI } from '../api/index.js'
 
 // 四种角色的默认首页
 const ROLE_DEFAULT_PAGE = {
-  STUDENT:   '/student-center',
+  STUDENT:   '/my-apply',
   COUNSELOR: '/counselor-review',
   COLLEGE:   '/college-review',
-  SCHOOL:    '/school-process'
+  SCHOOL:    '/school-review'
 }
 
 // 所有菜单项定义，roles 控制可见角色
@@ -36,6 +36,11 @@ const ALL_MENUS = [
   { key: 'my-apply',    label: '我的申请',     icon: 'document',        roles: ['STUDENT'],                                   path: '/my-apply' },
   { key: 'counselor',   label: '辅导员审核',   icon: 'check-circle',    roles: ['COUNSELOR'],                                 path: '/counselor-review' },
   { key: 'college',     label: '学院审核',     icon: 'flag',            roles: ['COLLEGE'],                                   path: '/college-review' },
+  { key: 'school-review',label: '学校审核',    icon: 'check-circle',    roles: ['SCHOOL'],                                    path: '/school-review' },
+  { key: 'messages',    label: '消息中心',     icon: 'bell',            roles: ['STUDENT'],                                   path: '/student/messages' },
+  { key: 'messages-counselor', label: '消息中心', icon: 'bell',         roles: ['COUNSELOR'],                                 path: '/counselor/messages' },
+  { key: 'messages-college', label: '消息中心', icon: 'bell',           roles: ['COLLEGE'],                                   path: '/college/messages' },
+  { key: 'messages-school', label: '消息中心', icon: 'bell',            roles: ['SCHOOL'],                                    path: '/school/messages' },
   { key: 'arrears',     label: '欠费确认',     icon: 'coin',            roles: ['SCHOOL'],                                    path: '/arrears' },
   { key: 'supplement',  label: '申请补录',     icon: 'plus',            roles: ['SCHOOL'],                                    path: '/supplement' },
   { key: 'stats',       label: '统计报表',     icon: 'chart-line',      roles: ['SCHOOL','COLLEGE'],                          path: '/stats' },

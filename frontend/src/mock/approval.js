@@ -24,6 +24,11 @@ let applications = seed.map((row, index) => ({
   returnResubmit: ['1003', '2003'].includes(row[0]),
 }))
 const batchSubmitted = { COUNSELOR: false, COLLEGE: false }
+const messages = [
+  { messageId: 1, messageType: 'APPROVAL_RETURNED', businessType: 'APPLICATION', businessId: 4103, title: '申请已退回', content: '请补充生源地贷款受理证明后重新提交。', read: false, createTime: '2026-07-20T10:20:00+08:00' },
+  { messageId: 2, messageType: 'APPROVAL_APPROVED', businessType: 'APPLICATION', businessId: 4101, title: '申请审核通过', content: '学校已完成最终审核，请关注后续办理通知。', read: false, createTime: '2026-07-19T16:35:00+08:00' },
+  { messageId: 3, messageType: 'APPROVAL_REJECTED', businessType: 'APPLICATION', businessId: 4102, title: '申请未通过', content: '当前申请未满足相关条件，如有疑问请联系辅导员。', read: true, createTime: '2026-07-18T09:10:00+08:00' },
+]
 
 const myApplications = [
   { applicationId: 4101, applicationNo: 'GC202607200091', applicationType: 'GREEN_CHANNEL', batchType: 'GREEN_CHANNEL', batchId: 1, batchName: '2026 年新生绿色通道', studentId: 9001, studentNo: '20260001', studentName: '张同学', gender: '男', collegeId: 10, collegeName: '计算机科学与技术学院', majorName: '软件工程', gradeName: '2026级', className: '软件2601', status: 'DRAFT', currentLevel: 'STUDENT', currentNode: '待本人提交', submitTime: null, version: 0, declaredAmount: 4800, hasArrears: true, applicationReason: '家庭经济暂时困难，申请绿色通道缓缴学费。' },
@@ -73,6 +78,22 @@ export async function getMyApplications(params = {}) {
   })
   const page = Number(params.page || 1), size = Number(params.size || 10), start = (page - 1) * size
   return wait({ records: filtered.slice(start, start + size).map(toListItem), total: filtered.length, page, size })
+}
+
+export async function getMessages(params = {}) {
+  const page = Number(params.page || 1)
+  const size = Number(params.size || 10)
+  const source = params.read === undefined || params.read === null || params.read === ''
+    ? messages
+    : messages.filter((item) => item.read === (params.read === true || params.read === 'true'))
+  return wait({ records: source.slice((page - 1) * size, page * size), total: source.length, page, size })
+}
+
+export async function markMessageAsRead(messageId) {
+  const message = messages.find((item) => item.messageId === Number(messageId))
+  if (!message) throw new Error('消息不存在')
+  message.read = true
+  return wait({ messageId: message.messageId, read: true })
 }
 
 export async function getMyApplicationDetail(applicationId) {

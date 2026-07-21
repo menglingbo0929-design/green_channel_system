@@ -1,6 +1,6 @@
 package com.example.backend.model.dto;
 
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -21,14 +21,14 @@ public class LoginResponse {
      * 后续每次请求都放在 Authorization 请求头里带来：
      * Authorization: Bearer <token>
      */
-    @ApiModelProperty("JWT令牌")
+    @Schema(description = "JWT token")
     private String token;
 
     /** 用户 ID，前端可以用来显示"当前登录用户：xxx" */
-    @ApiModelProperty("用户ID")
+    @Schema(description = "User ID")
     private Long userId;
 
     /** 用户名，前端可以用来显示欢迎信息 */
-    @ApiModelProperty("用户名")
+    @Schema(description = "Username")
     private String loginName;
 }
