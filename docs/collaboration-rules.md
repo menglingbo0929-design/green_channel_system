@@ -918,3 +918,30 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 ```
 
 该依赖仅供成员四 6.1.7 生成真正的 `.xlsx` 文件。此次修改不得同时调整 POM 中任何既有内容。
+
+---
+
+## 23. 2026-07-21｜成员二正式申请能力接入后的覆盖声明
+
+本节覆盖第 15.3、17.4、17.5 和第 20 节中与成员二能力状态相冲突的旧描述；旧节保留用于追溯，不再表示当前依赖状态。
+
+### 23.1 6.1.3 学校代申请
+
+- 成员二正式实现为 `application.service.SchoolProxyApplicationService`，并以 `SchoolProxyApplicationPort` 对成员四暴露创建草稿、附件和提交能力。成员四只注入该 Port；原成员四 `service.adapter.SchoolProxyApplicationPortAdapter` 已取消 Spring Bean 注册，只作为历史参考，禁止再直接写成员二申请、明细、附件和资源表。
+- 学生查询返回 `studentId`、学号、姓名、组织名称以及 `collegeId`、`majorId`、`gradeId`、`classId`。成员一仍须补齐可信学校数据范围校验，成员四不得以直接查学生表绕过。
+- 欠费明细中的 `arrearsReasonCode` 是固定枚举：`FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`；创建页面和补录页面均按该编码提交。
+- 附件端点在对象存储未接通前固定返回 `501 ATTACHMENT_STORAGE_UNAVAILABLE`；提交端点在附件/资源预占前置能力未接通前固定返回 `503 SCHOOL_PROXY_SUBMISSION_UNAVAILABLE`。成员四前端不得将任一返回渲染为提交成功。
+
+### 23.2 6.1.4 线下补录
+
+- 成员二正式实现为 `application.service.SupplementApplicationService`。成员四 `SupplementApplicationServiceImpl` 只调用 `SupplementApplicationPort`，原成员四 `service.adapter.SupplementApplicationPortAdapter` 已取消 Spring Bean 注册，禁止作为第二套写表实现。
+- 补录创建、明细写入、资源确认以及调用成员三 `ApprovalTransitionService.completeSupplementReview` 均在成员二正式 Service 的同一事务内完成。成员四不得再次调用 `SupplementCompletionPort`，否则会重复创建审核记录或重复推进状态。
+- 当前创建链路可接入真实 Port；补录分页和详情仍需要成员一提供按 `studentId` 查询及批量学生组织快照能力。该能力未提供时，成员二正式 Service 的列表/详情不可用，成员四不得用模拟记录补齐页面。
+
+### 23.3 当前剩余责任
+
+| 任务 | 已接通 | 仍受制约的确定事项 |
+|---|---|---|
+| 6.1.3 学校代申请 | 学生按学号查询、真实草稿创建、固定附件/提交接口 | 成员一学校数据范围校验；成员二附件对象存储、资源预占和正式提交成功路径。 |
+| 6.1.4 线下补录 | 学生按学号查询、成员二真实创建 Port、成员二到成员三的自动审核桥接 | 成员一按 ID/批量学生组织快照；成员二以该快照组装的真实历史分页和详情。 |
+| 6.1.5—6.1.7 统计/报表 | 成员四接口、页面、筛选和导出调用边界 | 成员一统计权限范围；成员二最终态聚合、筛选和报表分页真实数据。 |

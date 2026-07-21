@@ -27,7 +27,7 @@ const form = reactive({
   supplementReason: '',
   handledAt: nowForInput(),
   subsidyAmount: '',
-  arrearsItems: [{ feeItemId: '', declaredAmount: '' }],
+  arrearsItems: [{ feeItemId: '', declaredAmount: '', arrearsReasonCode: 'OTHER' }],
   giftItems: [],
 })
 
@@ -40,7 +40,7 @@ async function runRequest(action) {
 }
 
 function addArrearsItem() {
-  form.arrearsItems.push({ feeItemId: '', declaredAmount: '' })
+  form.arrearsItems.push({ feeItemId: '', declaredAmount: '', arrearsReasonCode: 'OTHER' })
 }
 
 function addGiftItem() {
@@ -76,6 +76,7 @@ function buildPayload() {
       ? form.arrearsItems.filter(item => item.feeItemId !== '').map(item => ({
           feeItemId: Number(item.feeItemId),
           declaredAmount: Number(item.declaredAmount),
+          arrearsReasonCode: item.arrearsReasonCode,
         }))
       : [],
     giftItems: greenChannel
@@ -110,6 +111,14 @@ const applicationTypeNames = {
   LIVING_SUBSIDY: '生活补助',
   TRAVEL_SUBSIDY: '路费补助',
 }
+
+const arrearsReasonOptions = [
+  { value: 'FAMILY_FINANCIAL_DIFFICULTY', label: '家庭经济困难' },
+  { value: 'FAMILY_EMERGENCY', label: '家庭突发情况' },
+  { value: 'MAJOR_ILLNESS', label: '重大疾病' },
+  { value: 'DISASTER_ACCIDENT', label: '灾害事故' },
+  { value: 'OTHER', label: '其他' },
+]
 </script>
 
 <template>
@@ -149,6 +158,7 @@ const applicationTypeNames = {
         <div v-for="(item, index) in form.arrearsItems" :key="`arrears-${index}`" class="detail-row">
           <label>欠费项目 ID<input v-model="item.feeItemId" type="number" min="1" /></label>
           <label>申报金额<input v-model="item.declaredAmount" type="number" min="0.01" step="0.01" /></label>
+          <label>欠费原因<select v-model="item.arrearsReasonCode"><option v-for="option in arrearsReasonOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
           <button type="button" class="remove" @click="removeItem(form.arrearsItems, index)">删除</button>
         </div>
 

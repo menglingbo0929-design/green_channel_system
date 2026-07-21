@@ -8,10 +8,12 @@ public class SchoolProxyStudentVO {
     private Long studentId;
     private String studentNo;
     private String studentName;
+    /** 成员二资源预占学院额度所需组织主键。 */
     private Long collegeId;
     private String collegeName;
     private Long majorId;
     private String majorName;
+    /** 成员二资源预占年级额度所需组织主键。 */
     private Long gradeId;
     private String gradeName;
     private Long classId;
