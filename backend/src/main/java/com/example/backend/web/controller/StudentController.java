@@ -4,10 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.backend.common.JsonResponse;
 import com.example.backend.mapper.StudentMapper;
 import com.example.backend.model.domain.Student;
+import com.example.backend.model.dto.ImportResult;
+import com.example.backend.service.StudentImportService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,6 +24,7 @@ import java.util.List;
 public class StudentController {
 
     private final StudentMapper studentMapper;
+    private final StudentImportService importService;
 
     /** 列表查询 + 多条件筛选 */
     @GetMapping("list")
@@ -67,5 +75,23 @@ public class StudentController {
             studentMapper.updateById(s);
         }
         return JsonResponse.successMessage("操作成功");
+    }
+
+    /** Excel 导入 */
+    @PostMapping("import")
+    public JsonResponse<ImportResult> importExcel(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return JsonResponse.failure("请选择文件");
+        }
+        return JsonResponse.success(importService.importExcel(file), "导入完成");
+    }
+
+    /** 下载导入模板 */
+    @GetMapping("template")
+    public void downloadTemplate(HttpServletResponse response) throws IOException {
+        String filename = URLEncoder.encode("学生导入模板.xlsx", StandardCharsets.UTF_8);
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + filename);
+        importService.writeTemplate(response.getOutputStream());
     }
 }
