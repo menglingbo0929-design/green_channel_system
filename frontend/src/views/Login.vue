@@ -26,54 +26,43 @@
       <div class="login-form">
         <h2 class="form-title">用户登录</h2>
 
-        <!--
-          Element Plus 表单
-          :model   → 表单数据对象
-          :rules   → 校验规则
-          ref      → 用于调用 validate() 方法
-          label-position="top" → 标签在输入框上方
-        -->
-        <el-form
-          ref="formRef"
-          :model="loginForm"
-          :rules="formRules"
-          label-position="top"
-          class="login-el-form"
-        >
-          <!-- 用户名输入框 -->
+        <!-- 登录方式切换 -->
+        <div class="login-tabs">
+          <span :class="['tab-item', { active: loginMode === 'password' }]" @click="loginMode='password'">密码登录</span>
+          <span :class="['tab-item', { active: loginMode === 'code' }]" @click="loginMode='code'">验证码登录</span>
+        </div>
+
+        <!-- 密码登录表单 -->
+        <el-form v-if="loginMode==='password'" ref="formRef" :model="loginForm" :rules="formRules" label-position="top" class="login-el-form" autocomplete="off">
           <el-form-item label="用户名" prop="loginName">
-            <el-input
-              v-model="loginForm.loginName"
-              placeholder="请输入用户名"
-              :prefix-icon="UserIcon"
-              size="large"
-            />
+            <el-input v-model="loginForm.loginName" placeholder="请输入用户名" :prefix-icon="UserIcon" size="large" autocomplete="new-password" />
+            <div class="history-tags" v-if="loginHistory.length">
+              <span class="history-label">最近登录：</span>
+              <el-tag v-for="n in loginHistory" :key="n" size="small" class="history-tag" @click="loginForm.loginName=n">{{ n }}</el-tag>
+              <el-button link type="danger" size="small" class="history-clear" @click="clearHistory">清空</el-button>
+            </div>
           </el-form-item>
-
-          <!-- 密码输入框 -->
           <el-form-item label="密码" prop="password">
-            <el-input
-              v-model="loginForm.password"
-              type="password"
-              placeholder="请输入密码"
-              :prefix-icon="LockIcon"
-              size="large"
-              show-password
-              @keyup.enter="handleLogin"
-            />
+            <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" :prefix-icon="LockIcon" size="large" show-password autocomplete="new-password" @keyup.enter="handleLogin" />
           </el-form-item>
-
-          <!-- 登录按钮 -->
           <el-form-item>
-            <el-button
-              type="primary"
-              size="large"
-              class="login-btn"
-              :loading="loading"
-              @click="handleLogin"
-            >
-              {{ loading ? '登录中...' : '登 录' }}
-            </el-button>
+            <el-button type="primary" size="large" class="login-btn" :loading="loading" @click="handleLogin">{{ loading ? '登录中...' : '登 录' }}</el-button>
+          </el-form-item>
+        </el-form>
+
+        <!-- 验证码登录表单 -->
+        <el-form v-else ref="codeFormRef" :model="codeForm" :rules="codeRules" label-position="top" class="login-el-form">
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="codeForm.phone" placeholder="请输入手机号" :prefix-icon="PhoneIcon" size="large" />
+          </el-form-item>
+          <el-form-item label="验证码" prop="code">
+            <div class="code-row">
+              <el-input v-model="codeForm.code" placeholder="请输入验证码" size="large" class="code-input" @keyup.enter="handleCodeLogin" />
+              <el-button size="large" class="send-btn" :disabled="countdown>0" @click="sendCode">{{ countdown>0 ? countdown+'s' : '发送验证码' }}</el-button>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" class="login-btn" :loading="codeLoading" @click="handleCodeLogin">{{ codeLoading ? '登录中...' : '登 录' }}</el-button>
           </el-form-item>
         </el-form>
 
@@ -92,59 +81,115 @@ import { ref, reactive, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user.js'
+import axios from 'axios'
+import { decodeJwt } from '../utils/jwt.js'
 
-// Element Plus 图标（按需引用，保持包体积小）
-import { User, Lock } from '@element-plus/icons-vue'
+import { User, Lock, Phone } from '@element-plus/icons-vue'
 
-// shallowRef 适用于不会变化的对象引用，性能更好
 const UserIcon = shallowRef(User)
 const LockIcon = shallowRef(Lock)
+const PhoneIcon = shallowRef(Phone)
 
 const router = useRouter()
 const userStore = useUserStore()
 
-// ========== 表单数据 ==========
-const loginForm = reactive({
-  loginName: '',
-  password: ''
-})
+// ========== 登录模式 ==========
+const loginMode = ref('password')
 
-// ========== 表单校验规则 ==========
-const formRules = {
-  loginName: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
-  ]
+// ========== 登录历史 ==========
+const HISTORY_KEY = 'login_history'
+const loginHistory = ref(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'))
+
+function saveLoginHistory(loginName) {
+  if (!loginName) return
+  const list = loginHistory.value.filter(n => n !== loginName)
+  list.unshift(loginName)
+  loginHistory.value = list.slice(0, 10)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(loginHistory.value))
 }
 
-// ========== 表单引用（用于调用 validate） ==========
-const formRef = ref(null)
+function clearHistory() {
+  loginHistory.value = []
+  localStorage.removeItem(HISTORY_KEY)
+}
 
-// ========== 加载状态 ==========
+// ========== 密码登录 ==========
+const loginForm = reactive({ loginName: '', password: '' })
+const formRules = {
+  loginName: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+const formRef = ref(null)
 const loading = ref(false)
 
-// ========== 登录处理 ==========
 const handleLogin = async () => {
-  // 校验未通过时直接返回，不发送请求
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
-
   loading.value = true
   try {
-    // 调用 Pinia Store 的 login，内部自动调后端 + 解码 JWT + 存 localStorage
     await userStore.login(loginForm.loginName, loginForm.password)
-
-    // 登录成功，按角色跳转默认页面
+    saveLoginHistory(loginForm.loginName)
     ElMessage.success(`欢迎回来，${userStore.loginName}！`)
     router.push(userStore.defaultPage)
   } catch (err) {
-    const msg = err.response?.data?.message || '登录失败，请检查网络连接'
-    ElMessage.error(msg)
-  } finally {
-    loading.value = false
+    ElMessage.error(err.response?.data?.message || '登录失败')
+  } finally { loading.value = false }
+}
+
+// ========== 验证码登录 ==========
+const codeForm = reactive({ phone: '', code: '' })
+const codeRules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+}
+const codeFormRef = ref(null)
+const codeLoading = ref(false)
+const countdown = ref(0)
+
+const sendCode = async () => {
+  const phone = codeForm.phone
+  if (!/^1[3-9]\d{9}$/.test(phone)) { ElMessage.warning('请先输入正确的手机号'); return }
+  try {
+    await axios.post('/api/verification-code/send', null, { params: { phone } })
+    ElMessage.success('验证码已发送')
+    countdown.value = 60
+    const timer = setInterval(() => {
+      if (--countdown.value <= 0) { clearInterval(timer); countdown.value = 0 }
+    }, 1000)
+  } catch (err) {
+    ElMessage.error(err.response?.data?.message || '发送失败')
   }
+}
+
+const handleCodeLogin = async () => {
+  const valid = await codeFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  codeLoading.value = true
+  try {
+    const res = await axios.post('/api/user/login-by-code', { phone: codeForm.phone, code: codeForm.code })
+    const data = res.data.data
+    const payload = decodeJwt(data.token)
+    const roles = payload.roles ? payload.roles.split(',') : []
+
+    userStore.token = data.token
+    userStore.userId = data.userId
+    userStore.loginName = data.loginName
+    userStore.roles = roles
+
+    localStorage.setItem('token', data.token)
+    localStorage.setItem('userId', data.userId)
+    localStorage.setItem('loginName', data.loginName)
+    localStorage.setItem('roles', JSON.stringify(roles))
+
+    saveLoginHistory(userStore.loginName)
+    ElMessage.success(`欢迎回来，${userStore.loginName}！`)
+    router.push(userStore.defaultPage)
+  } catch (err) {
+    ElMessage.error(err.response?.data?.message || '登录失败')
+  } finally { codeLoading.value = false }
 }
 </script>
 
@@ -234,11 +279,51 @@ const handleLogin = async () => {
   font-size: 18px;
   font-weight: 600;
   color: #303133;
-  margin: 0 0 32px 0;
-  padding-bottom: 16px;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
   border-bottom: 2px solid #1677FF;
   display: inline-block;
 }
+
+/* —— 登录方式切换 —— */
+.login-tabs {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.tab-item {
+  font-size: 14px;
+  color: #909399;
+  cursor: pointer;
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s;
+}
+.tab-item.active {
+  color: #1677FF;
+  border-bottom-color: #1677FF;
+  font-weight: 500;
+}
+.tab-item:hover { color: #1677FF; }
+
+/* —— 验证码行 —— */
+.code-row {
+  display: flex;
+  gap: 8px;
+}
+.code-input {
+  flex: 1;
+}
+.send-btn {
+  min-width: 120px;
+  border-radius: 2px;
+}
+.login-autocomplete { width: 100%; }
+.history-tags { margin-top: 6px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.history-label { font-size: 12px; color: #909399; }
+.history-tag { cursor: pointer; }
+.history-tag:hover { opacity: 0.8; }
+.history-clear { font-size: 12px; margin-left: 4px; }
 
 /* 覆盖 Element Plus 表单样式，使其更符合系统规范 */
 .login-el-form :deep(.el-form-item__label) {
