@@ -114,7 +114,7 @@ import FormDialog from '../components/FormDialog.vue'
 import {
   HomeFilled, User, School, EditPen, Document,
   CircleCheck, Flag, Coin, Plus, TrendCharts,
-  Coin as Database, InfoFilled, Fold, Bell, ArrowDown
+  Coin as Database, InfoFilled, Fold, Bell, ArrowDown, Setting
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
