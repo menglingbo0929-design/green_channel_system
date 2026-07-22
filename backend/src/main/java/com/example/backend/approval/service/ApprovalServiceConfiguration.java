@@ -57,11 +57,6 @@ public class ApprovalServiceConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({
-            ApplicationStateQueryService.class,
-            ApplicationStateWriteService.class,
-            ApprovalRecordMapper.class
-    })
     ApprovalReviewService approvalReviewService(
             ApplicationStateQueryService stateQueryService,
             ApplicationStateWriteService stateWriteService,
@@ -87,12 +82,6 @@ public class ApprovalServiceConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({
-            ApplicationStateQueryService.class,
-            ApprovalApplicationQueryPort.class,
-            ApprovalRecordMapper.class,
-            StudentScopeService.class
-    })
     ApprovalWorkbenchQueryService approvalWorkbenchQueryService(
             ApplicationStateQueryService stateQueryService,
             StudentScopeService studentScopeService,
@@ -105,12 +94,6 @@ public class ApprovalServiceConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({
-            ApplicationStateQueryService.class,
-            ApplicationStateWriteService.class,
-            ApprovalRecordMapper.class,
-            ApprovalSubmissionRecordMapper.class
-    })
     ApprovalBatchSubmissionService approvalBatchSubmissionService(
             ApprovalSubmissionRecordMapper submissionRecords,
             ApprovalRecordMapper approvalRecords,

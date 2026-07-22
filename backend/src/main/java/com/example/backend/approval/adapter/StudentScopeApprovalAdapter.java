@@ -1,9 +1,11 @@
 package com.example.backend.approval.adapter;
 
 import com.example.backend.approval.port.StudentScopeService;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 /** Reuses member one's student-scope checks without exposing its persistence layer to approval. */
+@Primary
 @Service
 public class StudentScopeApprovalAdapter implements StudentScopeService {
 

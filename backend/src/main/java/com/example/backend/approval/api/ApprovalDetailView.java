@@ -17,7 +17,7 @@ public record ApprovalDetailView(
         Integer version
 ) {
     public ApprovalDetailView {
-        application = application == null ? Map.of() : Map.copyOf(application);
+        application = application == null ? Map.of() : new java.util.HashMap<>(application);
         attachments = attachments == null ? List.of() : List.copyOf(attachments);
         approvalRecords = approvalRecords == null ? List.of() : List.copyOf(approvalRecords);
         editableFields = editableFields == null ? List.of() : List.copyOf(editableFields);

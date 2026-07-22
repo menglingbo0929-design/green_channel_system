@@ -8,9 +8,11 @@ import com.example.backend.approval.port.UserRole;
 import com.example.backend.security.ICurrentUserProvider;
 import java.util.EnumSet;
 import java.util.Set;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 /** Adapts the authenticated JWT context to the approval module's trusted identity boundary. */
+@Primary
 @Service
 public class SecurityApprovalCurrentUserProvider implements CurrentUserProvider {
 
