@@ -14,7 +14,7 @@ export default defineConfig({
         rewrite: path => path.replace(/^\/member4-api/, '/api')
       },
       '/api': {
-        target: 'http://localhost:8083',
+        target: 'http://localhost:8080',
         changeOrigin: true
       }
     }
