@@ -11,7 +11,9 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-const useMock = import.meta.env.VITE_USE_MOCK !== 'false'
+// Real APIs are the safe default. Mock data must be enabled explicitly so a
+// missing environment variable cannot hide backend integration failures.
+const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 const unwrap = (response) => response.data?.data ?? response.data
 const valueOf = (value) => value == null ? '' : String(value)
 

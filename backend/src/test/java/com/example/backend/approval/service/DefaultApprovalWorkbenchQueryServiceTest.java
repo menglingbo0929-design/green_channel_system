@@ -15,6 +15,7 @@ import com.example.backend.approval.port.ApprovalApplicationQueryPort;
 import com.example.backend.approval.port.ApprovalApplicationDetail;
 import com.example.backend.approval.port.ApprovalApplicationSnapshot;
 import com.example.backend.approval.port.ApprovalDashboardData;
+import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.ApplicationStateQueryService;
 import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.LoginUser;
