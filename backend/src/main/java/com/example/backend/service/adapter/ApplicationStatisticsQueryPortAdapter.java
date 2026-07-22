@@ -207,7 +207,9 @@ public class ApplicationStatisticsQueryPortAdapter implements ApplicationStatist
         StringBuilder sql = new StringBuilder(" WHERE a.deleted=0 ");
         if (filter.getApplicationStatus() == null
                 || filter.getApplicationStatus().isBlank()) {
-            sql.append("AND a.status IN ('APPROVED','COMPLETED') ");
+            // 学校审核通过的欠费申请会先进入 CONFIRM_PENDING，待学校完成
+            // 欠费金额确认后才变为 COMPLETED；两种状态都属于统计口径。
+            sql.append("AND a.status IN ('APPROVED','CONFIRM_PENDING','COMPLETED') ");
         } else {
             sql.append("AND a.status=:applicationStatus ");
             parameters.addValue("applicationStatus", filter.getApplicationStatus());

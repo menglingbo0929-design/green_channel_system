@@ -7,7 +7,6 @@ import {
   fetchStatisticsPrintData,
   fetchStatisticsReport,
 } from '../../../api/statistics'
-import { useUserStore } from '../../../stores/user'
 import SchoolWorkspaceShell from '../../../components/school/SchoolWorkspaceShell.vue'
 
 /**
@@ -16,7 +15,6 @@ import SchoolWorkspaceShell from '../../../components/school/SchoolWorkspaceShel
  * 页面只负责把后端统计结果展示为数字、ECharts 图表和动态列表，不在前端写死
  * 演示数字。页头采用与页面 8 相同的无边框格式，右侧操作按钮仍保留在同一行。
  */
-const userStore = useUserStore()
 const loading = ref(false)
 const summary = ref(null)
 const report = ref({ columns: [], records: [], total: 0, pageNo: 1, pageSize: 20, pages: 0 })
@@ -24,7 +22,6 @@ const collegeChartRef = ref(null)
 const reasonChartRef = ref(null)
 const batchSelectRef = ref(null)
 const columnDialogVisible = ref(false)
-const dialogMode = ref('plan')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const selectedBatchKey = ref('')
@@ -145,14 +142,14 @@ function updateBatch(value) {
 }
 
 async function loadStatistics() {
-  const response = await fetchApplicationStatistics(queryParams.value, userStore.userId)
+  const response = await fetchApplicationStatistics(queryParams.value)
   summary.value = response.data.data
   await nextTick()
   renderCharts()
 }
 
 async function loadReport() {
-  const response = await fetchStatisticsReport(reportParams.value, userStore.userId)
+  const response = await fetchStatisticsReport(reportParams.value)
   report.value = response.data.data
 }
 
@@ -234,8 +231,7 @@ function resizeCharts() {
   reasonChart?.resize()
 }
 
-function openColumnDialog(mode) {
-  dialogMode.value = mode
+function openColumnDialog() {
   columnDialogVisible.value = true
 }
 
@@ -246,7 +242,7 @@ async function applyColumns() {
 }
 
 async function downloadExcel() {
-  const response = await exportStatisticsExcel(reportParams.value, userStore.userId)
+  const response = await exportStatisticsExcel(reportParams.value)
   const url = URL.createObjectURL(response.data)
   const link = document.createElement('a')
   link.href = url
@@ -256,7 +252,7 @@ async function downloadExcel() {
 }
 
 async function printReport() {
-  const response = await fetchStatisticsPrintData(reportParams.value, userStore.userId)
+  const response = await fetchStatisticsPrintData(reportParams.value)
   const printData = response.data.data
   const printWindow = window.open('', '_blank')
   const headers = printData.columns.map(column => `<th>${column.title}</th>`).join('')
@@ -307,8 +303,7 @@ onBeforeUnmount(() => {
           <div><h1>统计看板页</h1><p>用于查看绿色通道申请统计、金额统计与明细报表，仅学校管理员可访问。</p></div>
           <div class="heading-actions">
             <button type="button" @click="batchSelectRef?.focus()">历史批次切换</button>
-            <button type="button" @click="openColumnDialog('plan')">个人列方案</button>
-            <button type="button" @click="openColumnDialog('export')">导出列选择</button>
+            <button type="button" @click="openColumnDialog">导出列选择</button>
             <button type="button" class="primary" @click="downloadExcel">Excel导出</button>
             <button type="button" @click="printReport">报表打印</button>
           </div>
@@ -323,7 +318,7 @@ onBeforeUnmount(() => {
             <label><span>年级筛选</span><select v-model="filters.gradeId"><option value="">全部</option><option v-for="item in gradeOptions" :key="item.gradeId" :value="item.gradeId">{{ item.gradeName }}</option></select></label>
             <label><span>班级筛选</span><select v-model="filters.classId"><option value="">全部</option></select></label>
             <label><span>申请类型筛选</span><select v-model="filters.applicationType"><option value="">全部</option><option value="GREEN_CHANNEL">绿色通道</option><option value="LIVING_SUBSIDY">生活补助</option><option value="TRAVEL_SUBSIDY">路费补助</option></select></label>
-            <label><span>申请状态筛选</span><select v-model="filters.applicationStatus"><option value="">全部最终状态</option><option value="APPROVED">审核通过</option><option value="COMPLETED">已完成</option></select></label>
+            <label><span>申请状态筛选</span><select v-model="filters.applicationStatus"><option value="">全部最终状态</option><option value="APPROVED">审核通过</option><option value="CONFIRM_PENDING">待欠费确认</option><option value="COMPLETED">已完成</option></select></label>
             <label><span>欠费项目筛选</span><input v-model="filters.feeItemId" type="number" min="1" placeholder="全部" /></label>
             <label class="date-filter"><span>申请时间筛选</span><div><input v-model="filters.applicationStartTime" type="date" /><i>~</i><input v-model="filters.applicationEndTime" type="date" /></div></label>
           </div>
@@ -355,7 +350,7 @@ onBeforeUnmount(() => {
       </main>
 
     <div v-if="columnDialogVisible" class="dialog-mask" @click.self="columnDialogVisible = false">
-      <section class="column-dialog"><header><h2>{{ dialogMode === 'export' ? '选择导出列' : '个人列方案' }}</h2><button @click="columnDialogVisible = false">×</button></header><div class="column-options"><label v-for="column in availableColumns" :key="column.key"><input v-model="selectedColumns" type="checkbox" :value="column.key" />{{ column.title }}</label></div><footer><button @click="columnDialogVisible = false">取消</button><button class="primary" @click="applyColumns">应用</button></footer></section>
+      <section class="column-dialog"><header><h2>选择导出列</h2><button @click="columnDialogVisible = false">×</button></header><div class="column-options"><label v-for="column in availableColumns" :key="column.key"><input v-model="selectedColumns" type="checkbox" :value="column.key" />{{ column.title }}</label></div><footer><button @click="columnDialogVisible = false">取消</button><button class="primary" @click="applyColumns">应用</button></footer></section>
     </div>
     </div>
   </SchoolWorkspaceShell>

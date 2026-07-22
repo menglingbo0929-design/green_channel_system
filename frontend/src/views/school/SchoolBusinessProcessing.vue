@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchPendingArrears } from '../../api/confirmation'
+import { getApprovalDashboard } from '../../api/approval'
 import SchoolWorkspaceShell from '../../components/school/SchoolWorkspaceShell.vue'
 import ArrearsConfirmationList from './confirmation/ArrearsConfirmationList.vue'
 import ArrearsVoucher from './confirmation/ArrearsVoucher.vue'
@@ -16,7 +17,7 @@ import voidedApplicationIcon from '../../figures/voided-application.png'
 const route = useRoute()
 const router = useRouter()
 const activeTab = ref('arrears')
-const ownSummary = ref({ pendingArrearsCount: 0 })
+const ownSummary = ref({ pendingSchoolReviewCount: 0, pendingArrearsCount: 0 })
 
 const tabs = [
   { key: 'review', label: '最终审核' },
@@ -40,15 +41,22 @@ function openSchoolReview() {
 }
 
 const summaryCards = computed(() => [
-  { label: '待学校审核', value: '—', hint: '进入学校审核工作台处理', color: '#1677ff', icon: pendingReviewIcon },
-  { label: '欠费待确认', value: ownSummary.value.pendingArrearsCount, hint: '待确认欠费申请', color: '#ff7a00', icon: arrearsConfirmationIcon },
-  { label: '今日补录', value: '—', hint: '线下业务补录记录', color: '#00b96b', icon: supplementRecordIcon },
+  { label: '待学校审核', value: ownSummary.value.pendingSchoolReviewCount, hint: '进入学校审核工作台处理', color: '#1677ff', icon: pendingReviewIcon, action: openSchoolReview },
+  { label: '欠费待确认', value: ownSummary.value.pendingArrearsCount, hint: '待确认欠费申请', color: '#ff7a00', icon: arrearsConfirmationIcon, action: () => selectTab('arrears') },
+  { label: '今日补录', value: '—', hint: '线下业务补录记录', color: '#00b96b', icon: supplementRecordIcon, action: () => selectTab('supplement') },
   { label: '作废申请', value: '—', hint: '已作废业务记录', color: '#ff4d4f', icon: voidedApplicationIcon },
 ])
 
 async function loadOwnSummary() {
-  const response = await fetchPendingArrears({ pageNo: 1, pageSize: 1 })
-  ownSummary.value.pendingArrearsCount = Number(response.data.data?.total ?? 0)
+  // 两张卡来自两个模块。先写入成员四的待确认数，避免审核工作台暂不可用时
+  // 把已成功取得的欠费确认数量一并丢掉。
+  const arrearsResponse = await fetchPendingArrears({ pageNo: 1, pageSize: 1 })
+  ownSummary.value.pendingArrearsCount = Number(arrearsResponse.data.data?.total ?? 0)
+
+  const approvalDashboard = await getApprovalDashboard('SCHOOL', { page: 1, size: 1 })
+  ownSummary.value.pendingSchoolReviewCount = Number(
+    approvalDashboard?.pendingByLevel?.find(item => item.level === 'SCHOOL')?.count ?? 0,
+  )
 }
 
 onMounted(loadOwnSummary)
@@ -65,14 +73,14 @@ onMounted(loadOwnSummary)
       </section>
 
       <section class="metric-grid" aria-label="学校业务概览">
-        <article v-for="card in summaryCards" :key="card.label" class="summary-card">
+        <button v-for="card in summaryCards" :key="card.label" type="button" class="summary-card" @click="card.action?.()">
           <img :src="card.icon" :alt="card.label" />
           <div>
             <span>{{ card.label }}</span>
             <strong :style="{ color: card.color }">{{ card.value }}</strong>
             <small>{{ card.hint }}</small>
           </div>
-        </article>
+        </button>
       </section>
 
       <section class="business-panel">
@@ -171,7 +179,8 @@ onMounted(loadOwnSummary)
 .page-heading-row h1 { margin: 0 0 8px; color: #1f2937; font-size: 24px; line-height: 1; }
 .page-heading-row p { margin: 0; color: #6b7280; font-size: 13px; }
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
-.metric-grid .summary-card { min-height: 120px; padding: 20px 24px; gap: 18px; border: 1px solid #e5e7eb; border-radius: 4px; box-shadow: none; }
+.metric-grid .summary-card { min-height: 120px; padding: 20px 24px; gap: 18px; border: 1px solid #e5e7eb; border-radius: 4px; box-shadow: none; cursor: pointer; text-align: left; }
+.metric-grid .summary-card:hover { border-color: #b7d5ff; box-shadow: 0 4px 12px rgba(22, 119, 255, .08); }
 .metric-grid .summary-card img { width: 52px; height: 52px; }.metric-grid .summary-card div { gap: 4px; }
 .metric-grid .summary-card span { color: #4b5563; font-size: 14px; }.metric-grid .summary-card strong { font-size: 28px; }.metric-grid .summary-card small { color: #9ca3af; font-size: 12px; }
 .business-panel { min-height: 0; overflow: hidden; border-color: #e5e7eb; border-radius: 4px; }.tab-bar { height: 58px; gap: 12px; padding: 0 18px; border-bottom-color: #e5e7eb; }

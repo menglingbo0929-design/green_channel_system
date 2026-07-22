@@ -1,14 +1,12 @@
 <script setup>
 import { ref } from 'vue'
 import { getVoucher, printVoucher } from '../../../api/voucher'
-import { useUserStore } from '../../../stores/user'
 const voucherNo = ref('')
-const userStore = useUserStore()
 const voucher = ref(null)
 const loading = ref(false)
 async function load(print = false) {
   loading.value = true
-  const response = print ? await printVoucher(voucherNo.value, userStore.userId) : await getVoucher(voucherNo.value, userStore.userId)
+  const response = print ? await printVoucher(voucherNo.value) : await getVoucher(voucherNo.value)
   voucher.value = response.data.data
   loading.value = false
   if (print) setTimeout(() => window.print(), 0)
