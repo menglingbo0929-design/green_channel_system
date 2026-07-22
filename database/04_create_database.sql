@@ -150,7 +150,22 @@ DELIMITER ;
 
 CALL batch_insert_approval_record(100);
 
-INSERT INTO `approval_submission_record`
+CREATE TEMPORARY TABLE `seed_approval_submission_record` (
+  `batch_id` bigint NOT NULL,
+  `submission_level` varchar(32) NOT NULL,
+  `submission_type` varchar(32) NOT NULL,
+  `scope_type` varchar(32) NOT NULL,
+  `scope_id` bigint NOT NULL,
+  `application_id` bigint NOT NULL,
+  `review_round` int NOT NULL,
+  `submitter_id` bigint NOT NULL,
+  `submitted_count` int NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `request_id` varchar(64) NOT NULL,
+  `submit_time` datetime NOT NULL
+);
+
+INSERT INTO `seed_approval_submission_record`
 (`batch_id`, `submission_level`, `submission_type`, `scope_type`, `scope_id`, `application_id`, `review_round`, `submitter_id`, `submitted_count`, `status`, `request_id`, `submit_time`)
 VALUES
 (1001,'COUNSELOR','INITIAL_BATCH','COUNSELOR',20001,0,0,20001,32,'SUBMITTED','req_sub_20260717_000001','2026-07-01 09:10:00'),
@@ -254,7 +269,22 @@ VALUES
 (1018,'COLLEGE','RETURN_RESUBMIT','COLLEGE',30001,190,1,30001,1,'SUBMITTED','req_sub_20260717_000099','2026-07-17 09:33:00'),
 (1019,'COUNSELOR','RETURN_RESUBMIT','COUNSELOR',20002,194,2,20002,1,'SUBMITTED','req_sub_20260717_000100','2026-07-17 10:10:00');
 
-INSERT INTO `message_read_record`
+INSERT INTO `approval_submission_record`
+(`batch_type`, `green_channel_batch_id`, `subsidy_batch_id`, `submission_level`, `submission_type`, `scope_type`, `scope_id`, `application_id`, `review_round`, `submitter_id`, `submitted_count`, `status`, `request_id`, `submit_time`)
+SELECT
+  'GREEN_CHANNEL', `batch_id`, NULL, `submission_level`, `submission_type`, `scope_type`, `scope_id`,
+  `application_id`, `review_round`, `submitter_id`, `submitted_count`, `status`, `request_id`, `submit_time`
+FROM `seed_approval_submission_record`;
+
+DROP TEMPORARY TABLE `seed_approval_submission_record`;
+
+CREATE TEMPORARY TABLE `seed_message_read_record` (
+  `message_id` bigint NOT NULL,
+  `user_id` bigint NOT NULL,
+  `read_time` datetime NOT NULL
+);
+
+INSERT INTO `seed_message_read_record`
 (`message_id`, `user_id`, `read_time`)
 VALUES
 (1,10001,'2026-07-01 09:32:00'),
@@ -357,3 +387,35 @@ VALUES
 (98,10003,'2026-07-16 11:55:00'),
 (99,10004,'2026-07-16 14:22:00'),
 (100,10005,'2026-07-17 09:50:00');
+
+INSERT INTO `system_message`
+(`id`, `receiver_user_id`, `message_type`, `business_type`, `business_id`, `title`, `content`, `create_by`, `create_time`)
+SELECT
+  `message_id`, `user_id`,
+  CASE MOD(`message_id`, 4)
+    WHEN 0 THEN 'APPROVAL_APPROVED'
+    WHEN 1 THEN 'APPROVAL_RETURNED'
+    WHEN 2 THEN 'APPROVAL_REJECTED'
+    ELSE 'OFFLINE_PROCESSING'
+  END,
+  'APPLICATION', MOD(`message_id` - 1, 20) + 1,
+  CONCAT('审批消息 #', `message_id`),
+  CONCAT('用于成员三消息列表和已读状态联调的测试消息 #', `message_id`),
+  NULL,
+  DATE_SUB(`read_time`, INTERVAL 5 MINUTE)
+FROM `seed_message_read_record`;
+
+INSERT INTO `system_message`
+(`id`, `receiver_user_id`, `message_type`, `business_type`, `business_id`, `title`, `content`, `create_by`, `create_time`)
+VALUES
+(101,10001,'APPROVAL_RETURNED','APPLICATION',1,'申请已退回','请补充申请材料后重新提交。',NULL,'2026-07-17 10:00:00'),
+(102,10002,'APPROVAL_REJECTED','APPLICATION',2,'申请未通过','申请未通过，请查看审核意见。',NULL,'2026-07-17 10:05:00'),
+(103,10003,'APPROVAL_APPROVED','APPLICATION',3,'申请审核通过','学校已完成最终审核。',NULL,'2026-07-17 10:10:00'),
+(104,10004,'OFFLINE_PROCESSING','APPLICATION',4,'请办理线下手续','请按通知前往指定窗口办理后续手续。',NULL,'2026-07-17 10:15:00');
+
+INSERT INTO `message_read_record`
+(`message_id`, `user_id`, `read_time`)
+SELECT `message_id`, `user_id`, `read_time`
+FROM `seed_message_read_record`;
+
+DROP TEMPORARY TABLE `seed_message_read_record`;

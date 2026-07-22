@@ -24,6 +24,7 @@ let applications = seed.map((row, index) => ({
   returnResubmit: ['1003', '2003'].includes(row[0]),
 }))
 const batchSubmitted = { COUNSELOR: false, COLLEGE: false }
+const cancellationRequests = new Map()
 const messages = [
   { messageId: 1, messageType: 'APPROVAL_RETURNED', businessType: 'APPLICATION', businessId: 4103, title: '申请已退回', content: '请补充生源地贷款受理证明后重新提交。', read: false, createTime: '2026-07-20T10:20:00+08:00' },
   { messageId: 2, messageType: 'APPROVAL_APPROVED', businessType: 'APPLICATION', businessId: 4101, title: '申请审核通过', content: '学校已完成最终审核，请关注后续办理通知。', read: false, createTime: '2026-07-19T16:35:00+08:00' },
@@ -125,7 +126,14 @@ export async function getApprovalDetail(applicationId, role) {
   const records = [roleRecord('STUDENT', 'SUBMIT', '学生完成材料提交', 'COUNSELOR_PENDING', 72)]
   if (item.processedRoles.includes('COUNSELOR')) records.push(roleRecord('COUNSELOR', 'APPROVE', '材料完整，建议通过', item.status, 48))
   if (item.processedRoles.includes('COLLEGE')) records.push(roleRecord('COLLEGE', 'APPROVE', '学院复核通过', item.status, 24))
-  if (item.processedRoles.includes('SCHOOL')) records.push(roleRecord('SCHOOL', item.latestDecision || 'APPROVE', '学校完成终审', item.status, 3))
+  if (item.processedRoles.includes('SCHOOL')) {
+    if (item.cancelledFromStatus) {
+      records.push(roleRecord('SCHOOL', 'APPROVE', '学校完成终审', item.cancelledFromStatus, 3))
+      records.push(roleRecord('SCHOOL', 'CANCEL', item.cancellationReason, 'CANCELLED', 1))
+    } else {
+      records.push(roleRecord('SCHOOL', item.latestDecision || 'APPROVE', '学校完成终审', item.status, 3))
+    }
+  }
   return wait({
     application: toListItem(item),
     arrearsDetail: item.hasArrears ? { declaredAmount: item.declaredAmount, items: [{ name: '学费', amount: item.declaredAmount }] } : null,
@@ -186,9 +194,23 @@ export async function submitReturnResubmit(role, payload) {
 }
 
 export async function cancelApplication(applicationId, payload) {
+  if (!payload.requestId) throw new Error('取消请求缺少 requestId')
+  const replay = cancellationRequests.get(payload.requestId)
+  if (replay) {
+    if (replay.applicationId !== Number(applicationId)) throw new Error('requestId 已被其他取消操作使用')
+    return wait(replay.result)
+  }
   const item = applications.find((record) => record.applicationId === Number(applicationId))
   if (!item || !['APPROVED','CONFIRM_PENDING','COMPLETED'].includes(item.status)) throw new Error('当前状态不允许取消')
   if (!payload.reason?.trim()) throw new Error('请填写取消原因')
-  item.status = 'CANCELLED'; item.currentLevel = 'FINISHED'; item.version += 1
-  return wait({ applicationId: item.applicationId, status: item.status, statusName: '已取消', version: item.version }, 320)
+  if (item.version !== payload.version) throw new Error('版本冲突，请刷新申请后重新操作')
+  item.cancelledFromStatus = item.status
+  item.cancellationReason = payload.reason.trim()
+  item.status = 'CANCELLED'
+  item.currentLevel = 'FINISHED'
+  item.latestDecision = 'CANCEL'
+  item.version += 1
+  const result = { applicationId: item.applicationId, status: item.status, statusName: '已取消', version: item.version }
+  cancellationRequests.set(payload.requestId, { applicationId: item.applicationId, result })
+  return wait(result, 320)
 }
