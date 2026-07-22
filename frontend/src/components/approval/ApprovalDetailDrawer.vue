@@ -5,8 +5,18 @@ import { ACTION_META, formatDateTime } from '../../constants/approval'
 import StatusBadge from './StatusBadge.vue'
 
 const props = defineProps({ modelValue: Boolean, detail: Object, loading: Boolean, role: String })
-const emit = defineEmits(['update:modelValue', 'review'])
+const emit = defineEmits(['update:modelValue', 'review', 'cancel'])
 const application = computed(() => props.detail?.application || {})
+const hasReviewActions = computed(() => Boolean(props.detail?.allowedActions?.length))
+const canCancel = computed(() => props.role === 'SCHOOL'
+  && ['APPROVED', 'CONFIRM_PENDING', 'COMPLETED'].includes(application.value.status))
+
+function requestCancellation() {
+  emit('cancel', {
+    ...application.value,
+    version: props.detail?.version ?? application.value.version,
+  })
+}
 </script>
 
 <template>
@@ -24,6 +34,6 @@ const application = computed(() => props.detail?.application || {})
         <section class="detail-section"><div class="section-title"><h3>审核流程</h3></div><div class="flow-timeline"><div v-for="record in detail.approvalRecords" :key="record.id" class="flow-item"><i :class="`tone-${ACTION_META[record.action]?.tone || 'info'}`"></i><div><strong>{{ ACTION_META[record.action]?.label || record.action }}</strong><p>{{ record.comment }}</p><span>{{ record.approverName }} · {{ formatDateTime(record.createTime) }}</span></div></div><div v-if="detail.allowedActions.length" class="flow-item current"><i></i><div><strong>等待当前层级审核</strong><span>请核对材料后提交结论</span></div></div></div></section>
       </template>
     </div>
-    <template #footer><div class="drawer-footer"><span v-if="detail?.allowedActions.length">当前版本 v{{ detail.version }}</span><span v-else>该申请在当前角色下仅可查看</span><el-button v-if="detail?.allowedActions.length" type="primary" @click="emit('review', application)">开始审核</el-button></div></template>
+    <template #footer><div class="drawer-footer"><span v-if="hasReviewActions">当前版本 v{{ detail.version }}</span><span v-else-if="canCancel">该申请已生效，可由学校执行取消</span><span v-else>该申请在当前角色下仅可查看</span><div class="table-actions"><el-button v-if="canCancel" type="danger" plain @click="requestCancellation">取消申请</el-button><el-button v-if="hasReviewActions" type="primary" @click="emit('review', application)">开始审核</el-button></div></div></template>
   </el-drawer>
 </template>

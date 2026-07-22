@@ -6,7 +6,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import ApprovalDetailDrawer from '../../components/approval/ApprovalDetailDrawer.vue'
 import ReviewDialog from '../../components/approval/ReviewDialog.vue'
 import StatusBadge from '../../components/approval/StatusBadge.vue'
-import { getApprovalDashboard, getApprovalDetail, getApprovalList, getSubmissionStatus, reviewApplication, submitInitialBatch, submitReturnResubmit } from '../../api/approval'
+import BusinessConfirmDialog from '../../components/school/BusinessConfirmDialog.vue'
+import { cancelApplication, getApprovalDashboard, getApprovalDetail, getApprovalList, getSubmissionStatus, reviewApplication, submitInitialBatch, submitReturnResubmit } from '../../api/approval'
 import { APPLICATION_TYPE_META, createRequestId, formatDateTime, ROLE_META } from '../../constants/approval'
 
 const route = useRoute()
@@ -28,8 +29,12 @@ const reviewSubmitting = ref(false)
 const reviewTarget = ref(null)
 const batchSubmitting = ref(false)
 const resubmittingId = ref(null)
+const cancellationOpen = ref(false)
+const cancellationSubmitting = ref(false)
+const cancellationTarget = ref(null)
 const errorMessage = (error, fallback) => error.response?.data?.message || error.message || fallback
 const hasSelectedBatch = computed(() => Boolean(filters.batchType) && Number(filters.batchId) > 0)
+const cancellableStatuses = new Set(['APPROVED', 'CONFIRM_PENDING', 'COMPLETED'])
 
 const metrics = computed(() => {
   const common = [
@@ -106,6 +111,43 @@ async function openDetail(row) {
 function openReview(application) {
   reviewTarget.value = application
   reviewOpen.value = true
+}
+
+function canCancel(application) {
+  return role.value === 'SCHOOL' && cancellableStatuses.has(application?.status)
+}
+
+function openCancellation(application) {
+  if (!canCancel(application)) return
+  const detailVersion = detail.value?.application?.applicationId === application.applicationId
+    ? detail.value.version
+    : null
+  cancellationTarget.value = {
+    ...application,
+    version: application.version ?? detailVersion,
+  }
+  cancellationOpen.value = true
+}
+
+async function submitCancellation({ reason }) {
+  if (!cancellationTarget.value) return
+  cancellationSubmitting.value = true
+  try {
+    const result = await cancelApplication(cancellationTarget.value.applicationId, {
+      reason,
+      version: cancellationTarget.value.version,
+      requestId: createRequestId(),
+    })
+    ElMessage.success(`申请已取消，当前状态：${result.statusName || result.status || '已取消'}`)
+    cancellationOpen.value = false
+    detailOpen.value = false
+    cancellationTarget.value = null
+    await loadWorkspace()
+  } catch (error) {
+    ElMessage.error(errorMessage(error, '取消申请失败'))
+  } finally {
+    cancellationSubmitting.value = false
+  }
 }
 
 async function submitReview(payload) {
@@ -230,13 +272,14 @@ onMounted(loadWorkspace)
         <el-table-column label="申请金额" width="118"><template #default="{ row }">¥{{ row.declaredAmount.toLocaleString() }}</template></el-table-column>
         <el-table-column label="提交时间" width="136"><template #default="{ row }">{{ formatDateTime(row.submitTime) }}</template></el-table-column>
         <el-table-column label="状态" min-width="142"><template #default="{ row }"><StatusBadge :status="row.status" /></template></el-table-column>
-        <el-table-column label="操作" width="176" fixed="right"><template #default="{ row }"><div class="table-actions"><el-button size="small" @click="openDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="currentTab === 'pending'" size="small" type="primary" @click="openReview(row)">审核</el-button><el-button v-else-if="currentTab === 'returned' && usesBatchSubmission" size="small" type="primary" plain :loading="resubmittingId === row.applicationId" @click="resubmitReturned(row)">逐条补交</el-button></div></template></el-table-column>
+        <el-table-column label="操作" width="260" fixed="right"><template #default="{ row }"><div class="table-actions"><el-button size="small" @click="openDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="currentTab === 'pending'" size="small" type="primary" @click="openReview(row)">审核</el-button><el-button v-else-if="currentTab === 'returned' && usesBatchSubmission" size="small" type="primary" plain :loading="resubmittingId === row.applicationId" @click="resubmitReturned(row)">逐条补交</el-button><el-button v-if="canCancel(row)" size="small" type="danger" plain @click="openCancellation(row)">取消申请</el-button></div></template></el-table-column>
       </el-table>
 
       <div class="pagination-row"><span>共 {{ total }} 条记录</span><el-pagination v-model:current-page="filters.page" v-model:page-size="filters.size" layout="prev, pager, next" :total="total" @current-change="loadWorkspace" /></div>
     </section>
 
-    <ApprovalDetailDrawer v-model="detailOpen" :detail="detail" :loading="detailLoading" :role="role" @review="openReview" />
+    <ApprovalDetailDrawer v-model="detailOpen" :detail="detail" :loading="detailLoading" :role="role" @review="openReview" @cancel="openCancellation" />
     <ReviewDialog v-model="reviewOpen" :application="reviewTarget" :role="role" :submitting="reviewSubmitting" @submit="submitReview" />
+    <BusinessConfirmDialog v-model="cancellationOpen" mode="CANCEL_APPLICATION" :business="cancellationTarget || {}" :submitting="cancellationSubmitting" @confirm="submitCancellation" />
   </div>
 </template>
