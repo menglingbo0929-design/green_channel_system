@@ -8,9 +8,24 @@ const emit = defineEmits(['update:modelValue', 'submit'])
 const form = reactive({ action: 'APPROVE', comment: '', finalSubsidyAmount: null })
 const isSubsidy = computed(() => props.application?.applicationType !== 'GREEN_CHANNEL')
 const needsComment = computed(() => ['RETURN', 'REJECT'].includes(form.action))
-const availableQuota = computed(() => props.role === 'COUNSELOR' ? 8600 : props.application?.applicationType === 'GREEN_CHANNEL' ? 18 : 32600)
+const availableQuota = computed(() => {
+  const value = props.application?.applicationType === 'GREEN_CHANNEL'
+    ? props.application?.availableGiftQuota
+    : props.application?.availableSubsidyAmount
+  return value == null ? null : Number(value)
+})
+const resourceHint = computed(() => {
+  if (availableQuota.value == null || Number.isNaN(availableQuota.value)) {
+    return '资源名额与额度由后端在提交时进行最终校验'
+  }
+  return props.application?.applicationType === 'GREEN_CHANNEL'
+    ? `当前可用礼包名额：${availableQuota.value} 个`
+    : `当前可用额度：¥${availableQuota.value.toLocaleString()}`
+})
 const amountInvalid = computed(() => props.role === 'COUNSELOR' && isSubsidy.value && form.action === 'APPROVE'
-  && (!form.finalSubsidyAmount || form.finalSubsidyAmount > props.application?.declaredAmount || form.finalSubsidyAmount > availableQuota.value))
+  && (!form.finalSubsidyAmount
+    || form.finalSubsidyAmount > props.application?.declaredAmount
+    || (availableQuota.value != null && form.finalSubsidyAmount > availableQuota.value)))
 const submitDisabled = computed(() => (needsComment.value && !form.comment.trim()) || amountInvalid.value)
 
 watch(() => props.modelValue, (open) => {
@@ -51,7 +66,7 @@ function submit() {
     <el-alert
       v-if="form.action === 'APPROVE'"
       class="quota-alert"
-      :title="role === 'COLLEGE' && application?.applicationType === 'GREEN_CHANNEL' ? `学院当前可用礼包名额：${availableQuota} 个` : `当前可用额度：¥${availableQuota.toLocaleString()}`"
+      :title="resourceHint"
       type="info"
       :closable="false"
       show-icon

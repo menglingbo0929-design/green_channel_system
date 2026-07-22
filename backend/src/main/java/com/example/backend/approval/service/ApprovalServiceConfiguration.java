@@ -33,12 +33,15 @@ public class ApprovalServiceConfiguration {
         return Clock.systemDefaultZone();
     }
 
+    /**
+     * 审核流转、最终确认完成回调共用同一个工作流服务。
+     *
+     * 这里不能使用 {@code @ConditionalOnBean}：MyBatis Mapper 与跨模块状态适配器
+     * 的 Bean 定义在条件判断阶段尚未完全注册时，会使整个工作流服务被跳过，
+     * 进而导致 {@code ApprovalCompletionService} 无法注入。所需依赖直接作为
+     * 方法参数注入，由 Spring 在创建该 Bean 时解析即可。
+     */
     @Bean
-    @ConditionalOnBean({
-            ApplicationStateQueryService.class,
-            ApplicationStateWriteService.class,
-            ApprovalRecordMapper.class
-    })
     ApprovalWorkflowService approvalWorkflowService(
             ApprovalStateMachine stateMachine,
             ApplicationStateQueryService stateQueryService,
