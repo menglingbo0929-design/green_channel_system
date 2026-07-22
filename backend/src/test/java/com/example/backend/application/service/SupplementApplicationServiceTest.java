@@ -23,9 +23,13 @@ import com.example.backend.application.mapper.ApplicationMapper;
 import com.example.backend.application.mapper.ApplicationOperationMapper;
 import com.example.backend.application.mapper.ApplicationResourceMapper;
 import com.example.backend.model.dto.supplement.SupplementCreateDTO;
+import com.example.backend.model.dto.supplement.SupplementQueryDTO;
+import com.example.backend.model.dto.PageDTO;
 import com.example.backend.model.vo.schoolproxy.SchoolProxyStudentVO;
+import com.example.backend.service.port.SchoolProxyStudentQueryPort;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -35,7 +39,9 @@ class SupplementApplicationServiceTest {
     private final ApplicationOperationMapper operations = mock(ApplicationOperationMapper.class);
     private final ApplicationResourceMapper resources = mock(ApplicationResourceMapper.class);
     @SuppressWarnings("unchecked") private final ObjectProvider<ApprovalTransitionService> transitions = mock(ObjectProvider.class);
-    private final SupplementApplicationService service = new SupplementApplicationService(applications, mapper, operations, resources, transitions);
+    @SuppressWarnings("unchecked") private final ObjectProvider<SchoolProxyStudentQueryPort> studentQueries = mock(ObjectProvider.class);
+    private final SchoolProxyStudentQueryPort students = mock(SchoolProxyStudentQueryPort.class);
+    private final SupplementApplicationService service = new SupplementApplicationService(applications, mapper, operations, resources, transitions, studentQueries);
 
     @Test
     void createsSubsidySupplementAndCompletesTheAutomaticReview() {
@@ -67,6 +73,37 @@ class SupplementApplicationServiceTest {
                 () -> service.createSupplementDraft(command, student(), "ignored", 7L));
 
         assertEquals("SUPPLEMENT_DETAIL_REQUIRED", exception.getCode());
+    }
+
+    @Test
+    void returnsSupplementHistoryWithBatchStudentSnapshots() {
+        SupplementQueryDTO query = new SupplementQueryDTO();
+        query.setStatus("COMPLETED");
+        when(studentQueries.getIfAvailable()).thenReturn(students);
+        when(mapper.countSupplementPage(any(), any(), any(), any())).thenReturn(1L);
+        when(mapper.findSupplementPage(any(), any(), any(), any(), anyLong(), anyLong()))
+                .thenReturn(List.of(supplementApplication(42L)));
+        when(students.findEnabledStudentsByIds(any())).thenReturn(List.of(student()));
+        when(applications.containsArrears(42L)).thenReturn(false);
+
+        var page = service.findSupplementPage(query, new PageDTO().setPageNo(1).setPageSize(10), 7L);
+
+        assertEquals(1, page.getTotal());
+        assertEquals("20260001", page.getRecords().getFirst().getStudentNo());
+        assertEquals("COMPLETED", page.getRecords().getFirst().getStatus());
+    }
+
+    @Test
+    void returnsSupplementDetailWithStudentSnapshot() {
+        when(studentQueries.getIfAvailable()).thenReturn(students);
+        when(mapper.findBySource(42L, ApplicationSource.SUPPLEMENT)).thenReturn(supplementApplication(42L));
+        when(students.findEnabledStudentById(8L)).thenReturn(student());
+        when(applications.containsArrears(42L)).thenReturn(false);
+
+        var detail = service.findSupplementById(42L, 7L);
+
+        assertEquals("SUPPLEMENT", detail.getSource());
+        assertEquals("20260001", detail.getStudentNo());
     }
 
     private SupplementCreateDTO subsidyCommand() {

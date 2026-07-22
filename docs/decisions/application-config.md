@@ -585,11 +585,22 @@ subsidy_batch_id
 
 ```text
 application_no 生成格式
-附件允许类型、大小和存储目录
 退回申请资源保留时长及超时释放任务负责人
 统计模块跨表查询方式
 后端基础包名 com.example.backend / com.greenchannel.backend
 ```
+
+### 8.7 学校代申请附件实现规则（2026-07-22）
+
+为解除学校代申请提交的阻塞，第一阶段采用以下成员二本地开发实现：
+
+- 接口保持 `multipart/form-data`，文件字段固定为 `file`，每次上传必须使用新的 `requestId`；
+- 仅允许 PDF、JPG/JPEG、PNG，单文件大小为 `1 B` 至 `10 MiB`；后端同时校验扩展名、声明 MIME 类型和文件头；
+- 文件保存到独立的 `application.attachment-storage-path` 私有目录的 `school-proxy/` 子目录，使用不可猜测的随机 `file_id` 作为物理文件名；该目录不得加入静态资源映射；
+- `application_attachment` 只保存 `file_id` 和必要元数据，不保存公开静态路径；正式提交前至少需要一份有效附件；
+- 附件写入、资源预占和成员三 `submitInitial` 均使用既有事务边界；库存、学院/年级名额和补助额度使用条件原子更新，资源操作以 `application_operation_record` 的 `applicationId + operationType + requestId` 幂等。
+
+生产对象存储接入时仅替换受控存储实现，不改变附件表、接口字段、权限边界或审批事务契约。
 
 ## 9. 实施流程
 

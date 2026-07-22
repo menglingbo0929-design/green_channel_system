@@ -81,8 +81,14 @@ public class SecurityConfig {
                         // permitAll() = 放行，不管带没带 Token 都能访问
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()  // Swagger 页面
                         .requestMatchers("/api/user/login").permitAll()   // 密码登录
+                        .requestMatchers("/api/applications/**", "/api/green-channel/eligibility").permitAll()
+                        .requestMatchers("/api/green-channel/**").permitAll()
                         .requestMatchers("/api/user/login-by-code").permitAll()  // 验证码登录
                         .requestMatchers("/api/verification-code/send").permitAll()  // 发送验证码
+                        // 成员二学生申请模块在本地联调阶段使用 X-Student-Id / X-User-Id
+                        // 作为临时身份上下文；控制器仍会校验申请归属。接入可信 JWT
+                        // CurrentUserProvider 后应删除这两条开发期放行规则。
+                        .requestMatchers("/api/applications/**", "/api/green-channel/eligibility").permitAll()
                         // authenticated() = 必须带有效 Token 才能访问
                         .anyRequest().authenticated()
                 )

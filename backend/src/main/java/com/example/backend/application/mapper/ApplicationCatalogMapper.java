@@ -68,6 +68,9 @@ public interface ApplicationCatalogMapper {
     @Update("UPDATE fee_amount_option SET deleted=id WHERE id=#{id} AND deleted=0")
     int deleteFeeAmountOption(@Param("id") Long id);
 
+    @Update("UPDATE fee_amount_option SET fee_item_id=#{targetFeeItemId} WHERE id=#{id} AND deleted=0")
+    int moveFeeAmountOption(@Param("id") Long id, @Param("targetFeeItemId") Long targetFeeItemId);
+
     @Select("SELECT id, item_name AS name, enabled FROM gift_item WHERE deleted=0 "
             + "AND (#{includeDisabled}=true OR enabled=1) ORDER BY id")
     List<CatalogItemView> findGiftItems(@Param("includeDisabled") boolean includeDisabled);

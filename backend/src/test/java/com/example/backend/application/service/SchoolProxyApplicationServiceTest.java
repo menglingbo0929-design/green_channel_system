@@ -20,6 +20,8 @@ import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationMapper;
 import com.example.backend.application.mapper.ApplicationOperationMapper;
 import com.example.backend.application.mapper.ApplicationResourceMapper;
+import com.example.backend.approval.api.ApprovalTransitionService;
+import com.example.backend.approval.port.ApprovalResourceService;
 import com.example.backend.model.dto.schoolproxy.SchoolProxyArrearsItemDTO;
 import com.example.backend.model.dto.schoolproxy.SchoolProxyDraftDTO;
 import com.example.backend.model.dto.schoolproxy.SchoolProxyGiftItemDTO;
@@ -36,7 +38,9 @@ class SchoolProxyApplicationServiceTest {
     private final ApplicationOperationMapper operations = mock(ApplicationOperationMapper.class);
     private final ApplicationResourceMapper resources = mock(ApplicationResourceMapper.class);
     @SuppressWarnings("unchecked") private final ObjectProvider<SchoolProxyStudentQueryPort> students = mock(ObjectProvider.class);
-    private final SchoolProxyApplicationService service = new SchoolProxyApplicationService(applications, mapper, operations, resources, students);
+    @SuppressWarnings("unchecked") private final ObjectProvider<ApprovalTransitionService> transitions = mock(ObjectProvider.class);
+    @SuppressWarnings("unchecked") private final ObjectProvider<ApprovalResourceService> resourceServices = mock(ObjectProvider.class);
+    private final SchoolProxyApplicationService service = new SchoolProxyApplicationService(applications, mapper, operations, resources, students, transitions, resourceServices);
 
     @Test
     void returnsDependencyUnavailableWhenStudentPortIsNotInstalled() {
@@ -71,13 +75,14 @@ class SchoolProxyApplicationServiceTest {
     }
 
     @Test
-    void refusesSubmissionUntilAttachmentStorageAndResourceReservationAreAvailable() {
+    void refusesSubmissionWithoutAnAttachment() {
         when(mapper.findBySource(31L, ApplicationSource.SCHOOL_PROXY)).thenReturn(proxyApplication(31L, 2));
+        when(resources.countActiveAttachments(31L)).thenReturn(0);
 
         ApplicationException exception = assertThrows(ApplicationException.class,
                 () -> service.submit(31L, 2, "proxy-submit-1", 7L));
 
-        assertEquals("SCHOOL_PROXY_SUBMISSION_UNAVAILABLE", exception.getCode());
+        assertEquals("APPLICATION_ATTACHMENT_REQUIRED", exception.getCode());
     }
 
     private SchoolProxyDraftDTO draft() {

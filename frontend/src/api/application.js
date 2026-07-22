@@ -18,6 +18,7 @@ export const catalogAPI = {
   createFeeItem: (data) => api.post('/fee-items', data).then(payload),
   updateFeeItem: (id, data) => api.put(`/fee-items/${id}`, data).then(payload),
   deleteFeeItem: (id) => api.delete(`/fee-items/${id}`).then(payload),
+  mergeFeeItem: (id, targetId) => api.post(`/fee-items/${id}/merge`, null, { params: { targetId } }).then(payload),
   listFeeAmountOptions: (feeItemId, includeDisabled = true) => api.get('/fee-amount-options', { params: { feeItemId, includeDisabled } }).then(payload),
   createFeeAmountOption: (data) => api.post('/fee-amount-options', data).then(payload),
   updateFeeAmountOption: (id, data) => api.put(`/fee-amount-options/${id}`, data).then(payload),
@@ -39,6 +40,8 @@ export const studentApplicationAPI = {
   replaceGifts: (id, data) => api.put(`/applications/${id}/gifts`, data, { headers: developmentIdentity() }).then(payload),
   subsidy: (id) => api.get(`/applications/${id}/subsidy`, { headers: developmentIdentity() }).then(payload),
   replaceSubsidy: (id, data) => api.put(`/applications/${id}/subsidy`, data, { headers: developmentIdentity() }).then(payload),
+  uploadAttachment: (id, file, requestId) => { const form = new FormData(); form.append('file', file); return api.post(`/applications/${id}/attachments`, form, { params: { requestId }, headers: { ...developmentIdentity(), 'Content-Type': 'multipart/form-data' } }) },
+  submit: (id, version, requestId) => api.post(`/applications/${id}/submit`, null, { params: { version, requestId }, headers: developmentIdentity() }).then(payload),
 }
 
 export const resourceConfigAPI = {

@@ -7,7 +7,9 @@ import com.example.backend.application.dto.FeeAmountOptionView;
 import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationCatalogMapper;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +51,44 @@ public class ApplicationCatalogService {
             throw conflict("FEE_ITEM_IN_USE", "已有申请使用该欠费项目，不能删除");
         }
         if (mapper.deleteFeeItem(id) != 1) throw notFound("FEE_ITEM_NOT_FOUND", "欠费项目不存在");
+    }
+
+    /**
+     * Consolidates a duplicate fee item into the retained item. Amount options
+     * are migrated only when the target has no equivalent amount, and historical
+     * application references are never rewritten.
+     */
+    @Transactional
+    public CatalogItemView mergeFeeItem(Long sourceId, Long targetId) {
+        if (sourceId.equals(targetId)) {
+            throw conflict("FEE_ITEM_MERGE_TARGET_INVALID", "Cannot merge a fee item into itself");
+        }
+        requiredFeeItem(sourceId);
+        CatalogItemView target = requiredFeeItem(targetId);
+        if (!target.enabled()) {
+            throw new ApplicationException("FEE_ITEM_DISABLED", HttpStatus.BAD_REQUEST,
+                    "The merge target fee item is disabled");
+        }
+        if (mapper.countActiveArrearsByFeeItemId(sourceId) > 0) {
+            throw conflict("FEE_ITEM_IN_USE", "The source fee item is already used by an application");
+        }
+
+        Set<BigDecimal> targetAmounts = new HashSet<>();
+        for (FeeAmountOptionView option : mapper.findFeeAmountOptions(targetId, true)) {
+            targetAmounts.add(option.amount());
+        }
+        for (FeeAmountOptionView option : mapper.findFeeAmountOptions(sourceId, true)) {
+            if (targetAmounts.contains(option.amount())) {
+                mapper.deleteFeeAmountOption(option.id());
+            } else {
+                mapper.moveFeeAmountOption(option.id(), targetId);
+                targetAmounts.add(option.amount());
+            }
+        }
+        if (mapper.deleteFeeItem(sourceId) != 1) {
+            throw notFound("FEE_ITEM_NOT_FOUND", "The source fee item no longer exists");
+        }
+        return target;
     }
 
     public List<FeeAmountOptionView> findFeeAmountOptions(Long feeItemId, boolean includeDisabled) {

@@ -26,4 +26,48 @@ public interface ApplicationMapper {
     int updateSupplementMetadata(@Param("id") Long id, @Param("reason") String reason, @Param("handledAt") java.time.LocalDateTime handledAt);
     @Select("SELECT * FROM application WHERE id=#{id} AND source=#{source} AND deleted=0")
     Application findBySource(@Param("id") Long id, @Param("source") ApplicationSource source);
+
+    @Select("""
+            <script>
+            SELECT * FROM application
+            WHERE source = 'SUPPLEMENT' AND deleted = 0
+            <if test='studentId != null'>AND student_id = #{studentId}</if>
+            <if test='applicationType != null'>AND application_type = #{applicationType}</if>
+            <if test='batchId != null'>
+              AND ((batch_type = 'GREEN_CHANNEL' AND green_channel_batch_id = #{batchId})
+                OR (batch_type = 'SUBSIDY' AND subsidy_batch_id = #{batchId}))
+            </if>
+            <if test='status != null'>AND status = #{status}</if>
+            ORDER BY supplemented_at DESC, id DESC
+            LIMIT #{limit} OFFSET #{offset}
+            </script>
+            """)
+    List<Application> findSupplementPage(
+            @Param("studentId") Long studentId,
+            @Param("applicationType") ApplicationType applicationType,
+            @Param("batchId") Long batchId,
+            @Param("status") ApplicationStatus status,
+            @Param("limit") long limit,
+            @Param("offset") long offset
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM application
+            WHERE source = 'SUPPLEMENT' AND deleted = 0
+            <if test='studentId != null'>AND student_id = #{studentId}</if>
+            <if test='applicationType != null'>AND application_type = #{applicationType}</if>
+            <if test='batchId != null'>
+              AND ((batch_type = 'GREEN_CHANNEL' AND green_channel_batch_id = #{batchId})
+                OR (batch_type = 'SUBSIDY' AND subsidy_batch_id = #{batchId}))
+            </if>
+            <if test='status != null'>AND status = #{status}</if>
+            </script>
+            """)
+    long countSupplementPage(
+            @Param("studentId") Long studentId,
+            @Param("applicationType") ApplicationType applicationType,
+            @Param("batchId") Long batchId,
+            @Param("status") ApplicationStatus status
+    );
 }

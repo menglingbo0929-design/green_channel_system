@@ -53,6 +53,11 @@ public class ApplicationCatalogController {
         service.deleteFeeItem(id);
     }
 
+    @PostMapping("/fee-items/{id}/merge")
+    public CatalogItemView mergeFeeItem(@PathVariable Long id, @RequestParam Long targetId) {
+        return service.mergeFeeItem(id, targetId);
+    }
+
     @GetMapping("/fee-amount-options")
     public List<FeeAmountOptionView> feeAmountOptions(@RequestParam(required = false) Long feeItemId,
                                                         @RequestParam(defaultValue = "false") boolean includeDisabled) {

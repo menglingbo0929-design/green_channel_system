@@ -13,6 +13,7 @@ import com.example.backend.application.dto.FeeAmountOptionView;
 import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationCatalogMapper;
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 
@@ -74,6 +75,28 @@ class ApplicationCatalogServiceTest {
 
         assertEquals("GIFT_ITEM_IN_USE", exception.getCode());
         verify(mapper, never()).deleteGiftItem(9L);
+    }
+
+    @Test
+    void mergesUnusedFeeItemAndMovesItsUniqueAmountOptions() {
+        when(mapper.findFeeItem(7L)).thenReturn(new CatalogItemView(7L, "tuition", true));
+        when(mapper.findFeeItem(8L)).thenReturn(new CatalogItemView(8L, "2026 tuition", true));
+        when(mapper.countActiveArrearsByFeeItemId(7L)).thenReturn(0);
+        when(mapper.findFeeAmountOptions(8L, true)).thenReturn(List.of(
+                new FeeAmountOptionView(20L, 8L, new BigDecimal("1000"), true)
+        ));
+        when(mapper.findFeeAmountOptions(7L, true)).thenReturn(List.of(
+                new FeeAmountOptionView(10L, 7L, new BigDecimal("1000"), true),
+                new FeeAmountOptionView(11L, 7L, new BigDecimal("1200"), true)
+        ));
+        when(mapper.deleteFeeItem(7L)).thenReturn(1);
+
+        CatalogItemView result = service.mergeFeeItem(7L, 8L);
+
+        assertEquals(8L, result.id());
+        verify(mapper).deleteFeeAmountOption(10L);
+        verify(mapper).moveFeeAmountOption(11L, 8L);
+        verify(mapper).deleteFeeItem(7L);
     }
 
     @Test

@@ -7,6 +7,7 @@ import java.math.BigDecimal;
  * application-table owner; this interface only expresses what approval needs.
  */
 public interface ApprovalResourceService {
+    void reserveOnSubmit(Long applicationId, String requestId, Long operatorId);
     void applyCounselorSubsidyAmount(Long applicationId, BigDecimal amount, String requestId, Long operatorId);
     void validateCollegeApproval(Long applicationId);
     void confirmOnSchoolApproval(Long applicationId, String requestId, Long operatorId);

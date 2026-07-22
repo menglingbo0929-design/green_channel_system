@@ -14,8 +14,12 @@ public interface SchoolProxyStudentQueryPort {
     SchoolProxyStudentVO findEnabledStudentByStudentNo(String studentNo);
 
     /** 按学生 ID 查 */
-    SchoolProxyStudentVO findEnabledStudentById(Long studentId);
+    default SchoolProxyStudentVO findEnabledStudentById(Long studentId) {
+        throw new UnsupportedOperationException("按学生 ID 查询尚未实现");
+    }
 
     /** 批量查 */
-    List<SchoolProxyStudentVO> findEnabledStudentsByIds(Collection<Long> studentIds);
+    default List<SchoolProxyStudentVO> findEnabledStudentsByIds(Collection<Long> studentIds) {
+        throw new UnsupportedOperationException("批量学生查询尚未实现");
+    }
 }

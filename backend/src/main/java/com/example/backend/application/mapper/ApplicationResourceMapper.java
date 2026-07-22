@@ -43,4 +43,56 @@ public interface ApplicationResourceMapper {
 
     @Update("UPDATE subsidy_application SET expected_amount=#{expectedAmount}, final_amount=NULL WHERE application_id=#{applicationId} AND deleted=0")
     int updateSubsidy(@Param("applicationId") Long applicationId, @Param("expectedAmount") BigDecimal expectedAmount);
+    @Update("UPDATE subsidy_application SET final_amount=#{finalAmount} WHERE application_id=#{applicationId} AND deleted=0")
+    int updateSubsidyFinalAmount(@Param("applicationId") Long applicationId, @Param("finalAmount") BigDecimal finalAmount);
+
+    @Select("SELECT COUNT(*) FROM application_attachment WHERE application_id=#{applicationId} AND deleted=0")
+    int countActiveAttachments(Long applicationId);
+
+    @Insert("INSERT INTO application_attachment(application_id,file_id,original_filename,content_type,file_size) VALUES(#{applicationId},#{fileId},#{originalFilename},#{contentType},#{fileSize})")
+    int insertAttachment(@Param("applicationId") Long applicationId, @Param("fileId") String fileId,
+                         @Param("originalFilename") String originalFilename, @Param("contentType") String contentType,
+                         @Param("fileSize") long fileSize);
+
+    @Update("UPDATE batch_gift_item SET reserved_count=reserved_count+#{quantity} WHERE id=#{batchGiftItemId} AND deleted=0 AND stock_total-reserved_count>=#{quantity}")
+    int reserveGiftStock(@Param("batchGiftItemId") Long batchGiftItemId, @Param("quantity") int quantity);
+    @Update("UPDATE college_gift_quota SET reserved_count=reserved_count+#{quantity} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND quota_total-reserved_count>=#{quantity}")
+    int reserveCollegeGiftQuota(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("quantity") int quantity);
+    @Update("UPDATE grade_gift_quota SET reserved_count=reserved_count+#{quantity} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND quota_total-reserved_count>=#{quantity}")
+    int reserveGradeGiftQuota(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("quantity") int quantity);
+    @Update("UPDATE batch_gift_item SET reserved_count=reserved_count-#{quantity} WHERE id=#{batchGiftItemId} AND deleted=0 AND reserved_count>=#{quantity}")
+    int releaseGiftStockReservation(@Param("batchGiftItemId") Long batchGiftItemId, @Param("quantity") int quantity);
+    @Update("UPDATE college_gift_quota SET reserved_count=reserved_count-#{quantity} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND reserved_count>=#{quantity}")
+    int releaseCollegeGiftQuotaReservation(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("quantity") int quantity);
+    @Update("UPDATE grade_gift_quota SET reserved_count=reserved_count-#{quantity} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND reserved_count>=#{quantity}")
+    int releaseGradeGiftQuotaReservation(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("quantity") int quantity);
+    @Update("UPDATE batch_gift_item SET reserved_count=reserved_count-#{quantity}, used_count=used_count+#{quantity} WHERE id=#{batchGiftItemId} AND deleted=0 AND reserved_count>=#{quantity}")
+    int confirmGiftStock(@Param("batchGiftItemId") Long batchGiftItemId, @Param("quantity") int quantity);
+    @Update("UPDATE college_gift_quota SET reserved_count=reserved_count-#{quantity}, used_count=used_count+#{quantity} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND reserved_count>=#{quantity}")
+    int confirmCollegeGiftQuota(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("quantity") int quantity);
+    @Update("UPDATE grade_gift_quota SET reserved_count=reserved_count-#{quantity}, used_count=used_count+#{quantity} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND reserved_count>=#{quantity}")
+    int confirmGradeGiftQuota(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("quantity") int quantity);
+    @Update("UPDATE batch_gift_item SET used_count=used_count-#{quantity} WHERE id=#{batchGiftItemId} AND deleted=0 AND used_count>=#{quantity}")
+    int releaseGiftStockUsage(@Param("batchGiftItemId") Long batchGiftItemId, @Param("quantity") int quantity);
+    @Update("UPDATE college_gift_quota SET used_count=used_count-#{quantity} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND used_count>=#{quantity}")
+    int releaseCollegeGiftQuotaUsage(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("quantity") int quantity);
+    @Update("UPDATE grade_gift_quota SET used_count=used_count-#{quantity} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND used_count>=#{quantity}")
+    int releaseGradeGiftQuotaUsage(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("quantity") int quantity);
+
+    @Update("UPDATE college_subsidy_quota SET reserved_amount=reserved_amount+#{amount} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND quota_amount-reserved_amount>=#{amount}")
+    int reserveCollegeSubsidyQuota(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("amount") BigDecimal amount);
+    @Update("UPDATE grade_subsidy_quota SET reserved_amount=reserved_amount+#{amount} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND quota_amount-reserved_amount>=#{amount}")
+    int reserveGradeSubsidyQuota(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("amount") BigDecimal amount);
+    @Update("UPDATE college_subsidy_quota SET reserved_amount=reserved_amount-#{amount} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND reserved_amount>=#{amount}")
+    int releaseCollegeSubsidyReservation(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("amount") BigDecimal amount);
+    @Update("UPDATE grade_subsidy_quota SET reserved_amount=reserved_amount-#{amount} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND reserved_amount>=#{amount}")
+    int releaseGradeSubsidyReservation(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("amount") BigDecimal amount);
+    @Update("UPDATE college_subsidy_quota SET reserved_amount=reserved_amount-#{amount}, used_amount=used_amount+#{amount} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND reserved_amount>=#{amount}")
+    int confirmCollegeSubsidyQuota(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("amount") BigDecimal amount);
+    @Update("UPDATE grade_subsidy_quota SET reserved_amount=reserved_amount-#{amount}, used_amount=used_amount+#{amount} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND reserved_amount>=#{amount}")
+    int confirmGradeSubsidyQuota(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("amount") BigDecimal amount);
+    @Update("UPDATE college_subsidy_quota SET used_amount=used_amount-#{amount} WHERE batch_id=#{batchId} AND college_id=#{collegeId} AND deleted=0 AND used_amount>=#{amount}")
+    int releaseCollegeSubsidyUsage(@Param("batchId") Long batchId, @Param("collegeId") Long collegeId, @Param("amount") BigDecimal amount);
+    @Update("UPDATE grade_subsidy_quota SET used_amount=used_amount-#{amount} WHERE batch_id=#{batchId} AND grade_id=#{gradeId} AND deleted=0 AND used_amount>=#{amount}")
+    int releaseGradeSubsidyUsage(@Param("batchId") Long batchId, @Param("gradeId") Long gradeId, @Param("amount") BigDecimal amount);
 }

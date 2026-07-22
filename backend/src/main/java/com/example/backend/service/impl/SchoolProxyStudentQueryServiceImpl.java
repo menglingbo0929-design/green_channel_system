@@ -6,6 +6,7 @@ import com.example.backend.model.domain.*;
 import com.example.backend.model.vo.schoolproxy.SchoolProxyStudentVO;
 import com.example.backend.service.port.SchoolProxyStudentQueryPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
  * 学校代申请学生查询实现 —— 成员一
  */
 @Service
+@Primary
 @RequiredArgsConstructor
 public class SchoolProxyStudentQueryServiceImpl implements SchoolProxyStudentQueryPort {
 

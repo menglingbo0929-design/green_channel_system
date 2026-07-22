@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Document, EditPen, Refresh, Search, Tickets, View, Wallet } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import ApprovalDetailDrawer from '../../components/approval/ApprovalDetailDrawer.vue'
@@ -8,6 +9,7 @@ import { getMyApplicationDetail, getMyApplications } from '../../api/approval'
 import { APPLICATION_TYPE_META, formatDateTime } from '../../constants/approval'
 
 const loading = ref(false)
+const router = useRouter()
 const records = ref([])
 const total = ref(0)
 const detailOpen = ref(false)
@@ -75,7 +77,7 @@ async function openDetail(row) {
 
 function handlePrimaryAction(row) {
   if (row.status === 'DRAFT' || row.status?.endsWith('_RETURNED')) {
-    ElMessage.info('申请编辑页由成员二模块承接，路由接入后将携带当前申请 ID 跳转。')
+    router.push({ name: 'StudentCenter', query: { applicationId: row.applicationId, applicationType: row.applicationType } })
     return
   }
   ElMessage.info('当前申请已进入后续办理阶段，请关注消息中心通知。')
@@ -97,7 +99,7 @@ onMounted(loadApplications)
       </div>
       <div class="page-actions">
         <el-button @click="loadApplications"><el-icon><Refresh /></el-icon>刷新</el-button>
-        <el-button type="primary"><el-icon><Document /></el-icon>发起新申请</el-button>
+        <el-button type="primary" @click="router.push({ name: 'StudentCenter' })"><el-icon><Document /></el-icon>发起新申请</el-button>
       </div>
     </section>
 
