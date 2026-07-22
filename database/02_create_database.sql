@@ -273,7 +273,9 @@ CREATE TABLE `approval_record` (
 -- 批量上报记录表
 CREATE TABLE `approval_submission_record` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `batch_id` bigint NOT NULL COMMENT '批次 ID',
+  `batch_type` varchar(32) NOT NULL COMMENT '批次类型：GREEN_CHANNEL/SUBSIDY',
+  `green_channel_batch_id` bigint NULL DEFAULT NULL COMMENT '绿色通道批次 ID',
+  `subsidy_batch_id` bigint NULL DEFAULT NULL COMMENT '补助批次 ID',
   `submission_level` varchar(32) NOT NULL COMMENT '上报层级：COUNSELOR/COLLEGE',
   `submission_type` varchar(32) NOT NULL COMMENT '上报类型：INITIAL_BATCH首次批量/RETURN_RESUBMIT退回补交',
   `scope_type` varchar(32) NOT NULL COMMENT '范围类型：COUNSELOR/COLLEGE',
@@ -288,8 +290,17 @@ CREATE TABLE `approval_submission_record` (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_submission_request` (`request_id`),
-  UNIQUE KEY `uk_submission_scope` (`batch_id`,`submission_level`,`scope_id`,`submission_type`,`application_id`,`review_round`),
-  KEY `idx_submission_batch` (`batch_id`,`submission_level`,`submit_time`)
+  UNIQUE KEY `uk_submission_green_scope` (`green_channel_batch_id`,`submission_level`,`scope_id`,`submission_type`,`application_id`,`review_round`),
+  UNIQUE KEY `uk_submission_subsidy_scope` (`subsidy_batch_id`,`submission_level`,`scope_id`,`submission_type`,`application_id`,`review_round`),
+  KEY `idx_submission_green_batch` (`green_channel_batch_id`,`submission_level`,`submit_time`),
+  KEY `idx_submission_subsidy_batch` (`subsidy_batch_id`,`submission_level`,`submit_time`),
+  CONSTRAINT `chk_submission_batch_reference` CHECK (
+    (`batch_type` = 'GREEN_CHANNEL' AND `green_channel_batch_id` IS NOT NULL AND `subsidy_batch_id` IS NULL)
+    OR
+    (`batch_type` = 'SUBSIDY' AND `green_channel_batch_id` IS NULL AND `subsidy_batch_id` IS NOT NULL)
+  ),
+  CONSTRAINT `chk_submission_review_round` CHECK (`review_round` >= 0),
+  CONSTRAINT `chk_submission_count` CHECK (`submitted_count` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='辅导员/学院批量上报、退回单条补交记录表(成员三维护)';
 
 -- 系统消息表

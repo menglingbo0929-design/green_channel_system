@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -154,6 +155,59 @@ class ApprovalCancellationServiceTest {
         verify(stateQueryService, never()).getRequiredState(10L);
         verify(resourceService, never()).releaseOnCancel(
                 org.mockito.ArgumentMatchers.any(), anyString(), org.mockito.ArgumentMatchers.any()
+        );
+    }
+
+    @Test
+    void rejectsCancellationWhenApplicationVersionChanged() {
+        when(stateQueryService.getRequiredState(10L)).thenReturn(snapshot(
+                ApplicationStatus.APPROVED, ApprovalLevel.FINISHED, 2, 4
+        ));
+
+        ApprovalException exception = assertThrows(
+                ApprovalException.class,
+                () -> service.cancel(10L, 3, "cancel-version-conflict", "版本冲突", 99L)
+        );
+
+        assertEquals(ApprovalErrorCode.APPROVAL_VERSION_CONFLICT, exception.getCode());
+        verify(stateWriteService, never()).updateState(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()
+        );
+        verify(resourceService, never()).releaseOnCancel(
+                org.mockito.ArgumentMatchers.any(), anyString(), org.mockito.ArgumentMatchers.any()
+        );
+    }
+
+    @Test
+    void resourceReleaseFailureStopsDocumentAuditAndMessageSideEffects() {
+        when(stateQueryService.getRequiredState(10L)).thenReturn(snapshot(
+                ApplicationStatus.COMPLETED, ApprovalLevel.FINISHED, 2, 3
+        ));
+        when(stateWriteService.updateState(
+                10L,
+                ApplicationStatus.COMPLETED,
+                ApplicationStatus.CANCELLED,
+                ApprovalLevel.FINISHED,
+                3,
+                99L
+        )).thenReturn(snapshot(ApplicationStatus.CANCELLED, ApprovalLevel.FINISHED, 2, 4));
+        when(arrearsDocumentService.hasIrreversibleOfflineProcessing(10L)).thenReturn(false);
+        doThrow(new IllegalStateException("resource release failed"))
+                .when(resourceService).releaseOnCancel(10L, "cancel-resource-failure", 99L);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.cancel(10L, 3, "cancel-resource-failure", "资源释放失败", 99L)
+        );
+
+        verify(arrearsDocumentService, never()).voidDocumentForCancellation(
+                org.mockito.ArgumentMatchers.any(), anyString(), org.mockito.ArgumentMatchers.any()
+        );
+        verify(approvalRecordMapper, never()).insert(org.mockito.ArgumentMatchers.any());
+        verify(systemMessageService, never()).sendApprovalCancelled(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), anyString()
         );
     }
 
