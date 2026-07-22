@@ -19,10 +19,6 @@ import com.example.backend.approval.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.approval.port.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
-import com.example.backend.application.dto.ArrearsItemCommand;
-import com.example.backend.application.port.ReviewableApplicationEditService;
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,8 +44,6 @@ class ApprovalReviewServiceTest {
     private ObjectProvider<ApprovalMessageRecipientResolver> recipients;
     private ObjectProvider<SystemMessageService> messages;
     private ObjectProvider<StudentScopeService> scopes;
-    private ObjectProvider<ReviewableApplicationEditService> edits;
-    private ReviewableApplicationEditService editService;
     private StudentScopeService scopeService;
     private ApprovalReviewService service;
 
@@ -64,16 +58,13 @@ class ApprovalReviewServiceTest {
         recipients = mock(ObjectProvider.class);
         messages = mock(ObjectProvider.class);
         scopes = mock(ObjectProvider.class);
-        edits = mock(ObjectProvider.class);
-        editService = mock(ReviewableApplicationEditService.class);
         scopeService = mock(StudentScopeService.class);
         when(records.findByRequestId(anyString())).thenReturn(Optional.empty());
         when(query.getRequiredState(10L)).thenReturn(snapshot());
         when(scopes.getIfAvailable()).thenReturn(scopeService);
         when(scopeService.isCounselorResponsibleFor(99L, 20L)).thenReturn(true);
-        when(edits.getIfAvailable()).thenReturn(editService);
         service = new ApprovalReviewService(
-                query, writer, records, resources, details, recipients, messages, scopes, edits
+                query, writer, records, resources, details, recipients, messages, scopes
         );
     }
 
@@ -172,41 +163,6 @@ class ApprovalReviewServiceTest {
         verify(records, never()).insert(any());
     }
 
-    @Test
-    void editsAllowedGreenChannelFieldsThroughMemberTwoPortAndWritesAuditRecord() {
-        var command = new ApprovalReviewService.EditFieldsCommand(
-                10L, "根据纸质材料补充", List.of(new ArrearsItemCommand(7L, new BigDecimal("1200.00"), null)),
-                null, null, "核对纸质材料后更正", 3, "edit-10"
-        );
-        when(query.getRequiredState(10L)).thenReturn(snapshot(), snapshotWithVersion(4));
-
-        var result = service.editAllowedFields(counselor(), 10L, command);
-
-        assertEquals(4, result.version());
-        verify(editService).editForReview(org.mockito.ArgumentMatchers.eq(10L), any(), org.mockito.ArgumentMatchers.eq(99L));
-        ArgumentCaptor<ApprovalRecordEntity> captor = ArgumentCaptor.forClass(ApprovalRecordEntity.class);
-        verify(records).insert(captor.capture());
-        assertEquals(ApprovalAction.MODIFY, captor.getValue().getAction());
-        assertEquals("[\"applicationReason\",\"arrearsItems\"]", captor.getValue().getModifiedFields());
-        assertEquals(ApplicationStatus.COUNSELOR_PENDING, captor.getValue().getOldStatus());
-        assertEquals(ApplicationStatus.COUNSELOR_PENDING, captor.getValue().getNewStatus());
-    }
-
-    @Test
-    void rejectsSubsidyOnlyFieldForGreenChannelApplication() {
-        var command = new ApprovalReviewService.EditFieldsCommand(
-                10L, null, null, null, new BigDecimal("800.00"),
-                "调整申请金额", 3, "edit-wrong-type"
-        );
-
-        ApprovalException exception = assertThrows(ApprovalException.class,
-                () -> service.editAllowedFields(counselor(), 10L, command));
-
-        assertEquals(ApprovalErrorCode.APPROVAL_EDIT_FIELD_NOT_ALLOWED, exception.getCode());
-        verify(editService, never()).editForReview(any(), any(), any());
-        verify(records, never()).insert(any());
-    }
-
     private LoginUser counselor() {
         return new LoginUser(99L, UserRole.COUNSELOR, null, null);
     }
@@ -225,14 +181,6 @@ class ApprovalReviewServiceTest {
         return new ApplicationStateSnapshot(
                 10L, 20L, BatchType.GREEN_CHANNEL, 30L, ApplicationType.GREEN_CHANNEL,
                 ApplicationStatus.COUNSELOR_PENDING, ApprovalLevel.COUNSELOR, 1, 3
-        );
-    }
-
-    private ApplicationStateSnapshot snapshotWithVersion(int version) {
-        ApplicationStateSnapshot state = snapshot();
-        return new ApplicationStateSnapshot(
-                state.applicationId(), state.studentId(), state.batchType(), state.batchId(), state.applicationType(),
-                state.status(), state.currentLevel(), state.reviewRound(), version
         );
     }
 }

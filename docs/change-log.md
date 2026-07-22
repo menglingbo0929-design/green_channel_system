@@ -1,16 +1,6 @@
 
 # 共享结构与接口变更记录
 
-## 2026-07-22｜成员三审核允许字段授权、写入与审计闭环
-
-- 状态：`IMPLEMENTED`（成员三范围；成员二正式写入 Port 已合并）。
-- 接口：实现 `PUT /api/approvals/{applicationId}/editable-fields`，仅接受 JWT 当前审核人，不接受客户端身份字段。
-- 授权：角色必须匹配当前审核层级；辅导员与学院继续校验学生数据范围；字段按绿色通道或补助申请类型使用白名单，学生身份、组织、批次、来源和主键永不开放。
-- 跨模块边界：成员三调用成员二 `ReviewableApplicationEditService` 完成申请字段物理写入，不直接访问 `application` 或明细 Mapper。
-- 审计与并发：强制版本号、唯一 `requestId` 和修改说明；申请写入与 `approval_record` 的 `MODIFY/modified_fields` 记录处于同一事务，并支持幂等重放校验。
-- 前端：审核详情按后端 `editableFields` 显示修改入口，支持申请说明、现有欠费金额、礼包数量及申请补助金额的受控修改；真实 API 与显式 Mock 均已接线。
-- 验证：成员三 14 个针对性测试通过，前端生产构建通过；全量 Maven 生命周期仍被当前合并基线的成员四 Controller 编译错误和成员二旧测试编译错误阻塞。
-
 ## 2026-07-22｜成员四 JWT、待确认快照与统计页面收尾
 
 - 状态：代码接线完成；整体业务联调仍需前序流程产生真实 `CONFIRM_PENDING/COMPLETED` 数据。
