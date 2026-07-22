@@ -1,7 +1,6 @@
 package com.example.backend.security;
 
 import com.example.backend.model.dto.LoginUser;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,32 +8,37 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
+/** Exposes only the identity established by {@link JwtAuthenticationFilter}. */
 @Component
-@RequiredArgsConstructor
 public class CurrentUserProvider implements ICurrentUserProvider {
 
     @Override
     @SuppressWarnings("unchecked")
     public LoginUser getRequiredUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new IllegalStateException("当前请求未认证");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof String loginName)
+                || !(authentication.getDetails() instanceof Map<?, ?> rawDetails)) {
+            throw new IllegalStateException("Current request is not authenticated");
         }
 
-        String loginName = (String) auth.getPrincipal();
-        Map<String, Object> details = (Map<String, Object>) auth.getDetails();
+        Map<String, Object> details = (Map<String, Object>) rawDetails;
+        Long userId = asLong(details.get("userId"));
+        if (userId == null) {
+            throw new IllegalStateException("JWT does not contain userId");
+        }
 
-        Long userId = details != null ? (Long) details.get("userId") : null;
-        Long studentId = details != null ? (Long) details.get("studentId") : null;
-        Long collegeId = details != null ? (Long) details.get("collegeId") : null;
-
-        List<String> roles = auth.getAuthorities().stream()
+        List<String> roles = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .map(s -> s.startsWith("ROLE_") ? s.substring(5) : s)
-                .collect(Collectors.toList());
+                .map(value -> value.startsWith("ROLE_") ? value.substring(5) : value)
+                .distinct()
+                .toList();
+        return new LoginUser(userId, loginName, roles,
+                asLong(details.get("studentId")), asLong(details.get("collegeId")));
+    }
 
-        return new LoginUser(userId, loginName, roles, studentId, collegeId);
+    private Long asLong(Object value) {
+        return value instanceof Number number ? number.longValue() : null;
     }
 }

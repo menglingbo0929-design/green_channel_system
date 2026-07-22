@@ -6,6 +6,7 @@ import com.example.backend.mapper.StudentMapper;
 import com.example.backend.model.domain.Student;
 import com.example.backend.model.dto.ImportResult;
 import com.example.backend.service.StudentImportService;
+import com.example.backend.service.CounselorStudentService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
@@ -25,6 +26,7 @@ public class StudentController {
 
     private final StudentMapper studentMapper;
     private final StudentImportService importService;
+    private final CounselorStudentService counselorStudents;
 
     /** 列表查询 + 多条件筛选 */
     @GetMapping("list")
@@ -54,15 +56,25 @@ public class StudentController {
         student.setCreateTime(LocalDateTime.now());
         student.setUpdateTime(LocalDateTime.now());
         studentMapper.insert(student);
+        if (student.getCounselorId() != null) {
+            counselorStudents.assign(student.getCounselorId(), student.getId());
+        }
         return JsonResponse.successMessage("新增成功");
     }
 
     /** 编辑 */
     @PutMapping("{id}")
     public JsonResponse<Void> update(@PathVariable Long id, @RequestBody Student student) {
+        Student existing = studentMapper.selectById(id);
+        if (existing == null) return JsonResponse.failure("Student does not exist");
+        Long previousCounselorId = existing.getCounselorId();
         student.setId(id);
         student.setUpdateTime(LocalDateTime.now());
         studentMapper.updateById(student);
+        if (student.getCounselorId() != null && !student.getCounselorId().equals(previousCounselorId)) {
+            if (previousCounselorId != null) counselorStudents.remove(previousCounselorId, id);
+            counselorStudents.assign(student.getCounselorId(), id);
+        }
         return JsonResponse.successMessage("更新成功");
     }
 

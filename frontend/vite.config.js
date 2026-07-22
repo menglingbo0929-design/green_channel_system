@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // 页面 8、9 的成员四接口仍运行在 8083；独立代理不改变其他成员的 /api 请求。
       '/member4-api': {
-        target: 'http://127.0.0.1:8083',
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/member4-api/, '/api')
       },
