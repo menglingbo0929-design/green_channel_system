@@ -10,8 +10,9 @@ import com.example.backend.model.vo.statistics.ApplicationStatisticsVO;
  * 面向集合的只读聚合查询处理申请、组织、欠费、礼包、批次以及确认金额；禁止按申请逐条回调。
  * 本接口不授权成员四创建 application 或明细表 Mapper。</p>
  *
- * <p>TODO(成员二)：实现一次集合聚合查询，并补齐已批准的欠费原因字段后提供 Spring Bean；
- * TODO(成员四)：成员二实现合入后使用真实批次数据完成统计口径联调。</p>
+ * <p>当前正式实现为成员四的 ApplicationStatisticsQueryPortAdapter：使用真实申请、学生组织、
+ * 欠费、确认和礼包数据完成集合聚合，并按已批准的 arrears_reason_code 输出人数与金额口径。
+ * 后续联调只需要前序流程产生最终状态数据，不再新建第二套统计接口。</p>
  */
 public interface ApplicationStatisticsQueryPort {
     /**

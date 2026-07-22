@@ -6,6 +6,8 @@ import com.example.backend.application.dto.ArrearsVoucherApplicantSnapshot;
 import com.example.backend.application.dto.PageResult;
 import com.example.backend.application.dto.PendingArrearsApplication;
 import com.example.backend.application.dto.PendingArrearsQuery;
+import com.example.backend.application.dto.StudentOrganizationSnapshot;
+import com.example.backend.application.port.StudentOrganizationSnapshotQuery;
 import com.example.backend.model.dto.PageDTO;
 import com.example.backend.model.dto.confirmation.ArrearsConfirmationQueryDTO;
 import com.example.backend.model.vo.confirmation.PendingArrearsApplicationVO;
@@ -23,9 +25,9 @@ import java.util.Map;
  * 将成员二已经提交的申请读取接口适配为成员四确认和单据模块所需的返回对象。
  *
  * <p>本适配器不写 application、student 或欠费明细表，也不重新编写查询 SQL。
- * 当前成员二分页接口只提供申请 ID、编号、版本、学生 ID 和申报金额，因此列表先返回
- * 这些已经确定的字段；学生姓名和组织字段仍需成员一的 StudentOrganizationSnapshotQuery
- * 合入后，由成员二详情/批量快照接口统一补齐。</p>
+ * 当前成员二分页接口提供申请 ID、编号、版本、学生 ID 和申报金额；成员四在当前页内
+ * 一次批量调用成员一的 StudentOrganizationSnapshotQuery，补齐学号、姓名及组织字段。
+ * 详情和单据继续复用成员二的批量申请快照，不逐行访问其他成员维护的数据表。</p>
  */
 @Component
 public class ApplicationReadPortAdapter implements
@@ -35,6 +37,15 @@ public class ApplicationReadPortAdapter implements
     /** 成员二拥有的正式只读接口。 */
     @Autowired
     private com.example.backend.application.port.ArrearsConfirmationApplicationPort applicationReadPort;
+
+    /**
+     * 成员一已经提供的学生与组织只读快照。
+     *
+     * <p>列表只按当前页的 studentId 做一次批量读取，既不逐行查询，也不让成员四
+     * 直接访问 student、college、major、grade、class 等成员一维护的数据表。</p>
+     */
+    @Autowired
+    private StudentOrganizationSnapshotQuery studentOrganizationSnapshotQuery;
 
     /**
      * 接通页面 8 的待确认分页。
@@ -54,7 +65,17 @@ public class ApplicationReadPortAdapter implements
         Page<PendingArrearsApplicationVO> result = new Page<>(
                 source.pageNo(), source.pageSize(), source.total()
         );
-        result.setRecords(source.records().stream().map(this::toPendingVO).toList());
+        Map<Long, StudentOrganizationSnapshot> students = studentOrganizationSnapshotQuery
+                .findByStudentIds(source.records().stream()
+                        .map(PendingArrearsApplication::studentId)
+                        .distinct()
+                        .toList());
+        result.setRecords(source.records().stream()
+                .map(application -> toPendingVO(
+                        application,
+                        students.get(application.studentId())
+                ))
+                .toList());
         return result;
     }
 
@@ -79,14 +100,25 @@ public class ApplicationReadPortAdapter implements
         return result;
     }
 
-    private PendingArrearsApplicationVO toPendingVO(PendingArrearsApplication source) {
-        return new PendingArrearsApplicationVO()
+    private PendingArrearsApplicationVO toPendingVO(
+            PendingArrearsApplication source,
+            StudentOrganizationSnapshot student
+    ) {
+        PendingArrearsApplicationVO result = new PendingArrearsApplicationVO()
                 .setApplicationId(source.applicationId())
                 .setApplicationNo(source.applicationNo())
                 .setVersion(source.version())
                 .setStudentId(source.studentId())
                 .setAppliedAmount(source.appliedAmount())
                 .setStatus("CONFIRM_PENDING");
+        if (student == null) return result;
+        return result
+                .setStudentNo(student.studentNo())
+                .setStudentName(student.studentName())
+                .setCollegeName(student.collegeName())
+                .setMajorName(student.majorName())
+                .setGradeName(student.gradeName())
+                .setClassName(student.className());
     }
 
     private PendingArrearsApplicationVO toPendingDetail(ArrearsVoucherApplicantSnapshot source) {

@@ -103,10 +103,23 @@ onMounted(() => { void loadList() })
     <p v-if="message" class="notice" :class="messageType">{{ message }}</p>
     <section class="table-panel">
       <header class="table-heading"><h3>待确认申请</h3><span>共 {{ total }} 条</span></header>
-      <div class="table-wrap"><table><thead><tr><th>申请编号</th><th>学生信息</th><th>学院</th><th>申请类型</th><th>申报金额</th><th>当前状态</th><th>操作</th></tr></thead><tbody>
-        <tr v-for="row in rows" :key="row.applicationId"><td>{{ row.applicationNo }}</td><td><strong>{{ row.studentName }}</strong><small>{{ row.studentNo }}</small></td><td>{{ row.collegeName || '—' }}</td><td>{{ row.applicationTypeName || row.applicationType || '绿色通道' }}</td><td class="money">{{ formatMoney(row.appliedAmount) }}</td><td><span class="status-tag">待欠费确认</span></td><td><button type="button" class="text-button" @click="openConfirmation(row)">确认金额</button></td></tr>
-        <tr v-if="!loading && rows.length === 0"><td colspan="7" class="empty">暂无待确认数据</td></tr>
-      </tbody></table></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>申请编号</th><th>学生信息</th><th>学院</th><th>申请类型</th><th>申报金额</th><th>当前状态</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="row in rows" :key="row.applicationId">
+              <td>{{ row.applicationNo }}</td>
+              <td><strong>{{ row.studentName }}</strong><small>{{ row.studentNo }}</small></td>
+              <td>{{ row.collegeName || '—' }}</td>
+              <td>{{ row.applicationTypeName || row.applicationType || '绿色通道' }}</td>
+              <td class="money">{{ formatMoney(row.appliedAmount) }}</td>
+              <td><span class="status-tag">待欠费确认</span></td>
+              <td><button type="button" class="text-button" @click="openConfirmation(row)">确认金额</button></td>
+            </tr>
+            <tr v-if="!loading && rows.length === 0"><td colspan="7" class="empty">当前数据库中没有进入 CONFIRM_PENDING 的待确认申请</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
     <BusinessConfirmDialog v-model="confirmDialogOpen" mode="ARREARS_CONFIRM" :business="selected ?? {}" :submitting="confirmSubmitting" @confirm="submitConfirmation" />
   </section>

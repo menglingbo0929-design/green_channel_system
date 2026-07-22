@@ -7,9 +7,9 @@ import com.example.backend.model.vo.statistics.StatisticsReportRowVO;
 /**
  * 成员二向成员四提供的 6.1.7 统计明细查询边界。
  *
- * <p>TODO(成员二)：用一次面向集合的分页 SQL 查询申请、学生组织、批次、欠费、礼包、
- * 补助及确认金额，严格应用成员一的数据范围；排序 key 必须映射到固定 SQL 列，禁止把
- * 前端 sortBy 原样拼接进 SQL。成员四不得建立 Mapper 直接读取成员二或成员一的表。</p>
+ * <p>当前正式实现为成员四的 StatisticsReportQueryPortAdapter：使用面向集合的分页 SQL
+ * 查询申请、学生组织、批次、欠费、礼包、补助及确认金额；排序 key 固定映射到后端列名，
+ * 不把前端 sortBy 原样拼接进 SQL。访问权限由成员一的 StatisticsAccessPort 实现校验。</p>
  */
 public interface StatisticsReportQueryPort {
 

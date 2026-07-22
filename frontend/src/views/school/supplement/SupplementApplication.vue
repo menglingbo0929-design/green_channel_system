@@ -2,10 +2,8 @@
 import { reactive, ref } from 'vue'
 import { createSupplement, findSupplementStudent } from '../../../api/supplement'
 import BusinessConfirmDialog from '../../../components/school/BusinessConfirmDialog.vue'
-import { useUserStore } from '../../../stores/user'
 import SupplementHistory from './SupplementHistory.vue'
 
-const userStore = useUserStore()
 const student = ref(null)
 const result = ref(null)
 const loading = ref(false)
@@ -54,7 +52,7 @@ function removeItem(items, index) {
 /** 先查学生，避免操作员把申请补录到错误学号。 */
 function searchStudent() {
   runRequest(async () => {
-    const response = await findSupplementStudent(form.studentNo, userStore.userId)
+    const response = await findSupplementStudent(form.studentNo)
     student.value = response.data.data
   })
 }
@@ -99,7 +97,7 @@ function openSupplementConfirmation() {
 /** 操作员在弹窗中再次核对后，才调用真实补录接口。 */
 function submitSupplement() {
   runRequest(async () => {
-    const response = await createSupplement(pendingPayload.value, userStore.userId)
+    const response = await createSupplement(pendingPayload.value)
     result.value = response.data.data
     refreshKey.value += 1
     confirmDialogOpen.value = false
@@ -183,7 +181,7 @@ const arrearsReasonOptions = [
       <p>最终状态：{{ result.status }}；当前层级：{{ result.currentLevel }}；版本：{{ result.version }}</p>
     </section>
 
-    <SupplementHistory :user-id="userStore.userId" :refresh-key="refreshKey" />
+    <SupplementHistory :refresh-key="refreshKey" />
 
     <!-- 线下补录属于成员四执行型业务确认，不使用成员三的通过/退回/不通过弹窗。 -->
     <BusinessConfirmDialog
