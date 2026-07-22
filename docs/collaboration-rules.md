@@ -552,6 +552,26 @@ void checkStudentOwnsApplication(Long userId, Long applicationId)。
 
 ## 15. 2026-07-19｜成员四 6.1.1—6.1.3 实现核对后的固定契约
 
+### 15.0 学校取消时的欠费确认单据作废
+
+成员三学校取消接口只能通过成员四 `ArrearsDocumentService` 处理确认单据：
+
+```java
+boolean hasIrreversibleOfflineProcessing(Long applicationId);
+void voidDocumentForCancellation(Long applicationId, String reason, Long operatorId);
+```
+
+- 成员四实现使用 `arrears_confirmation.deleted` 表示单据作废：找到
+  `application_id = applicationId AND deleted = 0` 的记录后，将 `deleted` 更新为本行 `id`；
+  不物理删除，不新增单据状态、取消原因或操作人字段。
+- 没有确认记录或记录已经作废时，`voidDocumentForCancellation` 必须无更新返回，确保重复
+  取消请求不会重复作废。
+- 当前第一阶段没有线下领取、发放或履约表，因此成员四没有可判断的“不可逆线下处理”数据，
+  `hasIrreversibleOfflineProcessing` 固定返回 `false`。未来履约模块必须提供真实判断，不得
+  由确认表金额、时间或前端参数推断。
+- 成员四实现必须以 `Propagation.MANDATORY` 加入成员三外层取消事务；确认单据作废失败时，
+  申请状态、资源释放、审核记录和消息必须全部回滚。
+
 本节以已批准的 `docs/requirement.md`、当前 `database-design.md` 和当前成员四代码为依据，消除已经能够确定的命名分歧。它不把未合入的跨模块能力假定为已存在。
 
 ### 15.1 6.1.1 欠费最终确认：字段、状态和持久化
@@ -766,9 +786,9 @@ supplementReason
 
 ### 17.5 当前阻塞与完成判定
 
-截至 2026-07-20，成员三已经合入 `ApprovalTransitionService.completeSupplementReview`，成员四已经通过 `ApprovalCompletionPortAdapter` 将其适配为 `SupplementCompletionPort`，因此“自动写审核记录并推进补录状态”不再是阻塞项。成员一已经合入可信 `CurrentUserProvider`，但尚未提供可用的 `SchoolProxyStudentQueryPort` 学生查询 Bean；成员二尚未提供 `SupplementApplicationPort` 所需的补录明细/资源写入、详情和历史分页 Bean。成员四当前完成 Controller、DTO/VO、事务编排、成员三状态适配和页面八补录确认弹窗；学生查询和成员二申请写入能力合入后再演示真实补录。
+截至 2026-07-21，成员三已经提供 `ApprovalTransitionService.completeSupplementReview`，并实现 `SupplementCompletionPortAdapter` 加入成员四外层事务，因此“自动写审核记录并推进补录状态”不再是阻塞项。成员二已经提供补录创建、明细写入和直接调用成员三正式审批 Service 的实现；当前剩余阻塞是成员一按学号及按 ID/批量学生组织快照、成员二补录详情和历史读模型，以及真实数据端到端联调。成员二直接调用正式审批 Service 时，成员四不得再次调用 `SupplementCompletionPort`，避免重复推进。
 
-只有成员一身份/学生能力、成员二补录创建与历史查询、成员三自动审核流转全部合入，并使用真实 SQL 数据完成后端和前端联调后，6.1.4 才能标记为 `IMPLEMENTED`。
+只有成员一身份/学生能力、成员二补录详情与历史查询以及当前已完成的成员二创建、成员三自动审核流转全部使用真实 SQL 数据完成后端和前端联调后，6.1.4 才能整体标记为 `IMPLEMENTED`。
 
 ---
 
@@ -842,13 +862,13 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 
 | 任务 | 成员一必须提供 | 成员二必须提供 | 成员三必须提供 | 当前状态与解除条件 |
 |---|---|---|---|---|
-| 6.1.1 欠费最终确认 | 已有可信 `CurrentUserProvider`；仍须提供 `StudentOrganizationSnapshotQuery` 和学校数据范围校验 | 基础分页/详情接口已存在；成员四已新增 `ApplicationReadPortAdapter` 接通分页及详情对象转换，但详情中的学生组织字段仍依赖成员一快照 Bean | `ApprovalCompletionService.completeAfterConfirmation` 已合入；成员四已用 `ApprovalCompletionPortAdapter` 适配，在确认事务中完成 `CONFIRM_PENDING -> COMPLETED` | 页面 8 与 `/api/confirm/**` 已接线，成员二读取和成员三状态流转已接通；当前无法完整验证的是学生组织详情与学校权限。成员一快照/权限 Bean 合入后再完成真实确认闭环 |
-| 6.1.2 欠费单据 | `CurrentUserProvider` 已存在；仍缺 `StudentOrganizationSnapshotQuery`，以及 `ArrearsVoucherAccessPort` 的学校权限、学生本人归属和确认人姓名适配 | 批量快照入口已存在；成员四已在 `ApplicationReadPortAdapter` 中接通 `ArrearsVoucherApplicantQueryPort` 对象转换 | 无新增写操作；只读取已经完成的确认结果 | 页面 8 与 `/api/arrears-vouchers/**` 已接线；当前仍因成员一快照和访问控制 Bean 缺失，不能完整验证列表/详情/打印和学生本人查询 |
-| 6.1.3 学校代申请 | `CurrentUserProvider` 已存在；仍缺 `SchoolProxyStudentQueryPort` 真实学生查询和学校数据范围适配 | 已有 `ApplicationCreationService.createSchoolProxyApplication` 基础主表创建能力，但仍缺可注入的完整 `SchoolProxyApplicationPort`，包括明细、附件、资源预占和正式提交 | 已有 `ApprovalTransitionService.submitInitial` 状态能力，但必须由成员二完整提交入口在保存明细后调用 | 当前不是三方完全空缺，而是成员一学生 Bean、成员二完整代申请 Bean 尚未形成；两者合入后按“查学生→建草稿→传附件→提交”验证真实流程 |
-| 6.1.4 线下补录 | `CurrentUserProvider` 已存在；仍缺 `SchoolProxyStudentQueryPort` 真实学生查询和学校数据范围适配 | 仍缺 `SupplementApplicationPort`：补录草稿、欠费/礼包/补助明细、资源确认、详情和历史分页 | `ApprovalTransitionService.completeSupplementReview` 已合入；成员四已用 `ApprovalCompletionPortAdapter` 适配为 `SupplementCompletionPort` | 成员三自动审核阻塞已解除；当前只剩成员一学生查询 Bean 和成员二补录申请 Bean。两者合入后，在同一事务中验证创建、自动审核、详情和历史分页 |
-| 6.1.5 统计功能 | `CurrentUserProvider` 已存在；仍缺 `StatisticsAccessPort` 的学校角色与数据范围适配 | 仍缺 `ApplicationStatisticsQueryPort.queryFinalStatistics` 集合聚合 Bean、`arrears_reason_code` 字段和对应真实数据 | 无新增依赖 | 成员四 Controller、筛选 DTO、VO 和页面外壳已完成；权限 Bean、聚合 Bean、欠费原因字段和真实数据全部合入后，核对人数、金额、礼包、原因及历史批次统计 |
-| 6.1.6 统计筛选 | 与 6.1.5 共用仍未实现的 `StatisticsAccessPort` | 仍须在同一个 `ApplicationStatisticsQueryPort` 中支持批次、学院、专业、年级、班级、申请类型、最终状态、欠费项目和申请时间筛选 | 无新增依赖 | 参数和返回格式已经确定，真实筛选 SQL 尚未合入；与 6.1.5 一并完成 Apifox 和前端联调后解除阻塞 |
-| 6.1.7 报表明细/导出/打印 | 与 6.1.5 共用仍未实现的 `StatisticsAccessPort` | 仍缺 `StatisticsReportQueryPort.queryReportPage` 分页 Bean和真实报表数据 | 无新增依赖 | 成员四明细/历史/打印/Excel 代码已完成，公共 `pom.xml` 已按第 22 节仅追加 Apache POI 5.3.0；当前剩余阻塞为成员一权限 Bean、成员二报表分页 Bean 和真实 SQL 数据 |
+| 6.1.1 欠费最终确认 | `CurrentUserProvider`、学生画像查询和 `StudentOrganizationSnapshotQuery` 适配已可注入；仍缺学校数据范围 | 成员二待确认分页/详情和批量单据快照已存在 | 成员三 `ArrearsConfirmationCompletionPortAdapter` 已正式加入成员四确认事务 | 页面 8 与 `/api/confirm/**` 已接线；确认状态桥接已对齐。剩余是可信学校范围和真实数据的端到端验证 |
+| 6.1.2 欠费单据 | 学生组织快照已可通过成员一画像查询组装；仍缺成员一正式 `ArrearsVoucherAccessPort`，用于学校范围、学生归属与确认人姓名 | 成员二批量快照入口已存在 | 无新增写操作；学校取消时的 `ArrearsDocumentService` 已由成员四实现 | 单据读取、打印和学生本人查看仍不得依赖成员四直连用户/学生表；等待成员一正式访问 Port 后联调 |
+| 6.1.3 学校代申请 | 成员一 `SchoolProxyStudentQueryPort` 已实现按学号、ID 和批量 ID 查询；仍缺可信学校数据范围过滤 | 成员二正式 `SchoolProxyApplicationPort` 已实现草稿和明细写入；附件仍返回 501，正式提交仍返回 503 | `ApprovalTransitionService.submitInitial` 已可调用 | 查学生和建草稿可对接；附件存储与资源预占完成前不能提交到 `COUNSELOR_PENDING` |
+| 6.1.4 线下补录 | 成员一学生快照 Port 已具备按 ID / 批量 ID 查询 | 成员二正式 `SupplementApplicationPort` 已实现创建、明细和自动审核桥接；详情/历史方法仍主动返回 503，尚未消费新的学生快照 Port | `completeSupplementReview` 已实现，成员二创建时直接调用一次 | 创建补录可对接；列表/详情仍由成员二实现读模型后再联调，成员四不重复推进状态 |
+| 6.1.5 统计功能 | `StatisticsAccessPort` 已有学校角色校验实现，但尚未表达学校/组织数据范围 | 成员四已有集合 SQL 适配；成员二已落库 `arrears_reason_code`，但成员四统计仍需按该字段修正原因聚合 | 无新增依赖 | 统计外壳可用；修正原因统计、确认最终状态枚举与数据范围后再进行真实统计验证 |
+| 6.1.6 统计筛选 | 与 6.1.5 共用已具备角色校验但缺数据范围的 `StatisticsAccessPort` | 成员四已实现筛选 SQL 外壳；需与真实原因字段和最终状态口径统一 | 无新增依赖 | 参数与页面已完成；与 6.1.5 一并按真实数据验证筛选结果 |
+| 6.1.7 报表明细/导出/打印 | 与 6.1.5 共用，仍缺学校/组织数据范围 | 成员四已有分页查询适配和 Excel/打印生成；需修正原因列映射并按真实数据核对 | 无新增依赖 | 明细、历史、Excel 与打印接口结构已具备；口径修正及真实数据联调后才标记完成 |
 
 ### 20.1 统一完成判定
 
@@ -859,9 +879,9 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 
 ### 20.2 2026-07-20 最新数据库更新对依赖的影响
 
-最新 `main` 已在 `database/02_create_tables.sql` 增加 `counselor_student`、`green_channel_batch`、`batch_eligible_grade`、`subsidy_batch`、`subsidy_batch_eligible_grade`、`student_tag`、`policy_rule`，并在 `database/03_init_data.sql` 增加相应基础数据；`sys_user.login_name` 同时增加唯一索引。上述更新解决了基础组织、批次、标签和规则表不存在的问题，但**没有**自动形成成员四 Port 所需的 Spring Bean，也没有补齐 `arrears_application.arrears_reason_code`。
+最新 `main` 已在 `database/02_create_tables.sql` 增加 `counselor_student`、`green_channel_batch`、`batch_eligible_grade`、`subsidy_batch`、`subsidy_batch_eligible_grade`、`student_tag`、`policy_rule`，并在 `database/03_init_data.sql` 增加相应基础数据；`sys_user.login_name` 同时增加唯一索引。成员二也已通过 migration 补齐 `arrears_application.arrears_reason_code`。
 
-因此不能因为表已存在就把 6.1.3—6.1.7 标记为完成：成员一仍须提供学生/组织/权限查询实现，成员二仍须提供代申请、补录、统计聚合和报表分页实现。成员四只通过正式 Service/Port 调用，不直接新建跨模块 Mapper 查询这些新增表。
+表和接口已逐步合入，但不能因此把 6.1.3—6.1.7 标记为完成：学校代申请仍缺附件/资源预占，补录仍缺成员二详情/历史读模型，统计和报表仍缺学校数据范围及原因码口径修正。成员四只通过正式 Service/Port 调用，不直接新建跨模块 Mapper 查询这些新增表。
 
 ### 20.3 成员一尚未提供的能力单列
 
@@ -918,3 +938,35 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 ```
 
 该依赖仅供成员四 6.1.7 生成真正的 `.xlsx` 文件。此次修改不得同时调整 POM 中任何既有内容。
+
+---
+
+## 23. 2026-07-21｜成员二正式申请能力接入后的覆盖声明
+
+本节覆盖第 15.3、17.4、17.5 和第 20 节中与成员二能力状态相冲突的旧描述；旧节保留用于追溯，不再表示当前依赖状态。
+
+### 23.1 6.1.3 学校代申请
+
+- 成员二正式实现为 `application.service.SchoolProxyApplicationService`，并以 `SchoolProxyApplicationPort` 对成员四暴露创建草稿、附件和提交能力。成员四只注入该 Port；原成员四 `service.adapter.SchoolProxyApplicationPortAdapter` 已取消 Spring Bean 注册，只作为历史参考，禁止再直接写成员二申请、明细、附件和资源表。
+- 学生查询返回 `studentId`、学号、姓名、组织名称以及 `collegeId`、`majorId`、`gradeId`、`classId`。成员一仍须补齐可信学校数据范围校验，成员四不得以直接查学生表绕过。
+- 欠费明细中的 `arrearsReasonCode` 是固定枚举：`FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`；创建页面和补录页面均按该编码提交。
+- 附件端点在对象存储未接通前固定返回 `501 ATTACHMENT_STORAGE_UNAVAILABLE`；提交端点在附件/资源预占前置能力未接通前固定返回 `503 SCHOOL_PROXY_SUBMISSION_UNAVAILABLE`。成员四前端不得将任一返回渲染为提交成功。
+
+### 23.2 6.1.4 线下补录
+
+- 成员二正式实现为 `application.service.SupplementApplicationService`。成员四 `SupplementApplicationServiceImpl` 只调用 `SupplementApplicationPort`，原成员四 `service.adapter.SupplementApplicationPortAdapter` 已取消 Spring Bean 注册，禁止作为第二套写表实现。
+- 补录创建、明细写入、资源确认以及调用成员三 `ApprovalTransitionService.completeSupplementReview` 均在成员二正式 Service 的同一事务内完成。成员四不得再次调用 `SupplementCompletionPort`，否则会重复创建审核记录或重复推进状态。
+- 当前创建链路可接入真实 Port；补录分页和详情仍需要成员一提供按 `studentId` 查询及批量学生组织快照能力。该能力未提供时，成员二正式 Service 的列表/详情不可用，成员四不得用模拟记录补齐页面。
+
+### 24.1 欠费原因统计口径（2026-07-22）
+
+- 欠费原因只能读取成员二 `arrears_application.arrears_reason_code`，固定取值映射为：`FAMILY_FINANCIAL_DIFFICULTY=家庭经济困难`、`FAMILY_EMERGENCY=家庭突发变故`、`MAJOR_ILLNESS=重大疾病`、`DISASTER_ACCIDENT=灾害或意外事故`、`OTHER=其他`。不得用 `fee_item` 代替原因。
+- 同一申请包含多条欠费明细时，某原因的确认金额按该原因明细的 `declared_amount / 该申请全部欠费明细 declared_amount 之和` 比例分摊；该申请无欠费金额时计 `0.00`。因此不会将一笔已确认金额重复累计至多个原因。
+
+### 23.3 当前剩余责任
+
+| 任务 | 已接通 | 仍受制约的确定事项 |
+|---|---|---|
+| 6.1.3 学校代申请 | 学生按学号查询、真实草稿创建、固定附件/提交接口 | 成员一学校数据范围校验；成员二附件对象存储、资源预占和正式提交成功路径。 |
+| 6.1.4 线下补录 | 学生按学号查询、成员二真实创建 Port、成员二到成员三的自动审核桥接 | 成员一按 ID/批量学生组织快照；成员二以该快照组装的真实历史分页和详情。 |
+| 6.1.5—6.1.7 统计/报表 | 成员四接口、页面、筛选和导出调用边界 | 成员一统计权限范围；成员二最终态聚合、筛选和报表分页真实数据。 |

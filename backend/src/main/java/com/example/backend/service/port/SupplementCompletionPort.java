@@ -8,8 +8,9 @@ import com.example.backend.model.vo.supplement.SupplementCompletionResultVO;
  * <p>实现方写校级 APPROVE 记录，并把 DRAFT 流转为 CONFIRM_PENDING/CONFIRMATION
  * 或 COMPLETED/SYSTEM。该接口不允许成员四自行更新 application.status。</p>
  *
- * <p>TODO(成员三)：实现补录校级自动审核记录、乐观锁和 requestId 幂等，调用成员二
- * 状态写入 Service 后返回新状态/层级/版本，并加入成员四发起的外层事务。</p>
+ * <p>由成员三 {@code SupplementCompletionPortAdapter} 调用正式
+ * {@code ApprovalTransitionService}，保留乐观锁和 requestId 幂等，并强制加入成员四
+ * 发起的外层事务。</p>
  */
 public interface SupplementCompletionPort {
 

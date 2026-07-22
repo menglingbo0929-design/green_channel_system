@@ -71,6 +71,18 @@ public class DefaultSystemMessageService implements SystemMessageService {
     }
 
     @Override
+    @Transactional
+    public void sendApprovalCancelled(Long receiverUserId, Long applicationId, String reason) {
+        send(
+                receiverUserId,
+                applicationId,
+                MessageType.APPROVAL_CANCELLED,
+                "申请已取消",
+                requireText(reason, "reason")
+        );
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public SystemMessagePage listMessages(
             Long userId,

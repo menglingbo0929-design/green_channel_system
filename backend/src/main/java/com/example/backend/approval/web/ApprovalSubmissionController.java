@@ -2,17 +2,21 @@ package com.example.backend.approval.web;
 
 import com.example.backend.approval.domain.ApprovalErrorCode;
 import com.example.backend.approval.domain.ApprovalException;
+import com.example.backend.approval.api.ApprovalSubmissionResult;
+import com.example.backend.approval.api.ApprovalSubmissionService;
+import com.example.backend.approval.api.ApprovalSubmissionStatus;
+import com.example.backend.approval.persistence.type.BatchType;
 import com.example.backend.approval.port.CurrentUserProvider;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.approval.port.UserRole;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,46 +27,53 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApprovalSubmissionController {
 
     private final ObjectProvider<CurrentUserProvider> currentUserProvider;
+    private final ObjectProvider<ApprovalSubmissionService> submissionServiceProvider;
 
-    public ApprovalSubmissionController(ObjectProvider<CurrentUserProvider> currentUserProvider) {
+    public ApprovalSubmissionController(
+            ObjectProvider<CurrentUserProvider> currentUserProvider,
+            ObjectProvider<ApprovalSubmissionService> submissionServiceProvider
+    ) {
         this.currentUserProvider = currentUserProvider;
+        this.submissionServiceProvider = submissionServiceProvider;
     }
 
     @GetMapping("/status")
-    public Map<String, String> status() {
-        requireReviewRole();
-        throw new ApprovalIntegrationUnavailableException("成员一批次/范围 Service 和成员二申请列表 Service");
+    public ApprovalSubmissionStatus status(@RequestParam BatchType batchType, @RequestParam Long batchId) {
+        LoginUser user = requireReviewRole();
+        return submissions().getStatus(user, batchType, batchId);
     }
 
     @PostMapping("/counselor/initial")
-    public Map<String, String> submitCounselorInitial(@Valid @RequestBody BatchRequest request) {
-        requireRole(UserRole.COUNSELOR);
-        throw new ApprovalIntegrationUnavailableException("成员一批次/范围 Service 和成员二资源 Service");
+    public ApprovalSubmissionResult submitCounselorInitial(@Valid @RequestBody BatchRequest request) {
+        return submissions().submitInitial(requireRole(UserRole.COUNSELOR), request.toBatchType(), request.batchId(), request.requestId());
     }
 
     @PostMapping("/college/initial")
-    public Map<String, String> submitCollegeInitial(@Valid @RequestBody BatchRequest request) {
-        requireRole(UserRole.COLLEGE);
-        throw new ApprovalIntegrationUnavailableException("成员一批次/范围 Service 和成员二资源 Service");
+    public ApprovalSubmissionResult submitCollegeInitial(@Valid @RequestBody BatchRequest request) {
+        return submissions().submitInitial(requireRole(UserRole.COLLEGE), request.toBatchType(), request.batchId(), request.requestId());
     }
 
     @PostMapping("/return-resubmit")
-    public Map<String, String> returnResubmit(@Valid @RequestBody ReturnResubmitRequest request) {
-        requireReviewRole();
-        throw new ApprovalIntegrationUnavailableException("成员一数据范围 Service 和成员二资源 Service");
+    public ApprovalSubmissionResult returnResubmit(@Valid @RequestBody ReturnResubmitRequest request) {
+        return submissions().submitReturnResubmit(
+                requireReviewRole(), request.applicationId(), request.version(), request.requestId()
+        );
     }
 
-    private void requireReviewRole() {
+    private LoginUser requireReviewRole() {
         LoginUser user = currentUser();
         if (user.role() != UserRole.COUNSELOR && user.role() != UserRole.COLLEGE) {
             throw new ApprovalException(ApprovalErrorCode.APPROVAL_FORBIDDEN_SCOPE, "当前角色不能批量上报");
         }
+        return user;
     }
 
-    private void requireRole(UserRole role) {
-        if (currentUser().role() != role) {
+    private LoginUser requireRole(UserRole role) {
+        LoginUser user = currentUser();
+        if (user.role() != role) {
             throw new ApprovalException(ApprovalErrorCode.APPROVAL_FORBIDDEN_SCOPE, "当前用户没有所需角色");
         }
+        return user;
     }
 
     private LoginUser currentUser() {
@@ -71,7 +82,22 @@ public class ApprovalSubmissionController {
         return provider.getRequiredUser();
     }
 
+    private ApprovalSubmissionService submissions() {
+        ApprovalSubmissionService service = submissionServiceProvider.getIfAvailable();
+        if (service == null) {
+            throw new ApprovalIntegrationUnavailableException("成员三批量上报 Service");
+        }
+        return service;
+    }
+
     public record BatchRequest(@NotBlank String batchType, @NotNull Long batchId, @NotBlank String requestId) {
+        BatchType toBatchType() {
+            try {
+                return BatchType.valueOf(batchType);
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("batchType must be GREEN_CHANNEL or SUBSIDY", exception);
+            }
+        }
     }
 
     public record ReturnResubmitRequest(@NotNull Long applicationId, @NotNull Integer version, @NotBlank String requestId) {

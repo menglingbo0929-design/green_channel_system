@@ -1,6 +1,62 @@
 
 # 共享结构与接口变更记录
 
+## 2026-07-22｜成员四统计欠费原因对齐
+
+- 将统计和报表中的欠费原因由 `fee_item` 切换为成员二正式字段 `arrears_application.arrears_reason_code`，并固定五个代码的中文显示名称。
+- 多明细欠费申请的确认金额改为按明细申报金额占比统计，避免一笔确认金额重复累计。
+
+## 2026-07-22｜成员四取消申请欠费单据适配
+
+- 状态：IMPLEMENTED（成员四范围）；取消完整联调仍依赖成员一身份/消息收件人及成员二资源释放。
+- 提出人：成员四
+- 负责人：成员四（确认单据检查与逻辑作废）、成员三（取消事务编排）
+- 影响接口：成员三 `ArrearsDocumentService.hasIrreversibleOfflineProcessing`、
+  `ArrearsDocumentService.voidDocumentForCancellation`
+- 影响表：仅成员四 `arrears_confirmation`；不修改 `application`、资源表或成员三审核表。
+- 变更内容：新增 `ArrearsDocumentServiceImpl`。第一阶段确认表不存在不可逆线下履约字段，
+  因此不可逆检查固定为 false；取消时将有效确认记录逻辑作废（`deleted = id`），不物理删除。
+  无单据或已作废单据不更新，保证重复取消请求下的单据动作幂等；实现以 `MANDATORY` 加入
+  成员三取消事务。
+- 当前边界：未来引入线下领取/发放履约表后，必须由履约模块提供真实不可逆判断；成员四不得
+  以确认金额、确认时间或前端参数猜测履约状态。
+- 对应文档：`docs/member3-cancellation-dependencies.md`、
+  `docs/decisions/confirmation-statistics.md`。
+## 2026-07-22｜成员三审核幂等与前端真实数据收尾
+
+- 状态：IMPLEMENTED（成员三独立范围）
+- 提出人：成员三
+- 影响模块：逐条审核、审核工作台前端、成员三测试与接口文档
+- 变更内容：逐条审核接口只接受 `APPROVE/RETURN/REJECT`，防止 `MODIFY/SUBMIT/CANCEL` 被误判为退回；幂等重放同时校验申请、审核层级和动作，并在逐条通过未改变申请状态时保持原版本号。补充审核、批量上报和工作台权限/幂等测试。
+- 前端调整：移除虚假导出成功提示、固定批次和硬编码资源额度；批量上报必须显式使用真实 `batchType + batchId`，资源数量缺失时由后端提交校验兜底。
+- 当前边界：学校取消后端已完成，前端取消入口尚未接入；审核可编辑字段的物理写入仍等待成员二正式 Service。
+- 验证：前端生产构建通过；后端全量测试仍受共享代码缺少 `ISupplementApplicationService` 阻塞。
+- 对应提交：待提交。
+
+## 2026-07-21｜成员三批量上报、工作台、取消与跨模块完成适配
+
+- 状态：IMPLEMENTED（成员三范围）；端到端联调待跨成员依赖就绪
+- 提出人：成员三
+- 负责人：成员三（审批编排、审核/上报记录、消息和成员三事务适配）
+- 影响模块：成员一身份与数据范围、成员二申请/资源、成员三审批、成员四欠费确认与补录
+- 影响接口：`/api/approval-submissions/**`、`/api/approvals/pending`、`/processed`、`/dashboard`、`/{applicationId}`、`/{applicationId}/cancel`、`ArrearsConfirmationCompletionPort`、`SupplementCompletionPort`
+- 变更内容：完成辅导员/学院首次批量上报、退回补交、工作台分页/详情/统计、学校取消编排，以及欠费确认和补录自动审核的事务适配；前端真实接口统一使用全站 JWT Token，并兼容分页和详情返回结构。
+- 当前边界：成员一审批身份/范围/批次/消息收件人 Bean、成员二审核查询和资源生命周期 Bean、成员四取消单据 Bean 未全部就绪时，接口明确返回 `503 APPROVAL_INTEGRATION_UNAVAILABLE`；不使用前端身份参数、直接 SQL 或模拟成功绕过依赖。
+- 验证状态：前端生产构建通过；后端全量测试当前被 `SupplementApplicationServiceImpl` 引用缺失的 `ISupplementApplicationService` 阻塞，修复共享编译后需重新执行成员三单元、集成和事务回滚测试。
+- 对应文档：`docs/member3-approval-submission-dependencies.md`、`docs/member3-approval-workbench-dependencies.md`、`docs/member3-cancellation-dependencies.md`、`docs/member3-task-d-integration.md`。
+- 对应提交：本次成员三合并提交。
+
+## 2026-07-21｜成员二正式申请 Port 接入
+
+- 状态：PARTIALLY_IMPLEMENTED
+- 提出人：成员四（依据成员二 `member2-integration-handoff.md`）
+- 影响模块：成员一、成员二、成员三、成员四
+- 影响接口：`/api/school-proxy/**`、`/api/supplements/**` 及其对应正式 Port
+- 变更内容：成员四改为只注入成员二正式 `SchoolProxyApplicationPort` 和 `SupplementApplicationPort`；旧的成员四直接写表适配器取消 Spring Bean 注册。学校代申请与补录前端均补齐 `arrearsReasonCode` 固定枚举；学校代申请补齐附件上传调用，补录历史页补齐真实详情请求；学生快照补充组织 ID 字段。补录创建不再由成员四二次调用成员三自动审核，避免重复推进状态。
+- 当前边界：附件存储未接通时固定返回 `501 ATTACHMENT_STORAGE_UNAVAILABLE`；学校代申请提交的附件/资源前置能力未接通时固定返回 `503 SCHOOL_PROXY_SUBMISSION_UNAVAILABLE`；补录历史和详情仍等待成员一按 ID/批量学生组织快照。统计、筛选、报表仍等待成员一权限范围和成员二真实聚合。
+- 对应文档：`docs/member2-integration-handoff.md`、`docs/collaboration-rules.md` 第 23 节。
+- 对应提交：本次成员四接入提交。
+
 ## 2026-07-20｜成员三审核与消息持久层
 
 - 状态：IMPLEMENTED
@@ -58,8 +114,8 @@
 - 影响接口：`GET /api/supplements/students`、`GET /api/supplements`、`GET /api/supplements/{applicationId}`、`POST /api/supplements`、`SupplementApplicationPort`、`SupplementCompletionPort`
 - 影响状态：补录先创建 `DRAFT`；含欠费固定进入 `CONFIRM_PENDING/CONFIRMATION`，不含欠费固定进入 `COMPLETED/SYSTEM`
 - 变更内容：固定 6.1.4 请求字段、批次类型映射、明细互斥规则、幂等号、返回字段、分页筛选、外层事务和跨模块写入边界；完成成员四 Controller、DTO/VO、Service 编排、Port 和前端验证页。
-- 当前阻塞项：成员一可信身份/学生适配、成员二补录明细/资源/历史查询、成员三 `completeSupplementReview` 尚未合入；依赖齐全后再进行真实创建与历史演示。
-- 使用者需要执行的操作：成员一、二、三按 `collaboration-rules.md` 第 17 节实现对应适配；合入后由成员四使用真实 SQL 数据完成 Apifox 和前端联调，再将状态更新为 `IMPLEMENTED`。
+- 当前阻塞项：成员一可信身份/学生快照适配、成员二补录详情/历史读模型和真实数据联调；成员三 `completeSupplementReview` 已完成，不再是阻塞项。
+- 使用者需要执行的操作：成员一补齐学生快照，成员二补齐详情/历史读模型；成员三适配已完成。依赖合入后由成员四使用真实 SQL 数据完成 Apifox 和前端联调，再将状态更新为 `IMPLEMENTED`。
 - 对应提交：协作边界 `e17e951`；代码本地待提交
 
 ## 2026-07-20｜成员四确认表 SQL 与成员三完成接口对齐
@@ -72,7 +128,7 @@
 - 影响接口：成员四本地 `ArrearsConfirmationCompletionPort.completeAfterConfirmation` 对齐成员三 `ApprovalCompletionService.completeAfterConfirmation`
 - 影响状态：确认成功后的目标状态仍为 `CONFIRM_PENDING -> COMPLETED`，不新增状态值
 - 变更内容：`database/02_create_tables.sql` 补齐 `request_id`、有效确认记录唯一约束、单据号唯一约束和请求号唯一约束；`database/04_test_data.sql` 的 100 条确认测试数据补齐唯一 `request_id`；成员四 migration、Entity、数据库设计与基线 SQL 保持一致。
-- 当前阻塞项：成员三正式 `ApprovalCompletionService`、成员二待确认申请读取和成员一可信身份实现尚未合入，因此确认业务仍不能完成真实跨模块联调。
+- 当前阻塞项：成员二待确认申请真实读取、成员一可信身份/数据范围和端到端事务联调；成员三正式 `ApprovalCompletionService` 及成员四完成 Port 适配已实现，不再是阻塞项。
 - 使用者需要执行的操作：新环境按 `01_create_database.sql`、`02_create_tables.sql`、`04_test_data.sql` 顺序建库和导入测试数据；已有数据库继续按成员四 migration 处理，不回改已执行 migration。
 - 对应提交：待提交
 

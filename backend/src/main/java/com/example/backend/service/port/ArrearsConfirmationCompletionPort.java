@@ -7,8 +7,9 @@ package com.example.backend.service.port;
  * 校验申请仍为 CONFIRM_PENDING、版本未变化且当前操作人具备学校权限，然后通过成员二
  * 的状态写入 Service 把申请改为 COMPLETED，并写入审核/状态历史。</p>
  *
- * <p>TODO(成员三)：用正式 {@code ApprovalCompletionService.completeAfterConfirmation}
- * 适配本接口，并加入成员四发起的确认事务；禁止成员四自行更新申请状态。</p>
+ * <p>由成员三 {@code ArrearsConfirmationCompletionPortAdapter} 适配到正式
+ * {@code ApprovalCompletionService.completeAfterConfirmation}，并强制加入成员四
+ * 发起的确认事务；成员四不得自行更新申请状态。</p>
  */
 public interface ArrearsConfirmationCompletionPort {
 
