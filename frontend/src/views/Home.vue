@@ -61,24 +61,25 @@
 </template>
 
 <script setup>
-import { computed, shallowRef } from 'vue'
+import { computed } from 'vue'
 import { useUserStore } from '../stores/user.js'
 import {
-  EditPen, CircleCheck, Flag, TrendCharts, Plus, Document
+  EditPen, Document, CircleCheck, Flag, TrendCharts, DataBoard, InfoFilled
 } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 
-// 快捷入口：根据角色展示不同入口
+// 快速入口：仅包含侧边栏已有的菜单项，路径与侧边栏一致
 const quickLinks = computed(() => {
   const all = [
-    { key: 'student',  label: '学生申请中心', path: '/student-center', icon: shallowRef(EditPen),      roles: ['STUDENT'] },
-    { key: 'my-apply', label: '我的申请',     path: '/my-apply',      icon: shallowRef(Document),      roles: ['STUDENT'] },
-    { key: 'counselor',label: '辅导员审核',   path: '/counselor-review',icon: shallowRef(CircleCheck),  roles: ['COUNSELOR'] },
-    { key: 'college',  label: '学院审核',     path: '/college-review', icon: shallowRef(Flag),         roles: ['COLLEGE'] },
-    { key: 'process',  label: '学校业务处理', path: '/school-process', icon: shallowRef(TrendCharts),   roles: ['SCHOOL'] },
-    { key: 'supplement',label:'申请补录',      path: '/supplement',    icon: shallowRef(Plus),          roles: ['SCHOOL'] },
-    { key: 'base-data',label: '基础数据管理',  path: '/base-data',     icon: shallowRef(Document),      roles: ['SCHOOL'] }
+    { key: 'student',   label: '学生申请中心', path: '/student-center',   icon: EditPen,      roles: ['STUDENT'] },
+    { key: 'my-apply',  label: '我的申请',     path: '/my-apply',         icon: Document,      roles: ['STUDENT'] },
+    { key: 'counselor', label: '辅导员审核',   path: '/counselor-review',  icon: CircleCheck,  roles: ['COUNSELOR'] },
+    { key: 'college',   label: '学院审核',     path: '/college-review',    icon: Flag,         roles: ['COLLEGE'] },
+    { key: 'school',    label: '学校审核',     path: '/school-review',     icon: CircleCheck,  roles: ['SCHOOL'] },
+    { key: 'stats',     label: '统计报表',     path: '/stats',             icon: TrendCharts,  roles: ['SCHOOL'] },
+    { key: 'base-data', label: '基础数据',     path: '/base-data',         icon: DataBoard,    roles: ['SCHOOL'] },
+    { key: 'policy',    label: '政策与说明',   path: '/policy',            icon: InfoFilled,   roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'] }
   ]
   return all.filter(m => m.roles.some(r => userStore.roles.includes(r)))
 })

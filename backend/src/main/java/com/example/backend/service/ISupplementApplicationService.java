@@ -7,9 +7,7 @@ import com.example.backend.model.dto.supplement.SupplementQueryDTO;
 import com.example.backend.model.vo.schoolproxy.SchoolProxyStudentVO;
 import com.example.backend.model.vo.supplement.SupplementApplicationVO;
 
-/**
- * 学校端线下补录申请服务。
- */
+/** Offline supplementary-application business API for controllers. */
 public interface ISupplementApplicationService {
 
     SchoolProxyStudentVO findStudent(String studentNo, Long operatorUserId);
@@ -22,8 +20,5 @@ public interface ISupplementApplicationService {
 
     SupplementApplicationVO getSupplement(Long applicationId, Long operatorUserId);
 
-    SupplementApplicationVO createSupplement(
-            SupplementCreateDTO request,
-            Long operatorUserId
-    );
+    SupplementApplicationVO createSupplement(SupplementCreateDTO request, Long operatorUserId);
 }
