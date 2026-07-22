@@ -36,7 +36,7 @@ const routes = [
       { path: '', redirect: '/home' },
       { path: 'home', name: 'Home', component: Home, meta: { title: '首页' } },
       { path: 'student-center', name: 'StudentCenter', component: StudentApplicationCenter, meta: { title: '学生申请中心', roles: ['STUDENT'] } },
-      { path: 'application-config', name: 'ApplicationConfig', component: ApplicationConfig, meta: { title: '批次与申请配置', roles: ['SCHOOL', 'COLLEGE'] } },
+      { path: 'application-config', name: 'ApplicationConfig', component: ApplicationConfig, meta: { title: '绿色通道信息设置', roles: ['SCHOOL', 'COLLEGE'] } },
       {
         path: 'my-apply',
         alias: '/student/applications',

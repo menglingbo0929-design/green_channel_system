@@ -16,7 +16,7 @@ import com.example.backend.approval.port.ApplicationStateQueryService;
 import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
-import com.example.backend.approval.port.StudentScopeService;
+import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import com.example.backend.application.dto.ArrearsItemCommand;
 import com.example.backend.application.dto.GiftApplicationItemCommand;
@@ -80,6 +80,9 @@ public class ApprovalReviewService {
         ApplicationStateSnapshot before = stateQueryService.getRequiredState(applicationId);
         validateState(before, command);
         validateScope(user, before);
+        if (approvalRecordMapper.findLatestDecision(applicationId, before.reviewRound(), command.level()).isPresent()) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_INVALID_STATUS, "当前审核轮次已经给出结论，请勿重复审核");
+        }
         ApplicationStatus target = targetStatus(before.status(), command);
         if (command.action() == ApprovalAction.APPROVE && command.level() == ApprovalRecordLevel.COLLEGE) {
             requireResourceService().validateCollegeApproval(applicationId);

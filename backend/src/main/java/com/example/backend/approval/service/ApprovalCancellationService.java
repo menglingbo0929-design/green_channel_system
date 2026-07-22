@@ -18,6 +18,7 @@ import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.ArrearsDocumentService;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public class ApprovalCancellationService {
     private final ApprovalResourceService resourceService;
     private final ArrearsDocumentService arrearsDocumentService;
     private final ApprovalMessageRecipientResolver messageRecipientResolver;
-    private final SystemMessageService systemMessageService;
+    private final java.util.function.Supplier<SystemMessageService> systemMessageService;
 
     public ApprovalCancellationService(
             ApprovalStateMachine stateMachine,
@@ -57,7 +58,27 @@ public class ApprovalCancellationService {
         this.resourceService = resourceService;
         this.arrearsDocumentService = arrearsDocumentService;
         this.messageRecipientResolver = messageRecipientResolver;
-        this.systemMessageService = systemMessageService;
+        this.systemMessageService = () -> systemMessageService;
+    }
+
+    public ApprovalCancellationService(
+            ApprovalStateMachine stateMachine,
+            ApplicationStateQueryService stateQueryService,
+            ApplicationStateWriteService stateWriteService,
+            ApprovalRecordMapper approvalRecordMapper,
+            ApprovalResourceService resourceService,
+            ArrearsDocumentService arrearsDocumentService,
+            ApprovalMessageRecipientResolver messageRecipientResolver,
+            ObjectProvider<SystemMessageService> systemMessageService
+    ) {
+        this.stateMachine = stateMachine;
+        this.stateQueryService = stateQueryService;
+        this.stateWriteService = stateWriteService;
+        this.approvalRecordMapper = approvalRecordMapper;
+        this.resourceService = resourceService;
+        this.arrearsDocumentService = arrearsDocumentService;
+        this.messageRecipientResolver = messageRecipientResolver;
+        this.systemMessageService = () -> systemMessageService.getIfAvailable();
     }
 
     /**
@@ -123,7 +144,9 @@ public class ApprovalCancellationService {
         if (studentUserId == null || studentUserId <= 0) {
             throw new IllegalStateException("无法解析申请学生的登录用户，取消操作已回滚");
         }
-        systemMessageService.sendApprovalCancelled(studentUserId, applicationId, reason.strip());
+        SystemMessageService messages = systemMessageService.get();
+        if (messages == null) throw new IllegalStateException("消息通知能力不可用，取消操作已回滚");
+        messages.sendApprovalCancelled(studentUserId, applicationId, reason.strip());
         return toStatusResult(after);
     }
 

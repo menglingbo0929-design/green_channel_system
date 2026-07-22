@@ -19,6 +19,8 @@ public class BatchSnapshot {
     private String batchCode;
     private String batchName;
     private String batchType;
+    private String applicationType;
+    private String academicYear;
 
     /** 学生申请开始时间 */
     private LocalDateTime startTime;
@@ -28,7 +30,9 @@ public class BatchSnapshot {
     private LocalDateTime collegeDeadline;
     /** 批次状态：DRAFT / OPEN / CLOSED */
     private String status;
+    private Integer enabled;
 
     /** 适用年级 ID 列表 */
     private List<Long> eligibleGradeIds;
+    private List<String> fundingSourceCodes;
 }

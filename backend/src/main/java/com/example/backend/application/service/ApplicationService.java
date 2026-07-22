@@ -8,6 +8,7 @@ import com.example.backend.application.mapper.ApplicationOperationMapper;
 import com.example.backend.application.mapper.ArrearsApplicationMapper;
 import com.example.backend.application.mapper.ApplicationResourceMapper;
 import com.example.backend.mapper.StudentMapper;
+import com.example.backend.service.BatchQueryService;
 import com.example.backend.application.port.*;
 import java.time.LocalDate;
 import java.math.BigDecimal;
@@ -25,10 +26,11 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     private final ArrearsApplicationMapper arrearsMapper;
     private final ApplicationResourceMapper resourceMapper;
     private final StudentMapper studentMapper;
+    private final BatchQueryService batchQueryService;
     private final RecommendationService recommendations;
-    public ApplicationService(ApplicationMapper applicationMapper, ApplicationOperationMapper operationMapper, ArrearsApplicationMapper arrearsMapper, ApplicationResourceMapper resourceMapper, StudentMapper studentMapper, RecommendationService recommendations) {
+    public ApplicationService(ApplicationMapper applicationMapper, ApplicationOperationMapper operationMapper, ArrearsApplicationMapper arrearsMapper, ApplicationResourceMapper resourceMapper, StudentMapper studentMapper, RecommendationService recommendations, BatchQueryService batchQueryService) {
         this.applicationMapper = applicationMapper; this.operationMapper = operationMapper; this.arrearsMapper = arrearsMapper; this.resourceMapper = resourceMapper;
-        this.studentMapper = studentMapper; this.recommendations = recommendations;
+        this.studentMapper = studentMapper; this.recommendations = recommendations; this.batchQueryService = batchQueryService;
     }
 
     @Override @Transactional
@@ -47,6 +49,7 @@ public class ApplicationService implements ApplicationCreationService, Applicati
         Long existingId = operationMapper.findApplicationIdByRequestId(command.requestId());
         if (existingId != null && existingId > 0) return getRequiredState(existingId);
         validateBatch(command.applicationType(), command.batchType());
+        if (source == ApplicationSource.STUDENT) validateStudentBatch(studentId, command.applicationType(), command.batchId());
         if (applicationMapper.findActiveByUnique(studentId, command.applicationType(), command.batchType(), command.batchId()) != null) {
             throw conflict("APPLICATION_ALREADY_EXISTS", "同一学生、批次和申请类型只能保留一条有效申请");
         }
@@ -202,6 +205,17 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     }
     private void validateBatch(ApplicationType type, BatchType batchType) {
         if ((type == ApplicationType.GREEN_CHANNEL) != (batchType == BatchType.GREEN_CHANNEL)) throw new ApplicationException("APPLICATION_BATCH_TYPE_INVALID", HttpStatus.BAD_REQUEST, "申请类型与批次类型不匹配");
+    }
+    private void validateStudentBatch(Long studentId, ApplicationType type, Long batchId) {
+        var student = studentMapper.selectById(studentId);
+        if (student == null || student.getDeleted() != 0 || student.getEnabled() != 1) {
+            throw new ApplicationException("APPLICATION_STUDENT_INVALID", HttpStatus.BAD_REQUEST, "当前学生档案不存在或已停用");
+        }
+        try {
+            batchQueryService.validateStudentEligibility(type.name(), batchId, student.getGradeId());
+        } catch (IllegalArgumentException ex) {
+            throw new ApplicationException("APPLICATION_BATCH_UNAVAILABLE", HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
     }
     private boolean isReturned(ApplicationStatus status) {
         return status == ApplicationStatus.COUNSELOR_RETURNED

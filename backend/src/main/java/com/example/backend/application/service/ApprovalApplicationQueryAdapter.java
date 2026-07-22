@@ -87,6 +87,7 @@ public class ApprovalApplicationQueryAdapter implements ApprovalApplicationQuery
                 "SELECT a.id,a.application_no,a.application_type,a.batch_type,"
                         + "COALESCE(a.green_channel_batch_id,a.subsidy_batch_id) batch_id,"
                         + "a.student_id,s.student_no,s.student_name,s.college_id,c.college_name,g.grade_name,"
+                        + "CASE WHEN a.application_type='GREEN_CHANNEL' THEN COALESCE((SELECT SUM(aa.declared_amount) FROM arrears_application aa WHERE aa.application_id=a.id AND aa.deleted=0),0) ELSE COALESCE((SELECT sa.expected_amount FROM subsidy_application sa WHERE sa.application_id=a.id AND sa.deleted=0 LIMIT 1),0) END declaredAmount,"
                         + "a.status,a.current_level,a.review_round,a.submit_time,a.version"
                         + FROM + where + " ORDER BY a.submit_time DESC,a.id DESC LIMIT :limit OFFSET :offset",
                 parameters, snapshotMapper());
@@ -193,6 +194,7 @@ public class ApprovalApplicationQueryAdapter implements ApprovalApplicationQuery
                 ApplicationType.valueOf(rs.getString("application_type")), BatchType.valueOf(rs.getString("batch_type")),
                 rs.getLong("batch_id"), rs.getLong("student_id"), rs.getString("student_no"), rs.getString("student_name"),
                 rs.getLong("college_id"), rs.getString("college_name"), rs.getString("grade_name"),
+                rs.getBigDecimal("declaredAmount"),
                 ApplicationStatus.valueOf(rs.getString("status")), ApprovalLevel.valueOf(rs.getString("current_level")),
                 rs.getInt("review_round"), localDateTime(rs, "submit_time"), rs.getInt("version"));
     }

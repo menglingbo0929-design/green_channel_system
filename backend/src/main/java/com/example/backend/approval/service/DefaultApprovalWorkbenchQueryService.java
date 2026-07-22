@@ -24,7 +24,7 @@ import com.example.backend.approval.port.ApprovalWorkScope;
 import com.example.backend.approval.port.ApplicationStateQueryService;
 import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.LoginUser;
-import com.example.backend.approval.port.StudentScopeService;
+import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import java.util.List;
 import java.util.Objects;
@@ -108,7 +108,7 @@ public class DefaultApprovalWorkbenchQueryService implements ApprovalWorkbenchQu
         return new ApprovalListItem(
                 item.applicationId(), item.applicationNo(), item.applicationType(), typeName(item.applicationType()),
                 item.batchType(), item.batchId(), item.studentId(), item.studentNo(), item.studentName(),
-                item.collegeId(), item.collegeName(), item.gradeName(), item.status(), statusName(item.status()),
+                item.collegeId(), item.collegeName(), item.gradeName(), item.declaredAmount(), item.status(), statusName(item.status()),
                 item.currentLevel(), latestDecision, item.submitTime(), item.version()
         );
     }

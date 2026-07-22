@@ -5,6 +5,7 @@ import com.example.backend.approval.domain.ApplicationType;
 import com.example.backend.approval.domain.ApprovalLevel;
 import com.example.backend.approval.persistence.type.BatchType;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 /** Read-only application projection supplied by the application module. */
 public record ApprovalApplicationSnapshot(
@@ -19,6 +20,7 @@ public record ApprovalApplicationSnapshot(
         Long collegeId,
         String collegeName,
         String gradeName,
+        BigDecimal declaredAmount,
         ApplicationStatus status,
         ApprovalLevel currentLevel,
         Integer reviewRound,

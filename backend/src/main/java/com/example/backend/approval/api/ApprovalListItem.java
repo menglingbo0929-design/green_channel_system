@@ -6,6 +6,7 @@ import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.domain.ApprovalLevel;
 import com.example.backend.approval.persistence.type.BatchType;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 public record ApprovalListItem(
         Long applicationId,
@@ -20,6 +21,7 @@ public record ApprovalListItem(
         Long collegeId,
         String collegeName,
         String gradeName,
+        BigDecimal declaredAmount,
         ApplicationStatus status,
         String statusName,
         ApprovalLevel currentLevel,

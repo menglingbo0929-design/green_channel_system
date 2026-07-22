@@ -19,9 +19,10 @@ import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.ApplicationStateQueryService;
 import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.LoginUser;
-import com.example.backend.approval.port.StudentScopeService;
+import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,6 +58,7 @@ class DefaultApprovalWorkbenchQueryServiceTest {
         assertEquals(1, page.total());
         assertEquals(ApplicationStatus.COUNSELOR_PENDING, page.records().getFirst().status());
         assertEquals("待辅导员审核", page.records().getFirst().statusName());
+        assertEquals(new BigDecimal("1200.00"), page.records().getFirst().declaredAmount());
         ArgumentCaptor<ApprovalListQuery> queryCaptor = ArgumentCaptor.forClass(ApprovalListQuery.class);
         verify(applications).pagePending(any(), queryCaptor.capture());
         assertEquals(ApplicationStatus.COUNSELOR_PENDING, queryCaptor.getValue().status());
@@ -175,7 +177,7 @@ class DefaultApprovalWorkbenchQueryServiceTest {
     private ApprovalApplicationSnapshot snapshot() {
         return new ApprovalApplicationSnapshot(
                 10L, "GC202607210001", ApplicationType.GREEN_CHANNEL, BatchType.GREEN_CHANNEL, 3L,
-                20L, "20260001", "张三", 8L, "计算机学院", "2026级",
+                20L, "20260001", "张三", 8L, "计算机学院", "2026级", new BigDecimal("1200.00"),
                 ApplicationStatus.COUNSELOR_PENDING, ApprovalLevel.COUNSELOR, 2,
                 LocalDateTime.of(2026, 7, 21, 9, 0), 4
         );

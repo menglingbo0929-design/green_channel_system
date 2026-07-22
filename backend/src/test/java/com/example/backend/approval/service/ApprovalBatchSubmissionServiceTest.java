@@ -23,7 +23,7 @@ import com.example.backend.approval.port.ApplicationStateQueryService;
 import com.example.backend.approval.port.ApplicationStateSnapshot;
 import com.example.backend.approval.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
-import com.example.backend.approval.port.StudentScopeService;
+import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import java.time.Clock;
 import java.time.Instant;

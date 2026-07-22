@@ -36,6 +36,17 @@ CREATE TABLE `sys_user_role` (
   UNIQUE INDEX `uk_user_role`(`user_id`, `role_id`) USING BTREE
 ) ENGINE = oceanbase CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
+-- 学院管理员数据范围
+CREATE TABLE `user_college_scope` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL COMMENT '学院管理员用户ID',
+  `college_id` bigint(20) NOT NULL COMMENT '所属学院ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_user_college_scope_user`(`user_id`) USING BTREE,
+  INDEX `idx_user_college_scope_college`(`college_id`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
 -- 学院表
 CREATE TABLE `college` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -146,6 +157,7 @@ CREATE TABLE `green_channel_batch` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `batch_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次编号',
   `batch_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次名称，如 2026年绿色通道',
+  `academic_year` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学年，如 2026-2027',
   `start_time` datetime NOT NULL COMMENT '学生申请开始时间',
   `end_time` datetime NOT NULL COMMENT '学生申请截止时间',
   `college_deadline` datetime NOT NULL COMMENT '学院上报学校截止时间',
@@ -157,6 +169,18 @@ CREATE TABLE `green_channel_batch` (
   `deleted` bigint(20) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_batch_code`(`batch_code`) USING BTREE
+) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
+
+-- 绿色通道批次资金来源（一个批次可配置多个来源）
+CREATE TABLE `batch_funding_source` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint(20) NOT NULL COMMENT '绿色通道批次ID',
+  `source_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'SCHOOL/GOVERNMENT/SOCIETY/OTHER',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_batch_funding_source`(`batch_id`, `source_code`) USING BTREE,
+  INDEX `idx_bfs_batch`(`batch_id`) USING BTREE,
+  CONSTRAINT `chk_batch_funding_source_code` CHECK (`source_code` IN ('SCHOOL','GOVERNMENT','SOCIETY','OTHER'))
 ) ENGINE = oceanbase ROW_FORMAT = DYNAMIC;
 
 -- 绿色通道批次适用年级关联表
@@ -176,6 +200,7 @@ CREATE TABLE `subsidy_batch` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `batch_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次编号',
   `batch_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '批次名称，如 2026年生活补助',
+  `academic_year` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学年，如 2026-2027',
   `batch_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '补助类型：LIVING_SUBSIDY=生活补助 TRAVEL_SUBSIDY=路费补助',
   `start_time` datetime NOT NULL COMMENT '申请开始时间',
   `end_time` datetime NOT NULL COMMENT '申请截止时间',

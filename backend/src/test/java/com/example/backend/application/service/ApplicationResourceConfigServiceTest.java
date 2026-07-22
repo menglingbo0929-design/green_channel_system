@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 import com.example.backend.application.domain.QuotaScope;
 import com.example.backend.application.dto.BatchGiftItemCommand;
 import com.example.backend.application.dto.GiftQuotaCommand;
+import com.example.backend.application.dto.GiftItemView;
 import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationCatalogMapper;
 import com.example.backend.application.mapper.ApplicationResourceConfigMapper;
@@ -15,6 +16,7 @@ import com.example.backend.model.dto.CollegeOption;
 import com.example.backend.service.BatchQueryService;
 import com.example.backend.service.OrganizationQueryService;
 import java.util.List;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class ApplicationResourceConfigServiceTest {
@@ -26,7 +28,7 @@ class ApplicationResourceConfigServiceTest {
 
     @Test
     void rejectsDuplicateBatchGiftItemBeforeInsert() {
-        when(catalogMapper.findGiftItem(2L)).thenReturn(new com.example.backend.application.dto.CatalogItemView(2L, "书包", true));
+        when(catalogMapper.findGiftItem(2L)).thenReturn(new GiftItemView(2L, "书包", true, null, null, null, null, BigDecimal.ZERO, "ALL", false));
         when(mapper.countBatchGiftItem(1L, 2L)).thenReturn(1);
         ApplicationException exception = assertThrows(ApplicationException.class,
                 () -> service.createBatchGiftItem(new BatchGiftItemCommand(1L, 2L, 10, 1)));

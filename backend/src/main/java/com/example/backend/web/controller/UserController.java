@@ -6,6 +6,7 @@ import com.example.backend.config.VerificationCodeStore;
 import com.example.backend.mapper.StudentMapper;
 import com.example.backend.mapper.UserMapper;
 import com.example.backend.mapper.UserRoleMapper;
+import com.example.backend.mapper.UserCollegeScopeMapper;
 import com.example.backend.model.domain.Student;
 import com.example.backend.model.domain.User;
 import com.example.backend.model.dto.*;
@@ -27,6 +28,7 @@ public class UserController {
     private final IUserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRoleMapper userRoleMapper;
+    private final UserCollegeScopeMapper userCollegeScopeMapper;
     private final StudentMapper studentMapper;
     private final UserMapper userMapper;
     private final VerificationCodeStore codeStore;
@@ -49,6 +51,9 @@ public class UserController {
         if (student != null) {
             studentId = student.getId();
             collegeId = student.getCollegeId();
+        } else if (roles.contains("COLLEGE")) {
+            collegeId = userCollegeScopeMapper.findCollegeIdByUserId(user.getId());
+            if (collegeId == null) return JsonResponse.failure("学院账号尚未配置所属学院范围");
         }
 
         String token = jwtTokenProvider.generateToken(

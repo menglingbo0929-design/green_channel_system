@@ -35,4 +35,13 @@ public interface BatchQueryService {
 
     /** 查询所有启用且开放的批次（供前端下拉框） */
     List<BatchSnapshot> listOpenBatches();
+
+    /** 按批次类型查询启用且开放的批次，供审批工作台筛选。 */
+    List<BatchSnapshot> listOpenBatches(String batchType);
+
+    /** 查询当前学生在申请时间内、且年级符合范围的可申请批次。 */
+    List<BatchSnapshot> listAvailableBatches(String applicationType, Long gradeId);
+
+    /** 创建学生申请前执行存在性、开放时间和年级资格的最终校验。 */
+    void validateStudentEligibility(String applicationType, Long batchId, Long gradeId);
 }

@@ -21,7 +21,7 @@ import com.example.backend.approval.port.CurrentUserProvider;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.approval.port.ApplicationStateQueryService;
 import com.example.backend.approval.port.ApplicationStateSnapshot;
-import com.example.backend.approval.port.StudentScopeService;
+import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import com.example.backend.approval.service.ApprovalReviewService;
 import com.example.backend.approval.service.ApprovalCancellationService;

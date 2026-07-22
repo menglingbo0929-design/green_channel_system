@@ -45,7 +45,7 @@ const ALL_MENUS = [
   // 统计看板只由学校管理员使用；学院审核端不再显示会跳转到 403 的入口。
   { key: 'stats',       label: '统计报表',     icon: 'chart-line',      roles: ['SCHOOL'],                                    path: '/stats' },
   { key: 'base-data',   label: '基础数据',     icon: 'database',        roles: ['SCHOOL'],                                    path: '/base-data' },
-  { key: 'application-config', label: '批次与申请配置', icon: 'setting', roles: ['SCHOOL', 'COLLEGE'],                       path: '/application-config' },
+  { key: 'application-config', label: '绿色通道信息设置', icon: 'setting', roles: ['SCHOOL', 'COLLEGE'],                   path: '/application-config' },
   { key: 'policy',      label: '政策与说明',   icon: 'info',            roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'],    path: '/policy' }
 ]
 

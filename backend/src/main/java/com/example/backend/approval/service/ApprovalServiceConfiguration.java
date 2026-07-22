@@ -12,7 +12,7 @@ import com.example.backend.approval.port.ApprovalResourceService;
 import com.example.backend.approval.port.ApplicationStateQueryService;
 import com.example.backend.approval.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.ArrearsDocumentService;
-import com.example.backend.approval.port.StudentScopeService;
+import com.example.backend.service.StudentScopeService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
@@ -119,15 +119,6 @@ public class ApprovalServiceConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({
-            ApplicationStateQueryService.class,
-            ApplicationStateWriteService.class,
-            ApprovalRecordMapper.class,
-            ApprovalResourceService.class,
-            ArrearsDocumentService.class,
-            ApprovalMessageRecipientResolver.class,
-            com.example.backend.approval.api.SystemMessageService.class
-    })
     ApprovalCancellationService approvalCancellationService(
             ApprovalStateMachine stateMachine,
             ApplicationStateQueryService stateQueryService,
@@ -136,7 +127,7 @@ public class ApprovalServiceConfiguration {
             ApprovalResourceService resourceService,
             ArrearsDocumentService arrearsDocumentService,
             ApprovalMessageRecipientResolver messageRecipientResolver,
-            com.example.backend.approval.api.SystemMessageService systemMessageService
+            ObjectProvider<com.example.backend.approval.api.SystemMessageService> systemMessageService
     ) {
         return new ApprovalCancellationService(
                 stateMachine,

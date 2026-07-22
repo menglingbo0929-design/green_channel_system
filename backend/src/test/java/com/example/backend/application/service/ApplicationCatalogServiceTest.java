@@ -10,6 +10,7 @@ import com.example.backend.application.dto.CatalogItemCommand;
 import com.example.backend.application.dto.CatalogItemView;
 import com.example.backend.application.dto.FeeAmountOptionCommand;
 import com.example.backend.application.dto.FeeAmountOptionView;
+import com.example.backend.application.dto.GiftItemView;
 import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationCatalogMapper;
 import java.math.BigDecimal;
@@ -68,7 +69,7 @@ class ApplicationCatalogServiceTest {
 
     @Test
     void refusesToDeleteGiftItemReferencedByBatchConfiguration() {
-        when(mapper.findGiftItem(9L)).thenReturn(new CatalogItemView(9L, "被子", true));
+        when(mapper.findGiftItem(9L)).thenReturn(new GiftItemView(9L, "被子", true, null, null, null, null, BigDecimal.ZERO, "ALL", false));
         when(mapper.countActiveBatchGiftItemsByGiftItemId(9L)).thenReturn(1);
 
         ApplicationException exception = assertThrows(ApplicationException.class, () -> service.deleteGiftItem(9L));

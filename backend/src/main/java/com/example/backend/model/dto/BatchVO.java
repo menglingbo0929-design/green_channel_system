@@ -12,6 +12,7 @@ public class BatchVO {
     private Long id;
     private String batchCode;
     private String batchName;
+    private String academicYear;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime collegeDeadline;
@@ -19,5 +20,6 @@ public class BatchVO {
     private Integer enabled;
     private String remark;
     private List<Long> eligibleGradeIds;
+    private List<String> fundingSourceCodes;
     private LocalDateTime createTime;
 }

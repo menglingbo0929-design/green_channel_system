@@ -4,15 +4,6 @@ function payload(response) {
   return response.data?.data ?? response.data
 }
 
-function developmentIdentity() {
-  const studentId = import.meta.env.VITE_DEV_STUDENT_ID
-  const userId = import.meta.env.VITE_DEV_USER_ID
-  if (!studentId || !userId) {
-    throw new Error('当前后端仍使用临时开发身份头；请在本地 .env 设置 VITE_DEV_STUDENT_ID 和 VITE_DEV_USER_ID，或等待可信登录上下文接入。')
-  }
-  return {}
-}
-
 export const catalogAPI = {
   listFeeItems: (includeDisabled = true) => api.get('/fee-items', { params: { includeDisabled } }).then(payload),
   createFeeItem: (data) => api.post('/fee-items', data).then(payload),
@@ -27,6 +18,20 @@ export const catalogAPI = {
   createGiftItem: (data) => api.post('/gift-items', data).then(payload),
   updateGiftItem: (id, data) => api.put(`/gift-items/${id}`, data).then(payload),
   deleteGiftItem: (id) => api.delete(`/gift-items/${id}`).then(payload),
+}
+
+export const batchAPI = {
+  listGreenChannel: () => api.get('/batch/green-channel').then(payload),
+  createGreenChannel: (data) => api.post('/batch/green-channel', data).then(payload),
+  updateGreenChannel: (id, data) => api.put(`/batch/green-channel/${id}`, data).then(payload),
+  toggleGreenChannel: (id) => api.put(`/batch/green-channel/${id}/status`).then(payload),
+  available: (applicationType) => api.get('/batches/available', { params: { applicationType } }).then(payload),
+  open: (batchType) => api.get('/batches/open', { params: { batchType } }).then(payload),
+}
+
+export const studentProfileAPI = {
+  get: () => api.get('/student/profile').then(payload),
+  update: (data) => api.put('/student/profile', data).then(payload),
 }
 
 export const studentApplicationAPI = {
