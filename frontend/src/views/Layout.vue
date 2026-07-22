@@ -197,7 +197,10 @@ onMounted(async () => {
   loadUnreadCount()
   if (userStore.hasRole('STUDENT')) {
     try {
-      const res = await axios.get('/api/student/profile')
+      const token = localStorage.getItem('token')
+      const res = await axios.get('/api/student/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       if (res.data.data && res.data.data.infoComplete === 0) {
         showProfileDialog.value = true
       }

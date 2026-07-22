@@ -30,6 +30,8 @@ import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 
+const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` })
+
 const props = defineProps({ modelValue: Boolean })
 const emit = defineEmits(['update:modelValue', 'done'])
 const visible = ref(false)
@@ -40,7 +42,7 @@ const form = reactive({ phone: '', originLoan: 0, campusLoan: 0, difficultyLevel
 watch(() => props.modelValue, async (val) => {
   if (val) {
     try {
-      const res = await axios.get('/api/student/profile')
+      const res = await axios.get('/api/student/profile', { headers: auth() })
       const d = res.data.data
       if (d) {
         form.phone = d.phone || ''
@@ -60,7 +62,7 @@ watch(visible, (v) => { if (!v) emit('update:modelValue', false) })
 async function handleSave() {
   saving.value = true
   try {
-    await axios.put('/api/student/profile', { ...form })
+    await axios.put('/api/student/profile', { ...form }, { headers: auth() })
     ElMessage.success('保存成功')
     visible.value = false
     emit('done')
