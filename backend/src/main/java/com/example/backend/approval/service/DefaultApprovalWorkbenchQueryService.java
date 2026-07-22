@@ -152,7 +152,12 @@ public class DefaultApprovalWorkbenchQueryService implements ApprovalWorkbenchQu
     }
 
     private List<String> editableFields(LoginUser user, ApplicationStateSnapshot state) {
-        return ApprovalEditableFieldPolicy.editableFields(user, state);
+        if (user.role() == UserRole.COUNSELOR && state.status() == ApplicationStatus.COUNSELOR_PENDING
+                && (state.applicationType() == ApplicationType.LIVING_SUBSIDY
+                || state.applicationType() == ApplicationType.TRAVEL_SUBSIDY)) {
+            return List.of("finalSubsidyAmount");
+        }
+        return List.of();
     }
 
     private List<ApprovalAction> allowedActions(LoginUser user, ApplicationStateSnapshot state) {

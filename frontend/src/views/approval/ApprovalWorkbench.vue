@@ -4,11 +4,10 @@ import { useRoute } from 'vue-router'
 import { CircleCheck, Clock, Refresh, Search, Tickets, UploadFilled, View, Warning } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ApprovalDetailDrawer from '../../components/approval/ApprovalDetailDrawer.vue'
-import ApprovalEditableFieldsDialog from '../../components/approval/ApprovalEditableFieldsDialog.vue'
 import ReviewDialog from '../../components/approval/ReviewDialog.vue'
 import StatusBadge from '../../components/approval/StatusBadge.vue'
 import BusinessConfirmDialog from '../../components/school/BusinessConfirmDialog.vue'
-import { cancelApplication, editApprovalFields, getApprovalDashboard, getApprovalDetail, getApprovalList, getSubmissionStatus, reviewApplication, submitInitialBatch, submitReturnResubmit } from '../../api/approval'
+import { cancelApplication, getApprovalDashboard, getApprovalDetail, getApprovalList, getSubmissionStatus, reviewApplication, submitInitialBatch, submitReturnResubmit } from '../../api/approval'
 import { APPLICATION_TYPE_META, createRequestId, formatDateTime, ROLE_META } from '../../constants/approval'
 
 const route = useRoute()
@@ -33,8 +32,6 @@ const resubmittingId = ref(null)
 const cancellationOpen = ref(false)
 const cancellationSubmitting = ref(false)
 const cancellationTarget = ref(null)
-const editOpen = ref(false)
-const editSubmitting = ref(false)
 const errorMessage = (error, fallback) => error.response?.data?.message || error.message || fallback
 const hasSelectedBatch = computed(() => Boolean(filters.batchType) && Number(filters.batchId) > 0)
 const cancellableStatuses = new Set(['APPROVED', 'CONFIRM_PENDING', 'COMPLETED'])
@@ -168,26 +165,6 @@ async function submitReview(payload) {
   }
 }
 
-async function submitFieldEdit(payload) {
-  if (!detail.value?.application?.applicationId) return
-  editSubmitting.value = true
-  try {
-    await editApprovalFields(detail.value.application.applicationId, {
-      ...payload,
-      version: detail.value.version,
-      requestId: createRequestId(),
-    })
-    ElMessage.success('申请字段已修改并写入审核记录')
-    editOpen.value = false
-    detail.value = await getApprovalDetail(detail.value.application.applicationId, role.value)
-    await loadWorkspace()
-  } catch (error) {
-    ElMessage.error(errorMessage(error, '修改申请字段失败'))
-  } finally {
-    editSubmitting.value = false
-  }
-}
-
 async function submitBatch() {
   if (!hasSelectedBatch.value) {
     ElMessage.warning('请先选择批次类型并填写真实批次 ID')
@@ -301,8 +278,7 @@ onMounted(loadWorkspace)
       <div class="pagination-row"><span>共 {{ total }} 条记录</span><el-pagination v-model:current-page="filters.page" v-model:page-size="filters.size" layout="prev, pager, next" :total="total" @current-change="loadWorkspace" /></div>
     </section>
 
-    <ApprovalDetailDrawer v-model="detailOpen" :detail="detail" :loading="detailLoading" :role="role" @review="openReview" @cancel="openCancellation" @edit="editOpen = true" />
-    <ApprovalEditableFieldsDialog v-model="editOpen" :detail="detail" :submitting="editSubmitting" @submit="submitFieldEdit" />
+    <ApprovalDetailDrawer v-model="detailOpen" :detail="detail" :loading="detailLoading" :role="role" @review="openReview" @cancel="openCancellation" />
     <ReviewDialog v-model="reviewOpen" :application="reviewTarget" :role="role" :submitting="reviewSubmitting" @submit="submitReview" />
     <BusinessConfirmDialog v-model="cancellationOpen" mode="CANCEL_APPLICATION" :business="cancellationTarget || {}" :submitting="cancellationSubmitting" @confirm="submitCancellation" />
   </div>

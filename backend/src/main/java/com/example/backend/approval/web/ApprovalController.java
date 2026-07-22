@@ -25,9 +25,6 @@ import com.example.backend.approval.port.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import com.example.backend.approval.service.ApprovalReviewService;
 import com.example.backend.approval.service.ApprovalCancellationService;
-import com.example.backend.application.dto.ArrearsItemCommand;
-import com.example.backend.application.dto.GiftApplicationItemCommand;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Max;
@@ -35,12 +32,10 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.Map;
-import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -187,23 +182,6 @@ public class ApprovalController {
         return value;
     }
 
-    @PutMapping("/{applicationId}/editable-fields")
-    public ApplicationStatusResult editAllowedFields(
-            @PathVariable Long applicationId,
-            @Valid @RequestBody EditFieldsRequest request
-    ) {
-        LoginUser user = currentUser();
-        EditableFields fields = request.fields();
-        return required(reviewServiceProvider, "成员三审核编辑 Service").editAllowedFields(
-                user,
-                applicationId,
-                new ApprovalReviewService.EditFieldsCommand(
-                        applicationId, fields.applicationReason(), fields.arrearsItems(), fields.giftItems(),
-                        fields.expectedSubsidyAmount(), request.comment(), request.version(), request.requestId()
-                )
-        );
-    }
-
     private ApprovalWorkbenchQueryService workbenchQueries() {
         return required(workbenchQueryServiceProvider, "成员一数据范围与成员二审核查询 Service");
     }
@@ -221,23 +199,6 @@ public class ApprovalController {
     }
 
     public record CancelRequest(@NotBlank String reason, @NotNull Integer version, @NotBlank String requestId) {
-    }
-
-    public record EditFieldsRequest(
-            @NotNull @Valid EditableFields fields,
-            @NotBlank String comment,
-            @NotNull Integer version,
-            @NotBlank String requestId
-    ) {
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = false)
-    public record EditableFields(
-            String applicationReason,
-            @Valid List<ArrearsItemCommand> arrearsItems,
-            @Valid List<GiftApplicationItemCommand> giftItems,
-            BigDecimal expectedSubsidyAmount
-    ) {
     }
 
     public static class ApprovalListRequest {

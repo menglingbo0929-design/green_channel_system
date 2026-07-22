@@ -70,8 +70,7 @@ public class ApprovalServiceConfiguration {
             ObjectProvider<com.example.backend.application.port.ApplicationDetailService> detailServiceProvider,
             ObjectProvider<ApprovalMessageRecipientResolver> recipientResolverProvider,
             ObjectProvider<com.example.backend.approval.api.SystemMessageService> messageServiceProvider,
-            ObjectProvider<StudentScopeService> studentScopeServiceProvider,
-            ObjectProvider<com.example.backend.application.port.ReviewableApplicationEditService> applicationEditServiceProvider
+            ObjectProvider<StudentScopeService> studentScopeServiceProvider
     ) {
         return new ApprovalReviewService(
                 stateQueryService,
@@ -81,8 +80,7 @@ public class ApprovalServiceConfiguration {
                 detailServiceProvider,
                 recipientResolverProvider,
                 messageServiceProvider,
-                studentScopeServiceProvider,
-                applicationEditServiceProvider
+                studentScopeServiceProvider
         );
     }
 
