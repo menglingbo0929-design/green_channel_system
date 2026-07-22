@@ -313,7 +313,7 @@ POST /api/approvals/school/{applicationId}/review
 
 ### 4.4 修改审核允许字段
 
-> 当前状态：跨模块依赖未闭合。成员三已在详情响应中返回 `editableFields`，但该接口要修改成员二拥有的申请业务字段，仍需成员二提供带字段白名单、状态和版本条件的写入 Service；成员三不得直接写 `application` 或申请明细表。
+> 当前状态：已实现。成员三负责角色、当前审核状态、数据范围、字段白名单、幂等和审计；成员二 `ReviewableApplicationEditService` 负责申请及明细的物理写入和版本控制。成员三不直接访问成员二 Mapper。
 
 ```http
 PUT /api/approvals/{applicationId}/editable-fields
@@ -335,6 +335,15 @@ PUT /api/approvals/{applicationId}/editable-fields
 ```
 
 后端必须按申请类型和审核层级使用字段白名单，禁止修改学生基本信息、申请人、批次、申请来源和主键。成功后写 `MODIFY` 记录。
+
+当前字段白名单：
+
+- 绿色通道申请：`applicationReason`、`arrearsItems`、`giftItems`；
+- 生活补助/路费补助：`applicationReason`、`expectedSubsidyAmount`；
+- 辅导员审核补助时的 `finalSubsidyAmount` 仍通过逐条审核接口提交，由资源 Service 校验和调整额度，不属于本接口字段；
+- 只有与当前 `COUNSELOR_PENDING / COLLEGE_PENDING / SCHOOL_PENDING` 层级一致的审核角色可以修改，且辅导员、学院必须通过学生数据范围校验。
+
+请求必须提供当前 `version`、唯一 `requestId` 和非空 `comment`。成功后申请版本加一，并在同一事务中向 `approval_record` 写入 `MODIFY`、原/新状态及 JSON 格式的 `modified_fields`。
 
 ## 5. 批量上报接口
 

@@ -128,6 +128,10 @@ export async function getMessages(params) {
     })),
   }
 }
+export async function editApprovalFields(applicationId, payload) {
+  if (useMock) return mock.editApprovalFields(applicationId, payload)
+  return unwrap(await client.put(`/approvals/${applicationId}/editable-fields`, payload))
+}
 
 export async function markMessageAsRead(messageId) {
   if (useMock) return mock.markMessageAsRead(messageId)
@@ -135,11 +139,21 @@ export async function markMessageAsRead(messageId) {
 }
 
 function normalizeDetail(payload) {
+  const arrearsDetail = payload?.arrearsDetail
+  const arrearsItems = Array.isArray(arrearsDetail) ? arrearsDetail : (arrearsDetail?.items || [])
+  const subsidyAmount = payload?.subsidyDetail?.expectedAmount ?? payload?.subsidyDetail?.requestedAmount
+  const declaredAmount = arrearsItems.length
+    ? arrearsItems.reduce((sum, item) => sum + Number(item.declaredAmount ?? item.amount ?? 0), 0)
+    : Number(subsidyAmount ?? payload?.application?.declaredAmount ?? 0)
   return {
     ...payload,
-    application: normalizeApplication(payload?.application ?? payload?.applicationDetail ?? {}),
+    application: normalizeApplication({ ...(payload?.application ?? payload?.applicationDetail ?? {}), declaredAmount }),
     approvalRecords: payload?.approvalRecords ?? payload?.records ?? [],
-    attachments: payload?.attachments ?? [],
+    attachments: (payload?.attachments ?? []).map((item) => ({
+      ...item,
+      fileName: item.fileName ?? item.originalFilename,
+      fileSize: item.fileSize == null ? '—' : (typeof item.fileSize === 'number' ? `${Math.ceil(item.fileSize / 1024)} KB` : item.fileSize),
+    })),
     editableFields: payload?.editableFields ?? [],
     allowedActions: payload?.allowedActions ?? [],
     version: payload?.version ?? payload?.application?.version,
