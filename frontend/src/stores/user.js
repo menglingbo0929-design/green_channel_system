@@ -73,10 +73,7 @@ export const useUserStore = defineStore('user', () => {
   })
 
   /** 默认跳转页面 */
-  const defaultPage = computed(() => {
-    if (roles.value.length === 0) return '/home'
-    return ROLE_DEFAULT_PAGE[roles.value[0]] || '/home'
-  })
+  const defaultPage = computed(() => '/home')
 
   // ========== 操作方法（actions） ==========
 

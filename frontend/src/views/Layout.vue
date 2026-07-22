@@ -112,8 +112,8 @@ import { getMessages } from '../api/approval.js'
 import FormDialog from '../components/FormDialog.vue'
 import {
   HomeFilled, User, School, EditPen, Document,
-  CircleCheck, Flag, Coin, Plus, TrendCharts,
-  Coin as Database, InfoFilled, Fold, Bell, ArrowDown
+  CircleCheck, Flag, Money, Plus, TrendCharts,
+  Money as DataBoard, InfoFilled, Fold, Bell, ArrowDown, Setting
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -158,10 +158,10 @@ const iconMap = {
   document:     Document,
   'check-circle': CircleCheck,
   flag:         Flag,
-  coin:         Coin,
+  coin:         Money,
   plus:         Plus,
   'chart-line': TrendCharts,
-  database:     Database,
+  database:     DataBoard,
   info:         InfoFilled,
   bell:         Bell
 }
