@@ -105,7 +105,7 @@ CREATE TABLE `student` (
   `college_id` bigint(20) NOT NULL COMMENT '所属学院ID',
   `major_id` bigint(20) NOT NULL COMMENT '所属专业ID',
   `grade_id` bigint(20) NOT NULL COMMENT '所属年级ID',
-  `class_id` bigint(20) NOT NULL COMMENT '所属班级ID',
+  `class_id` bigint(20) NULL DEFAULT NULL COMMENT '所属班级ID',
   `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '联系电话',
   `origin_loan` tinyint(4) NULL DEFAULT 0 COMMENT '生源地贷款 0=无 1=有',
   `campus_loan` tinyint(4) NULL DEFAULT 0 COMMENT '拟申请校园地贷款 0=否 1=是',
