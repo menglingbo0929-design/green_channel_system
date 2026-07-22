@@ -4,42 +4,90 @@ import { createRequestId } from '../constants/approval'
 
 const client = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', timeout: 10000 })
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('green-channel-token')
+  // Keep the approval module on the same authenticated session as the rest of
+  // the application. The legacy key remains only for existing local sessions.
+  const token = localStorage.getItem('token') || localStorage.getItem('green-channel-token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
 const useMock = import.meta.env.VITE_USE_MOCK !== 'false'
 const unwrap = (response) => response.data?.data ?? response.data
+const valueOf = (value) => value == null ? '' : String(value)
+
+function normalizePage(payload, fallback = {}) {
+  const records = payload?.records ?? payload?.list ?? payload?.content ?? []
+  return {
+    records: Array.isArray(records) ? records : [],
+    total: Number(payload?.total ?? payload?.totalCount ?? records.length),
+    page: Number(payload?.page ?? payload?.pageNo ?? fallback.page ?? 1),
+    size: Number(payload?.size ?? payload?.pageSize ?? fallback.size ?? 10),
+  }
+}
+
+function normalizeApplication(item) {
+  return {
+    ...item,
+    applicationId: item.applicationId ?? item.id,
+    applicationTypeName: item.applicationTypeName ?? item.applicationType ?? '—',
+    batchName: item.batchName ?? (item.batchId ? `批次 ${item.batchId}` : '—'),
+    declaredAmount: Number(item.declaredAmount ?? item.requestedAmount ?? item.amount ?? 0),
+    currentNode: item.currentNode ?? item.currentLevelName ?? item.statusName ?? item.status ?? '—',
+    submitTime: item.submitTime ?? item.createTime ?? null,
+  }
+}
+
+function filterMyApplications(records, params) {
+  const reviewing = ['COUNSELOR_PENDING', 'COLLEGE_PENDING', 'SCHOOL_PENDING', 'CONFIRM_PENDING']
+  return records.filter((item) => {
+    const category = params.category || 'ALL'
+    const categoryMatch = category === 'ALL'
+      || (category === 'DRAFT' && item.status === 'DRAFT')
+      || (category === 'REVIEWING' && reviewing.includes(item.status))
+      || (category === 'RETURNED' && valueOf(item.status).endsWith('_RETURNED'))
+      || (category === 'APPROVED' && item.status === 'APPROVED')
+      || (category === 'COMPLETED' && item.status === 'COMPLETED')
+    const keyword = valueOf(params.keyword).trim().toUpperCase()
+    return categoryMatch
+      && (!params.applicationType || item.applicationType === params.applicationType)
+      && (!keyword || valueOf(item.applicationNo).toUpperCase().includes(keyword)
+        || valueOf(item.applicationTypeName).toUpperCase().includes(keyword))
+  })
+}
 
 export async function getApprovalList(role, tab, params) {
   if (useMock) return mock.getApprovalList(role, tab, params)
-  return unwrap(await client.get(tab === 'pending' ? '/approvals/pending' : '/approvals/processed', { params }))
+  const query = { ...params }
+  if (tab === 'returned') query.status = `${role}_RETURNED`
+  const endpoint = tab === 'pending' ? '/approvals/pending' : '/approvals/processed'
+  const page = normalizePage(unwrap(await client.get(endpoint, { params: query })), params)
+  return { ...page, records: page.records.map(normalizeApplication) }
 }
 export async function getMyApplications(params) {
   if (useMock) return mock.getMyApplications(params)
   const payload = unwrap(await client.get('/applications/mine', { params }))
-  if (!Array.isArray(payload)) return payload
+  if (!Array.isArray(payload)) {
+    const page = normalizePage(payload, params)
+    return { ...page, records: page.records.map(normalizeApplication) }
+  }
+  const filtered = filterMyApplications(payload.map(normalizeApplication), params)
+  const page = Number(params.page || 1)
+  const size = Number(params.size || 10)
+  const offset = (page - 1) * size
   return {
-    records: payload.map((item) => ({
-      ...item,
-      applicationId: item.applicationId ?? item.id,
-      applicationTypeName: item.applicationTypeName ?? item.applicationType ?? '—',
-      batchName: item.batchName ?? '—',
-      declaredAmount: Number(item.declaredAmount ?? 0),
-      currentNode: item.currentNode ?? item.status ?? '—',
-      submitTime: item.submitTime ?? null,
-    })),
-    total: payload.length,
+    records: filtered.slice(offset, offset + size),
+    total: filtered.length,
+    page,
+    size,
   }
 }
 export async function getMyApplicationDetail(applicationId) {
   if (useMock) return mock.getMyApplicationDetail(applicationId)
-  return unwrap(await client.get(`/approvals/${applicationId}`))
+  return normalizeDetail(unwrap(await client.get(`/approvals/${applicationId}`)))
 }
 export async function getApprovalDetail(applicationId, role) {
   if (useMock) return mock.getApprovalDetail(applicationId, role)
-  return unwrap(await client.get(`/approvals/${applicationId}`))
+  return normalizeDetail(unwrap(await client.get(`/approvals/${applicationId}`)))
 }
 export async function reviewApplication(role, applicationId, payload) {
   if (useMock) return mock.reviewApplication(role, applicationId, payload)
@@ -68,10 +116,30 @@ export async function cancelApplication(applicationId, payload) {
 
 export async function getMessages(params) {
   if (useMock) return mock.getMessages(params)
-  return unwrap(await client.get('/messages', { params }))
+  const page = normalizePage(unwrap(await client.get('/messages', { params })), params)
+  return {
+    ...page,
+    records: page.records.map((item) => ({
+      ...item,
+      messageId: item.messageId ?? item.id,
+      read: Boolean(item.read ?? item.isRead),
+    })),
+  }
 }
 
 export async function markMessageAsRead(messageId) {
   if (useMock) return mock.markMessageAsRead(messageId)
   return unwrap(await client.post(`/messages/${messageId}/read`, { requestId: createRequestId() }))
+}
+
+function normalizeDetail(payload) {
+  return {
+    ...payload,
+    application: normalizeApplication(payload?.application ?? payload?.applicationDetail ?? {}),
+    approvalRecords: payload?.approvalRecords ?? payload?.records ?? [],
+    attachments: payload?.attachments ?? [],
+    editableFields: payload?.editableFields ?? [],
+    allowedActions: payload?.allowedActions ?? [],
+    version: payload?.version ?? payload?.application?.version,
+  }
 }

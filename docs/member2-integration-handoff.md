@@ -75,7 +75,7 @@ findEnabledStudentsByIds(Collection<Long> studentIds)
 
 ### 3.1 正式提交审核流转
 
-成员三需确认并稳定提供：
+成员三已经稳定提供：
 
 ```java
 ApprovalTransitionService.submitInitial(
@@ -92,13 +92,13 @@ ApprovalTransitionService.submitInitial(
 2. 成员二预占礼包库存、学院/年级名额和补助额度；
 3. 成员三写 `SUBMIT` 审核记录，并推进到 `COUNSELOR_PENDING`。
 
-需共同确认：`requestId` 幂等、事务传播、预占成功但审核记录写入失败时的整体回滚、退回是否保留预占、拒绝或取消时谁触发资源释放。
+成员三实现已经覆盖 `requestId` 幂等、状态/版本校验、`SUBMIT` 审核记录和状态推进。真实联调仍需共同验收事务传播、预占成功但审核记录写入失败时的整体回滚、退回是否保留预占，以及拒绝或取消时的资源释放。
 
 当前成员二会拒绝不具备附件与资源预占条件的学校代申请正式提交，错误码为 `SCHOOL_PROXY_SUBMISSION_UNAVAILABLE`，不会产生资源账不一致的半成品状态。
 
 ### 3.2 补录自动审核
 
-成员三需确认并提供：
+成员三已经确认并提供：
 
 ```java
 ApprovalTransitionService.completeSupplementReview(
@@ -116,6 +116,8 @@ ApprovalTransitionService.completeSupplementReview(
 |---|---|---|
 | 含欠费明细 | `CONFIRM_PENDING` | `CONFIRMATION` |
 | 不含欠费明细 | `COMPLETED` | `FINISHED` |
+
+成员三同时提供 `SupplementCompletionPortAdapter`，供需要通过成员四完成 Port 接入的外层事务复用。成员二当前已直接调用正式审批 Service 时，不得再通过该 Port 重复推进。
 
 成员二会写申请和真实明细，成员三负责自动通过审核记录与状态流转。三方联调时需确认其与补录资源直接确认处于同一事务。
 

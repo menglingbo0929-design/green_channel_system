@@ -1,6 +1,7 @@
 package com.example.backend.approval.persistence.mapper;
 
 import com.example.backend.approval.persistence.entity.ApprovalRecordEntity;
+import com.example.backend.approval.persistence.projection.ApprovalDecisionCountProjection;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -72,5 +73,42 @@ public interface ApprovalRecordMapper {
             @Param("applicationId") Long applicationId,
             @Param("reviewRound") Integer reviewRound,
             @Param("approvalLevel") ApprovalRecordLevel approvalLevel
+    );
+
+    @Select("""
+            SELECT DISTINCT application_id
+            FROM approval_record
+            WHERE approval_level = #{approvalLevel}
+              AND approver_id = #{approverId}
+              AND action IN ('APPROVE', 'RETURN', 'REJECT')
+            ORDER BY application_id DESC
+            """)
+    List<Long> listProcessedApplicationIds(
+            @Param("approvalLevel") ApprovalRecordLevel approvalLevel,
+            @Param("approverId") Long approverId
+    );
+
+    @Select("""
+            <script>
+            SELECT action, COUNT(*) AS count
+            FROM approval_record
+            WHERE approval_level = #{approvalLevel}
+              AND approver_id = #{approverId}
+              AND action IN ('APPROVE', 'RETURN', 'REJECT')
+              AND application_id IN
+              <foreach collection="applicationIds" item="applicationId" open="(" separator="," close=")">
+                  #{applicationId}
+              </foreach>
+            GROUP BY action
+            </script>
+            """)
+    @Results(value = {
+            @Result(column = "action", property = "action"),
+            @Result(column = "count", property = "count")
+    })
+    List<ApprovalDecisionCountProjection> countDecisions(
+            @Param("approvalLevel") ApprovalRecordLevel approvalLevel,
+            @Param("approverId") Long approverId,
+            @Param("applicationIds") List<Long> applicationIds
     );
 }
