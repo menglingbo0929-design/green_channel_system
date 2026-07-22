@@ -214,3 +214,16 @@ export async function cancelApplication(applicationId, payload) {
   cancellationRequests.set(payload.requestId, { applicationId: item.applicationId, result })
   return wait(result, 320)
 }
+
+export async function editApprovalFields(applicationId, payload) {
+  const item = applications.find((record) => record.applicationId === Number(applicationId))
+  if (!item) throw new Error('申请不存在')
+  if (item.version !== payload.version) throw new Error('版本冲突，请重新加载申请详情')
+  if (payload.fields?.applicationReason !== undefined) item.applicationReason = payload.fields.applicationReason
+  if (payload.fields?.arrearsItems) {
+    item.declaredAmount = payload.fields.arrearsItems.reduce((sum, current) => sum + Number(current.declaredAmount || 0), 0)
+  }
+  if (payload.fields?.expectedSubsidyAmount !== undefined) item.declaredAmount = Number(payload.fields.expectedSubsidyAmount)
+  item.version += 1
+  return wait({ applicationId: item.applicationId, status: item.status, currentLevel: item.currentLevel, version: item.version }, 260)
+}

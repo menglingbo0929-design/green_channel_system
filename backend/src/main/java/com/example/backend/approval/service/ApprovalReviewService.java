@@ -18,9 +18,17 @@ import com.example.backend.approval.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.approval.port.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
+import com.example.backend.application.dto.ArrearsItemCommand;
+import com.example.backend.application.dto.GiftApplicationItemCommand;
+import com.example.backend.application.dto.ReviewableApplicationEditCommand;
+import com.example.backend.application.port.ReviewableApplicationEditService;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +44,7 @@ public class ApprovalReviewService {
     private final ObjectProvider<ApprovalMessageRecipientResolver> recipientResolverProvider;
     private final ObjectProvider<SystemMessageService> messageServiceProvider;
     private final ObjectProvider<StudentScopeService> studentScopeServiceProvider;
+    private final ObjectProvider<ReviewableApplicationEditService> applicationEditServiceProvider;
 
     public ApprovalReviewService(
             ApplicationStateQueryService stateQueryService,
@@ -45,7 +54,8 @@ public class ApprovalReviewService {
             ObjectProvider<com.example.backend.application.port.ApplicationDetailService> detailServiceProvider,
             ObjectProvider<ApprovalMessageRecipientResolver> recipientResolverProvider,
             ObjectProvider<SystemMessageService> messageServiceProvider,
-            ObjectProvider<StudentScopeService> studentScopeServiceProvider
+            ObjectProvider<StudentScopeService> studentScopeServiceProvider,
+            ObjectProvider<ReviewableApplicationEditService> applicationEditServiceProvider
     ) {
         this.stateQueryService = stateQueryService;
         this.stateWriteService = stateWriteService;
@@ -55,6 +65,7 @@ public class ApprovalReviewService {
         this.recipientResolverProvider = recipientResolverProvider;
         this.messageServiceProvider = messageServiceProvider;
         this.studentScopeServiceProvider = studentScopeServiceProvider;
+        this.applicationEditServiceProvider = applicationEditServiceProvider;
     }
 
     @Transactional
@@ -103,6 +114,60 @@ public class ApprovalReviewService {
                 .requestId(command.requestId())
                 .build());
         notifyStudent(before.studentId(), applicationId, command.action(), command.comment(), after.status());
+        return new ApplicationStatusResult(after.applicationId(), after.status(), after.currentLevel(), after.version());
+    }
+
+    @Transactional
+    public ApplicationStatusResult editAllowedFields(LoginUser user, Long applicationId, EditFieldsCommand command) {
+        validateEditCommand(applicationId, command);
+        ApprovalRecordLevel level = reviewerLevel(user);
+        Optional<ApprovalRecordEntity> previous = approvalRecordMapper.findByRequestId(command.requestId());
+        if (previous.isPresent()) return idempotentEditResult(previous.get(), applicationId, level, command);
+
+        ApplicationStateSnapshot before = stateQueryService.getRequiredState(applicationId);
+        if (!Objects.equals(before.version(), command.version())) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_VERSION_CONFLICT, "申请版本已变化，请刷新后重试");
+        }
+        if (before.status() != expectedStatus(level)) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_INVALID_STATUS, "申请当前不在该审核环节");
+        }
+        validateScope(user, before);
+
+        List<String> requestedFields = command.requestedFields();
+        List<String> allowedFields = ApprovalEditableFieldPolicy.applicationWriteFields(user, before);
+        if (requestedFields.isEmpty()) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_ACTION_REQUIRED, "至少提供一个需要修改的字段");
+        }
+        if (!allowedFields.containsAll(requestedFields)) {
+            Set<String> denied = new LinkedHashSet<>(requestedFields);
+            denied.removeAll(allowedFields);
+            throw new ApprovalException(
+                    ApprovalErrorCode.APPROVAL_EDIT_FIELD_NOT_ALLOWED,
+                    "当前角色、状态或申请类型不允许修改字段: " + String.join(",", denied)
+            );
+        }
+
+        requireApplicationEditService().editForReview(
+                applicationId,
+                new ReviewableApplicationEditCommand(
+                        command.version(), command.applicationReason(), command.arrearsItems(),
+                        command.giftItems(), command.expectedSubsidyAmount()
+                ),
+                user.userId()
+        );
+        ApplicationStateSnapshot after = stateQueryService.getRequiredState(applicationId);
+        approvalRecordMapper.insert(ApprovalRecordEntity.builder()
+                .applicationId(applicationId)
+                .reviewRound(before.reviewRound())
+                .approvalLevel(level)
+                .approverId(user.userId())
+                .action(ApprovalAction.MODIFY)
+                .comment(command.comment().trim())
+                .oldStatus(before.status())
+                .newStatus(after.status())
+                .modifiedFields(toJsonArray(requestedFields))
+                .requestId(command.requestId())
+                .build());
         return new ApplicationStatusResult(after.applicationId(), after.status(), after.currentLevel(), after.version());
     }
 
@@ -187,6 +252,55 @@ public class ApprovalReviewService {
         }
     }
 
+    private void validateEditCommand(Long applicationId, EditFieldsCommand command) {
+        if (applicationId == null || applicationId <= 0 || command == null
+                || !Objects.equals(applicationId, command.applicationId())
+                || command.version() == null || command.version() < 0
+                || command.requestId() == null || command.requestId().isBlank()) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_ACTION_REQUIRED, "审核编辑参数不完整");
+        }
+        if (command.comment() == null || command.comment().isBlank()) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_COMMENT_REQUIRED, "修改申请字段必须填写说明");
+        }
+    }
+
+    private ApprovalRecordLevel reviewerLevel(LoginUser user) {
+        if (user == null || user.userId() == null || user.role() == UserRole.STUDENT) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_FORBIDDEN_SCOPE, "当前角色不能修改审核字段");
+        }
+        return ApprovalRecordLevel.valueOf(user.role().name());
+    }
+
+    private ApplicationStatusResult idempotentEditResult(
+            ApprovalRecordEntity record,
+            Long applicationId,
+            ApprovalRecordLevel level,
+            EditFieldsCommand command
+    ) {
+        if (!Objects.equals(record.getApplicationId(), applicationId)
+                || record.getApprovalLevel() != level
+                || record.getAction() != ApprovalAction.MODIFY
+                || !Objects.equals(record.getModifiedFields(), toJsonArray(command.requestedFields()))) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVAL_ALREADY_PROCESSED, "requestId 已被其他操作使用");
+        }
+        return new ApplicationStatusResult(
+                applicationId, record.getNewStatus(), record.getNewStatus().level(), command.version() + 1
+        );
+    }
+
+    private ReviewableApplicationEditService requireApplicationEditService() {
+        ReviewableApplicationEditService service = applicationEditServiceProvider.getIfAvailable();
+        if (service == null) {
+            throw new com.example.backend.approval.web.ApprovalIntegrationUnavailableException("成员二审核允许字段写入 Service");
+        }
+        return service;
+    }
+
+    private String toJsonArray(List<String> fields) {
+        return fields.stream().map(field -> "\"" + field + "\"")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+    }
+
     private ApplicationStatusResult idempotentResult(
             ApprovalRecordEntity record,
             Long applicationId,
@@ -242,5 +356,25 @@ public class ApprovalReviewService {
             Integer version,
             String requestId
     ) {
+    }
+
+    public record EditFieldsCommand(
+            Long applicationId,
+            String applicationReason,
+            List<ArrearsItemCommand> arrearsItems,
+            List<GiftApplicationItemCommand> giftItems,
+            BigDecimal expectedSubsidyAmount,
+            String comment,
+            Integer version,
+            String requestId
+    ) {
+        List<String> requestedFields() {
+            List<String> fields = new ArrayList<>();
+            if (applicationReason != null) fields.add(ApprovalEditableFieldPolicy.APPLICATION_REASON);
+            if (arrearsItems != null) fields.add(ApprovalEditableFieldPolicy.ARREARS_ITEMS);
+            if (giftItems != null) fields.add(ApprovalEditableFieldPolicy.GIFT_ITEMS);
+            if (expectedSubsidyAmount != null) fields.add(ApprovalEditableFieldPolicy.EXPECTED_SUBSIDY_AMOUNT);
+            return List.copyOf(fields);
+        }
     }
 }

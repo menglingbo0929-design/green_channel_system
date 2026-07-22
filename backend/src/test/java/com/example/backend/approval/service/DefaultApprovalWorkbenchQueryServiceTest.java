@@ -117,6 +117,27 @@ class DefaultApprovalWorkbenchQueryServiceTest {
     }
 
     @Test
+    void activeCounselorReceivesTheGreenChannelFieldWhitelist() {
+        ApplicationStateQueryService states = mock(ApplicationStateQueryService.class);
+        StudentScopeService scopes = mock(StudentScopeService.class);
+        ApprovalApplicationQueryPort applications = mock(ApprovalApplicationQueryPort.class);
+        ApprovalRecordMapper records = mock(ApprovalRecordMapper.class);
+        when(states.getRequiredState(10L)).thenReturn(stateSnapshot());
+        when(scopes.isCounselorResponsibleFor(99L, 20L)).thenReturn(true);
+        when(applications.getRequiredApprovalDetail(10L)).thenReturn(new ApprovalApplicationDetail(
+                Map.of("applicationId", 10L), null, null, null, List.of(), 4
+        ));
+        when(records.listByApplicationId(10L)).thenReturn(List.of());
+        DefaultApprovalWorkbenchQueryService service = new DefaultApprovalWorkbenchQueryService(
+                states, scopes, applications, records
+        );
+
+        var detail = service.getDetail(new LoginUser(99L, UserRole.COUNSELOR, null, null), 10L);
+
+        assertEquals(List.of("applicationReason", "arrearsItems", "giftItems"), detail.editableFields());
+    }
+
+    @Test
     void dashboardKeepsApplicationAggregatesWhenThereAreNoScopedDecisions() {
         ApplicationStateQueryService states = mock(ApplicationStateQueryService.class);
         StudentScopeService scopes = mock(StudentScopeService.class);
