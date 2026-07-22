@@ -12,10 +12,27 @@ public class ApprovalExceptionHandler {
 
     @ExceptionHandler(ApprovalException.class)
     ResponseEntity<Map<String, String>> handleApproval(ApprovalException exception) {
-        return ResponseEntity.badRequest().body(Map.of(
+        return ResponseEntity.status(statusFor(exception)).body(Map.of(
                 "code", exception.getCode().name(),
                 "message", exception.getMessage()
         ));
+    }
+
+    private HttpStatus statusFor(ApprovalException exception) {
+        return switch (exception.getCode()) {
+            case APPROVAL_FORBIDDEN_SCOPE -> HttpStatus.FORBIDDEN;
+            case APPROVAL_INVALID_STATUS,
+                    APPROVAL_ALREADY_PROCESSED,
+                    APPROVAL_VERSION_CONFLICT,
+                    APPROVAL_UNREVIEWED_EXISTS,
+                    APPROVAL_BATCH_NOT_CLOSED,
+                    APPROVAL_BATCH_ALREADY_SUBMITTED,
+                    APPROVAL_COLLEGE_DEADLINE_EXPIRED,
+                    APPROVAL_QUOTA_INSUFFICIENT,
+                    APPROVAL_CANCEL_NOT_ALLOWED -> HttpStatus.CONFLICT;
+            case APPROVAL_RESOURCE_ROLLBACK_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR;
+            default -> HttpStatus.BAD_REQUEST;
+        };
     }
 
     @ExceptionHandler(ApprovalIntegrationUnavailableException.class)
