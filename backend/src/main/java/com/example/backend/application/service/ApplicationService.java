@@ -133,7 +133,11 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     @Override @Transactional public ApplicationStateSnapshot updateState(Long id, ApplicationStatus expected, ApplicationStatus target, ApprovalLevel level, Integer version, Long operatorId) {
         if (applicationMapper.updateState(id, expected, target, level, version, operatorId) != 1) throw conflict("APPLICATION_VERSION_CONFLICT", "申请状态或版本已变化");
         ApplicationStateSnapshot result = getRequiredState(id);
-        if (target == ApplicationStatus.APPROVED || target == ApplicationStatus.COMPLETED) recommendations.generateForCompletedApplication(id);
+        if (target == ApplicationStatus.APPROVED
+                || target == ApplicationStatus.CONFIRM_PENDING
+                || target == ApplicationStatus.COMPLETED) {
+            recommendations.generateForCompletedApplication(id);
+        }
         return result;
     }
     @Override @Transactional public ApplicationStateSnapshot incrementReviewRoundAndUpdateState(Long id, ApplicationStatus expected, ApplicationStatus target, ApprovalLevel level, Integer version, Long operatorId) {

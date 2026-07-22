@@ -9,8 +9,8 @@ import com.example.backend.approval.persistence.mapper.SystemMessageMapper;
 import com.example.backend.approval.port.ApprovalMessageRecipientResolver;
 import com.example.backend.approval.port.ApprovalApplicationQueryPort;
 import com.example.backend.approval.port.ApprovalResourceService;
-import com.example.backend.approval.port.ApplicationStateQueryService;
-import com.example.backend.approval.port.ApplicationStateWriteService;
+import com.example.backend.application.port.ApplicationStateQueryService;
+import com.example.backend.application.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.ArrearsDocumentService;
 import com.example.backend.service.StudentScopeService;
 import org.springframework.beans.factory.ObjectProvider;
@@ -61,23 +61,23 @@ public class ApprovalServiceConfiguration {
             ApplicationStateQueryService stateQueryService,
             ApplicationStateWriteService stateWriteService,
             ApprovalRecordMapper approvalRecordMapper,
-            ObjectProvider<ApprovalResourceService> resourceServiceProvider,
-            ObjectProvider<com.example.backend.application.port.ApplicationDetailService> detailServiceProvider,
-            ObjectProvider<ApprovalMessageRecipientResolver> recipientResolverProvider,
+            ApprovalResourceService resourceService,
+            com.example.backend.application.port.ApplicationDetailService detailService,
+            ApprovalMessageRecipientResolver recipientResolver,
             ObjectProvider<com.example.backend.approval.api.SystemMessageService> messageServiceProvider,
-            ObjectProvider<StudentScopeService> studentScopeServiceProvider,
-            ObjectProvider<com.example.backend.application.port.ReviewableApplicationEditService> applicationEditServiceProvider
+            StudentScopeService studentScopeService,
+            com.example.backend.application.port.ReviewableApplicationEditService applicationEditService
     ) {
         return new ApprovalReviewService(
                 stateQueryService,
                 stateWriteService,
                 approvalRecordMapper,
-                resourceServiceProvider,
-                detailServiceProvider,
-                recipientResolverProvider,
+                resourceService,
+                detailService,
+                recipientResolver,
                 messageServiceProvider,
-                studentScopeServiceProvider,
-                applicationEditServiceProvider
+                studentScopeService,
+                applicationEditService
         );
     }
 
@@ -99,10 +99,10 @@ public class ApprovalServiceConfiguration {
             ApprovalRecordMapper approvalRecords,
             ApplicationStateQueryService stateQueryService,
             ApplicationStateWriteService stateWriteService,
-            ObjectProvider<com.example.backend.approval.port.ApprovalBatchQueryService> batchQueryProvider,
-            ObjectProvider<com.example.backend.approval.port.ApprovalSubmissionApplicationQueryService> applicationQueryProvider,
-            ObjectProvider<StudentScopeService> scopeServiceProvider,
-            ObjectProvider<ApprovalResourceService> resourceServiceProvider,
+            com.example.backend.approval.port.ApprovalBatchQueryService batchQueryService,
+            com.example.backend.approval.port.ApprovalSubmissionApplicationQueryService applicationQueryService,
+            StudentScopeService scopeService,
+            ApprovalResourceService resourceService,
             Clock approvalClock
     ) {
         return new ApprovalBatchSubmissionService(
@@ -110,10 +110,10 @@ public class ApprovalServiceConfiguration {
                 approvalRecords,
                 stateQueryService,
                 stateWriteService,
-                batchQueryProvider,
-                applicationQueryProvider,
-                scopeServiceProvider,
-                resourceServiceProvider,
+                batchQueryService,
+                applicationQueryService,
+                scopeService,
+                resourceService,
                 approvalClock
         );
     }

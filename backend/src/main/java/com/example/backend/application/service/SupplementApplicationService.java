@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,11 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SupplementApplicationService implements SupplementApplicationPort {
     private final ApplicationService applications; private final ApplicationMapper mapper; private final ApplicationOperationMapper operations;
-    private final ApplicationResourceMapper resources; private final ObjectProvider<ApprovalTransitionService> transitions;
-    private final ObjectProvider<SchoolProxyStudentQueryPort> studentQueries;
+    private final ApplicationResourceMapper resources; private final ApprovalTransitionService transitionService;
+    private final SchoolProxyStudentQueryPort studentQueries;
     public SupplementApplicationService(ApplicationService applications, ApplicationMapper mapper, ApplicationOperationMapper operations,
-                                        ApplicationResourceMapper resources, ObjectProvider<ApprovalTransitionService> transitions,
-                                        ObjectProvider<SchoolProxyStudentQueryPort> studentQueries) { this.applications=applications;this.mapper=mapper;this.operations=operations;this.resources=resources;this.transitions=transitions;this.studentQueries=studentQueries; }
+                                         ApplicationResourceMapper resources, ApprovalTransitionService transitionService,
+                                         SchoolProxyStudentQueryPort studentQueries) { this.applications=applications;this.mapper=mapper;this.operations=operations;this.resources=resources;this.transitionService=transitionService;this.studentQueries=studentQueries; }
     @Override @Transactional public SupplementApplicationVO createSupplementDraft(SupplementCreateDTO command, SchoolProxyStudentVO student, String ignoredBatchType, Long operatorUserId) {
         Long previous=operations.findApplicationIdByRequestId(command.getRequestId()); if(previous!=null) return toView(requireSupplement(previous),student);
         if(student==null || student.getStudentId()==null) throw bad("SUPPLEMENT_STUDENT_REQUIRED","必须由成员一学生查询提供有效学生快照");
@@ -44,9 +43,8 @@ public class SupplementApplicationService implements SupplementApplicationPort {
             state=applications.getRequiredState(state.applicationId());
             if(!command.getGiftItems().isEmpty()) applications.replaceGiftItems(state.applicationId(),state.version(),giftItems(command.getBatchId(),command.getGiftItems()),operatorUserId);
         } else applications.replaceSubsidy(state.applicationId(),state.version(),command.getSubsidyAmount(),operatorUserId);
-        state=applications.getRequiredState(state.applicationId()); ApprovalTransitionService transition=transitions.getIfAvailable();
-        if(transition==null) throw unavailable("缺少成员三 ApprovalTransitionService，不能生成补录自动审核记录");
-        transition.completeSupplementReview(state.applicationId(), !command.getArrearsItems().isEmpty(), state.version(), "SUPPLEMENT_COMPLETE_"+state.applicationId(),operatorUserId);
+        state=applications.getRequiredState(state.applicationId());
+        transitionService.completeSupplementReview(state.applicationId(), !command.getArrearsItems().isEmpty(), state.version(), "SUPPLEMENT_COMPLETE_"+state.applicationId(),operatorUserId);
         return toView(requireSupplement(state.applicationId()),student);
     }
     @Override public Page<SupplementApplicationVO> findSupplementPage(SupplementQueryDTO query, PageDTO page, Long operatorUserId) {
@@ -91,11 +89,11 @@ public class SupplementApplicationService implements SupplementApplicationPort {
     private List<GiftApplicationItemCommand> giftItems(Long batchId,List<SchoolProxyGiftItemDTO> rows){return rows.stream().map(x->{Long id=resources.findBatchGiftItemId(batchId,x.getGiftItemId());if(id==null)throw bad("SUPPLEMENT_GIFT_ITEM_INVALID","礼包物品不属于当前批次");return new GiftApplicationItemCommand(id,x.getQuantity());}).toList();}
     private ApplicationType parseType(String value){try{return ApplicationType.valueOf(value);}catch(Exception e){throw bad("SUPPLEMENT_TYPE_INVALID","申请类型无效");}}
     private Application requireSupplement(Long id){Application a=mapper.findBySource(id,ApplicationSource.SUPPLEMENT);if(a==null)throw new ApplicationException("SUPPLEMENT_NOT_FOUND",HttpStatus.NOT_FOUND,"补录申请不存在");return a;}
-    private SchoolProxyStudentQueryPort requiredStudentQueries() { SchoolProxyStudentQueryPort port = studentQueries.getIfAvailable(); if (port == null) throw unavailable("缺少成员一 SchoolProxyStudentQueryPort，不能读取补录学生快照"); return port; }
+    private SchoolProxyStudentQueryPort requiredStudentQueries() { return studentQueries; }
     private Long resolveStudentId(String studentNo, SchoolProxyStudentQueryPort students) { if (studentNo == null || studentNo.isBlank()) return null; SchoolProxyStudentVO student = students.findEnabledStudentByStudentNo(studentNo); return student == null ? null : student.getStudentId(); }
     private ApplicationType parseApplicationType(String value) { if (value == null || value.isBlank()) return null; try { return ApplicationType.valueOf(value); } catch (IllegalArgumentException exception) { throw bad("SUPPLEMENT_TYPE_INVALID", "applicationType 无效"); } }
     private ApplicationStatus parseSupplementStatus(String value) { if (value == null || value.isBlank()) return null; try { ApplicationStatus status = ApplicationStatus.valueOf(value); if (status != ApplicationStatus.CONFIRM_PENDING && status != ApplicationStatus.COMPLETED) throw bad("SUPPLEMENT_STATUS_INVALID", "status 仅支持 CONFIRM_PENDING 或 COMPLETED"); return status; } catch (IllegalArgumentException exception) { throw bad("SUPPLEMENT_STATUS_INVALID", "status 无效"); } }
     private Long positiveOrNull(Long value, String name) { if (value == null) return null; if (value <= 0) throw bad("SUPPLEMENT_QUERY_INVALID", name + " 必须为正整数"); return value; }
     private SupplementApplicationVO toView(Application a,SchoolProxyStudentVO s){SupplementApplicationVO v=new SupplementApplicationVO();v.setApplicationId(a.getId());v.setApplicationNo(a.getApplicationNo());v.setStudentId(a.getStudentId());if(s!=null){v.setStudentNo(s.getStudentNo());v.setStudentName(s.getStudentName());}v.setApplicationType(a.getApplicationType().name());v.setBatchType(a.getBatchType().name());v.setBatchId(a.getBatchType()==BatchType.GREEN_CHANNEL?a.getGreenChannelBatchId():a.getSubsidyBatchId());v.setSource(a.getSource().name());v.setStatus(a.getStatus().name());v.setCurrentLevel(a.getCurrentLevel().name());v.setVersion(a.getVersion());v.setContainsArrears(applications.containsArrears(a.getId()));v.setSupplementUserId(a.getCreateBy());v.setSupplementedAt(a.getSupplementedAt());v.setSupplementReason(a.getSupplementReason());return v;}
-    private ApplicationException bad(String code,String message){return new ApplicationException(code,HttpStatus.BAD_REQUEST,message);}private ApplicationException unavailable(String message){return new ApplicationException("DEPENDENCY_UNAVAILABLE",HttpStatus.SERVICE_UNAVAILABLE,message);}
+    private ApplicationException bad(String code,String message){return new ApplicationException(code,HttpStatus.BAD_REQUEST,message);}
 }

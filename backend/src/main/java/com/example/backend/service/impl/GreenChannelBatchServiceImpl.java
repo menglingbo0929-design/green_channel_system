@@ -30,6 +30,7 @@ public class GreenChannelBatchServiceImpl implements GreenChannelBatchService {
     @Override
     @Transactional
     public BatchVO create(CreateBatchRequest req) {
+        validateBatchTimes(req.getStartTime(), req.getEndTime(), req.getCollegeDeadline());
         GreenChannelBatch batch = new GreenChannelBatch();
         batch.setBatchCode(req.getBatchCode());
         batch.setBatchName(req.getBatchName());
@@ -42,7 +43,6 @@ public class GreenChannelBatchServiceImpl implements GreenChannelBatchService {
         batch.setRemark(req.getRemark());
         batchMapper.insert(batch);
 
-        validateBatchTimes(batch.getStartTime(), batch.getEndTime(), batch.getCollegeDeadline());
         saveGrades(batch.getId(), req.getEligibleGradeIds());
         saveFundingSources(batch.getId(), req.getFundingSourceCodes());
         return toVO(batch);

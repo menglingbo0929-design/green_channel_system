@@ -38,7 +38,10 @@ public class ApplicationBatchController {
     /** 审批工作台：按业务批次类型返回所有启用、开放的批次。 */
     @GetMapping("/open")
     public JsonResponse<List<BatchSnapshot>> open(@RequestParam String batchType) {
-        currentUserProvider.getRequiredUser();
+        var user = currentUserProvider.getRequiredUser();
+        boolean reviewer = user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> role.equals("COUNSELOR") || role.equals("COLLEGE") || role.equals("SCHOOL"));
+        if (!reviewer) throw new SecurityException("仅审核角色可查询工作台批次");
         return JsonResponse.success(batches.listOpenBatches(batchType));
     }
 }

@@ -19,7 +19,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,23 +28,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class SchoolProxyApplicationService implements SchoolProxyApplicationPort {
     private final ApplicationService applications; private final ApplicationMapper mapper;
     private final ApplicationOperationMapper operations; private final ApplicationResourceMapper resources;
-    private final ObjectProvider<SchoolProxyStudentQueryPort> studentQueries;
-    private final ObjectProvider<ApprovalTransitionService> transitions;
-    private final ObjectProvider<ApprovalResourceService> resourceServices;
+    private final SchoolProxyStudentQueryPort studentQueries;
+    private final ApprovalTransitionService transitionService;
+    private final ApprovalResourceService resourceService;
     @Value("${application.attachment-storage-path:./private-uploads}") private String attachmentStoragePath;
     public SchoolProxyApplicationService(ApplicationService applications, ApplicationMapper mapper, ApplicationOperationMapper operations,
-                                         ApplicationResourceMapper resources, ObjectProvider<SchoolProxyStudentQueryPort> studentQueries,
-                                         ObjectProvider<ApprovalTransitionService> transitions, ObjectProvider<ApprovalResourceService> resourceServices) {
+                                         ApplicationResourceMapper resources, SchoolProxyStudentQueryPort studentQueries,
+                                         ApprovalTransitionService transitionService, ApprovalResourceService resourceService) {
         this.applications=applications; this.mapper=mapper; this.operations=operations; this.resources=resources;
-        this.studentQueries=studentQueries; this.transitions=transitions; this.resourceServices=resourceServices;
+        this.studentQueries=studentQueries; this.transitionService=transitionService; this.resourceService=resourceService;
     }
     @Override @Transactional public SchoolProxyApplicationVO createDraft(SchoolProxyDraftDTO command, Long operatorUserId) {
         Long previous=operations.findApplicationIdByRequestId(command.getRequestId());
         if(previous!=null) return toView(requireProxy(previous));
         if (!"GREEN_CHANNEL".equals(command.getBatchType())) throw bad("SCHOOL_PROXY_BATCH_TYPE_INVALID", "学校代申请仅支持绿色通道批次");
-        SchoolProxyStudentQueryPort query=studentQueries.getIfAvailable();
-        if(query==null) throw unavailable("缺少成员一 SchoolProxyStudentQueryPort 实现，不能按学号建立代申请");
-        SchoolProxyStudentVO student=query.findEnabledStudentByStudentNo(command.getStudentNo());
+        SchoolProxyStudentVO student=studentQueries.findEnabledStudentByStudentNo(command.getStudentNo());
         if(student==null || student.getStudentId()==null) throw new ApplicationException("SCHOOL_PROXY_STUDENT_NOT_FOUND", HttpStatus.NOT_FOUND, "学生不存在或已停用");
         ApplicationStateSnapshot state=applications.createSchoolProxyApplication(student.getStudentId(), operatorUserId,
                 new ApplicationDraftCommand(ApplicationType.GREEN_CHANNEL, BatchType.GREEN_CHANNEL, command.getBatchId(), command.getRequestId(), command.getApplicationReason()));
@@ -82,12 +79,8 @@ public class SchoolProxyApplicationService implements SchoolProxyApplicationPort
         validateRequestId(requestId);
         if (application.getStatus() != ApplicationStatus.DRAFT && !isReturned(application.getStatus())) throw bad("APPLICATION_INVALID_STATUS", "当前申请不能正式提交");
         if (resources.countActiveAttachments(applicationId) < 1) throw bad("APPLICATION_ATTACHMENT_REQUIRED", "正式提交前至少上传一份证明附件");
-        ApprovalResourceService resourceService = resourceServices.getIfAvailable();
-        if (resourceService == null) throw unavailable("缺少成员二资源生命周期服务，不能正式提交");
-        ApprovalTransitionService transition = transitions.getIfAvailable();
-        if (transition == null) throw unavailable("缺少成员三 ApprovalTransitionService，不能正式提交");
         resourceService.reserveOnSubmit(applicationId, requestId, operatorUserId);
-        transition.submitInitial(applicationId, expectedVersion, requestId, operatorUserId);
+        transitionService.submitInitial(applicationId, expectedVersion, requestId, operatorUserId);
         return toView(requireProxy(applicationId));
     }
     private List<GiftApplicationItemCommand> toGiftItems(Long batchId, List<SchoolProxyGiftItemDTO> items) {
@@ -115,5 +108,5 @@ public class SchoolProxyApplicationService implements SchoolProxyApplicationPort
     private boolean startsWith(byte[] content, byte[] prefix) { return content.length >= prefix.length && Arrays.equals(Arrays.copyOf(content, prefix.length), prefix); }
     private record AttachmentPayload(String originalFilename, String contentType, byte[] content) { }
     private SchoolProxyApplicationVO toView(Application a) { SchoolProxyApplicationVO v=new SchoolProxyApplicationVO(); v.setApplicationId(a.getId());v.setApplicationNo(a.getApplicationNo());v.setSource(a.getSource().name());v.setStatus(a.getStatus().name());v.setVersion(a.getVersion());return v; }
-    private ApplicationException bad(String code,String message){return new ApplicationException(code,HttpStatus.BAD_REQUEST,message);} private ApplicationException unavailable(String message){return new ApplicationException("DEPENDENCY_UNAVAILABLE",HttpStatus.SERVICE_UNAVAILABLE,message);}
+    private ApplicationException bad(String code,String message){return new ApplicationException(code,HttpStatus.BAD_REQUEST,message);}
 }

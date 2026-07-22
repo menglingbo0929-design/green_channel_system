@@ -1,17 +1,17 @@
 package com.example.backend.approval.service;
 
-import com.example.backend.approval.domain.ApplicationStatus;
-import com.example.backend.approval.domain.ApplicationType;
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationType;
 import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.domain.ApprovalErrorCode;
 import com.example.backend.approval.domain.ApprovalException;
-import com.example.backend.approval.domain.ApprovalLevel;
+import com.example.backend.application.domain.ApprovalLevel;
 import com.example.backend.approval.persistence.entity.ApprovalRecordEntity;
 import com.example.backend.approval.persistence.entity.ApprovalSubmissionRecordEntity;
 import com.example.backend.approval.persistence.mapper.ApprovalRecordMapper;
 import com.example.backend.approval.persistence.mapper.ApprovalSubmissionRecordMapper;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.persistence.type.SubmissionLevel;
 import com.example.backend.approval.persistence.type.SubmissionScopeType;
 import com.example.backend.approval.persistence.type.SubmissionStatus;
@@ -19,9 +19,9 @@ import com.example.backend.approval.persistence.type.SubmissionType;
 import com.example.backend.approval.port.ApprovalBatchQueryService;
 import com.example.backend.approval.port.ApprovalResourceService;
 import com.example.backend.approval.port.ApprovalSubmissionApplicationQueryService;
-import com.example.backend.approval.port.ApplicationStateQueryService;
-import com.example.backend.approval.port.ApplicationStateSnapshot;
-import com.example.backend.approval.port.ApplicationStateWriteService;
+import com.example.backend.application.port.ApplicationStateQueryService;
+import com.example.backend.application.dto.ApplicationStateSnapshot;
+import com.example.backend.application.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
@@ -34,7 +34,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.ObjectProvider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -59,7 +58,6 @@ class ApprovalBatchSubmissionServiceTest {
     private ApprovalBatchSubmissionService service;
 
     @BeforeEach
-    @SuppressWarnings("unchecked")
     void setUp() {
         submissions = mock(ApprovalSubmissionRecordMapper.class);
         records = mock(ApprovalRecordMapper.class);
@@ -69,21 +67,13 @@ class ApprovalBatchSubmissionServiceTest {
         applications = mock(ApprovalSubmissionApplicationQueryService.class);
         scopes = mock(StudentScopeService.class);
         resources = mock(ApprovalResourceService.class);
-        ObjectProvider<ApprovalBatchQueryService> batchProvider = mock(ObjectProvider.class);
-        ObjectProvider<ApprovalSubmissionApplicationQueryService> applicationProvider = mock(ObjectProvider.class);
-        ObjectProvider<StudentScopeService> scopeProvider = mock(ObjectProvider.class);
-        ObjectProvider<ApprovalResourceService> resourceProvider = mock(ObjectProvider.class);
-        when(batchProvider.getIfAvailable()).thenReturn(batches);
-        when(applicationProvider.getIfAvailable()).thenReturn(applications);
-        when(scopeProvider.getIfAvailable()).thenReturn(scopes);
-        when(resourceProvider.getIfAvailable()).thenReturn(resources);
         when(submissions.findByRequestId(anyString())).thenReturn(Optional.empty());
         when(submissions.listByScope(any(), any(), any(), any(), any())).thenReturn(List.of());
         when(batches.getRequiredBatch(BatchType.GREEN_CHANNEL, 30L)).thenReturn(batch());
         when(scopes.isCounselorResponsibleFor(99L, 20L)).thenReturn(true);
         service = new ApprovalBatchSubmissionService(
                 submissions, records, stateQuery, stateWriter,
-                batchProvider, applicationProvider, scopeProvider, resourceProvider,
+                batches, applications, scopes, resources,
                 Clock.fixed(Instant.parse("2026-07-21T12:00:00Z"), ZoneOffset.UTC)
         );
     }

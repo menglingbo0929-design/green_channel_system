@@ -1,6 +1,6 @@
 package com.example.backend.approval.api;
 
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.persistence.type.SubmissionLevel;
 
 import java.time.LocalDateTime;

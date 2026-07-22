@@ -13,8 +13,8 @@ import com.example.backend.model.vo.supplement.SupplementApplicationVO;
  * <p>application、申请明细和资源表归成员二所有。成员四只通过此接口发起
  * 创建和读取，绝不新建 Mapper 直接操作成员二的表。</p>
  *
- * <p>TODO(成员二)：实现 SUPPLEMENT 草稿、欠费/礼包/补助明细、线下资源确认、
- * requestId 幂等以及补录历史/详情查询，并以 Spring Bean 形式适配本接口。</p>
+ * <p>正式实现由申请域的 {@code SupplementApplicationService} 提供，包含草稿、
+ * 明细、资源确认、requestId 幂等以及补录历史/详情。</p>
  */
 public interface SupplementApplicationPort {
 

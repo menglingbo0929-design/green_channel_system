@@ -30,27 +30,26 @@ import com.example.backend.service.port.SchoolProxyStudentQueryPort;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 class SchoolProxyApplicationServiceTest {
     private final ApplicationService applications = mock(ApplicationService.class);
     private final ApplicationMapper mapper = mock(ApplicationMapper.class);
     private final ApplicationOperationMapper operations = mock(ApplicationOperationMapper.class);
     private final ApplicationResourceMapper resources = mock(ApplicationResourceMapper.class);
-    @SuppressWarnings("unchecked") private final ObjectProvider<SchoolProxyStudentQueryPort> students = mock(ObjectProvider.class);
-    @SuppressWarnings("unchecked") private final ObjectProvider<ApprovalTransitionService> transitions = mock(ObjectProvider.class);
-    @SuppressWarnings("unchecked") private final ObjectProvider<ApprovalResourceService> resourceServices = mock(ObjectProvider.class);
+    private final SchoolProxyStudentQueryPort students = mock(SchoolProxyStudentQueryPort.class);
+    private final ApprovalTransitionService transitions = mock(ApprovalTransitionService.class);
+    private final ApprovalResourceService resourceServices = mock(ApprovalResourceService.class);
     private final SchoolProxyApplicationService service = new SchoolProxyApplicationService(applications, mapper, operations, resources, students, transitions, resourceServices);
 
     @Test
-    void returnsDependencyUnavailableWhenStudentPortIsNotInstalled() {
+    void rejectsUnknownOrDisabledStudent() {
         SchoolProxyDraftDTO command = draft();
         when(operations.findApplicationIdByRequestId(command.getRequestId())).thenReturn(null);
-        when(students.getIfAvailable()).thenReturn(null);
+        when(students.findEnabledStudentByStudentNo(command.getStudentNo())).thenReturn(null);
 
         ApplicationException exception = assertThrows(ApplicationException.class, () -> service.createDraft(command, 7L));
 
-        assertEquals("DEPENDENCY_UNAVAILABLE", exception.getCode());
+        assertEquals("SCHOOL_PROXY_STUDENT_NOT_FOUND", exception.getCode());
     }
 
     @Test
@@ -59,7 +58,7 @@ class SchoolProxyApplicationServiceTest {
         SchoolProxyStudentVO student = new SchoolProxyStudentVO(); student.setStudentId(8L);
         Application stored = proxyApplication(31L, 2);
         when(operations.findApplicationIdByRequestId(command.getRequestId())).thenReturn(null);
-        when(students.getIfAvailable()).thenReturn(studentNo -> student);
+        when(students.findEnabledStudentByStudentNo(command.getStudentNo())).thenReturn(student);
         when(applications.createSchoolProxyApplication(anyLong(), anyLong(), any())).thenReturn(snapshot(31L, 0));
         when(applications.getRequiredState(31L)).thenReturn(snapshot(31L, 1));
         when(resources.findBatchGiftItemId(9L, 4L)).thenReturn(41L);

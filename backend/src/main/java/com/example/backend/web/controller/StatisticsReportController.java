@@ -7,7 +7,8 @@ import com.example.backend.model.vo.statistics.StatisticsReportPageVO;
 import com.example.backend.model.vo.statistics.StatisticsReportPrintVO;
 import com.example.backend.security.ICurrentUserProvider;
 import com.example.backend.service.IStatisticsReportService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,23 +22,19 @@ import java.io.IOException;
 /**
  * 6.1.7 报表明细、历史批次、Excel 导出和打印 Controller。
  *
- * <p>沿用视频中的字段 {@code @Autowired} 和 Controller 调 Service 写法。
- * Controller 只接收参数和组织 HTTP 响应；字段白名单、分页、权限、导出上限和
+ * <p>Controller 采用构造器注入，只接收参数和组织 HTTP 响应；字段白名单、分页、权限、导出上限和
  * Excel 生成都由 Service 处理。</p>
  */
 @RestController
 @RequestMapping("/api/statistics/reports")
+@RequiredArgsConstructor
 public class StatisticsReportController {
-
-    @Autowired
-    private IStatisticsReportService statisticsReportService;
-
-    @Autowired
-    private ICurrentUserProvider currentUserProvider;
+    private final IStatisticsReportService statisticsReportService;
+    private final ICurrentUserProvider currentUserProvider;
 
     /** 查询最终审核通过或已完成的统计明细。 */
     @GetMapping("/details")
-    public JsonResponse<StatisticsReportPageVO> details(StatisticsReportQueryDTO query) {
+    public JsonResponse<StatisticsReportPageVO> details(@Valid StatisticsReportQueryDTO query) {
         Long currentUserId = currentUserProvider.getRequiredUser().getUserId();
         return JsonResponse.success(
                 statisticsReportService.queryDetails(query, currentUserId)
@@ -46,7 +43,7 @@ public class StatisticsReportController {
 
     /** 查询指定 batchType + batchId 的历史申请记录。 */
     @GetMapping("/history")
-    public JsonResponse<StatisticsReportPageVO> history(StatisticsReportQueryDTO query) {
+    public JsonResponse<StatisticsReportPageVO> history(@Valid StatisticsReportQueryDTO query) {
         Long currentUserId = currentUserProvider.getRequiredUser().getUserId();
         return JsonResponse.success(
                 statisticsReportService.queryHistory(query, currentUserId)
@@ -55,7 +52,7 @@ public class StatisticsReportController {
 
     /** 返回与 Excel 相同字段顺序的打印数据，由浏览器完成最终打印。 */
     @GetMapping("/print")
-    public JsonResponse<StatisticsReportPrintVO> print(StatisticsReportQueryDTO query) {
+    public JsonResponse<StatisticsReportPrintVO> print(@Valid StatisticsReportQueryDTO query) {
         Long currentUserId = currentUserProvider.getRequiredUser().getUserId();
         return JsonResponse.success(
                 statisticsReportService.buildPrintData(query, currentUserId)
@@ -69,7 +66,7 @@ public class StatisticsReportController {
      * 返回统一 JSON 错误。no-store 防止浏览器或代理缓存含学生信息的报表。</p>
      */
     @GetMapping("/export")
-    public ResponseEntity<byte[]> export(StatisticsReportQueryDTO query) throws IOException {
+    public ResponseEntity<byte[]> export(@Valid StatisticsReportQueryDTO query) throws IOException {
         Long currentUserId = currentUserProvider.getRequiredUser().getUserId();
         StatisticsExportFileVO file = statisticsReportService
                 .exportExcel(query, currentUserId);

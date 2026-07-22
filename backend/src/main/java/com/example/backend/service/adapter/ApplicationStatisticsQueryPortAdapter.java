@@ -8,7 +8,7 @@ import com.example.backend.model.vo.statistics.CollegeApplicantCountVO;
 import com.example.backend.model.vo.statistics.GiftItemApplicationCountVO;
 import com.example.backend.model.vo.statistics.GradeApplicantCountVO;
 import com.example.backend.service.port.ApplicationStatisticsQueryPort;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -23,10 +23,9 @@ import java.math.BigDecimal;
  * 学院、年级、欠费项目、礼包物品和历史批次也都来自当前数据库，不使用页面样例值。</p>
  */
 @Component
+@RequiredArgsConstructor
 public class ApplicationStatisticsQueryPortAdapter implements ApplicationStatisticsQueryPort {
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     /** 按同一套筛选条件一次完成各项统计查询并组装页面大盘。 */
     @Override

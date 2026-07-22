@@ -4,6 +4,7 @@ import { Document, Download, Money, Paperclip, User } from '@element-plus/icons-
 import { formatDateTime } from '../../constants/approval'
 import StatusBadge from './StatusBadge.vue'
 import ApprovalFlowTimeline from './ApprovalFlowTimeline.vue'
+import { readApprovalAttachment } from '../../api/approval'
 
 const props = defineProps({ modelValue: Boolean, detail: Object, loading: Boolean, role: String })
 const emit = defineEmits(['update:modelValue', 'review', 'cancel', 'edit'])
@@ -23,6 +24,16 @@ function requestCancellation() {
     version: props.detail?.version ?? application.value.version,
   })
 }
+
+async function previewAttachment(file) {
+  const applicationId = application.value.applicationId ?? application.value.id
+  const attachmentId = file.id ?? file.attachmentId
+  if (!applicationId || !attachmentId) return
+  const blob = await readApprovalAttachment(applicationId, attachmentId)
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000)
+}
 </script>
 
 <template>
@@ -36,7 +47,7 @@ function requestCancellation() {
         </section>
         <section class="detail-section"><div class="section-title"><Document /><h3>申请说明</h3></div><p class="reason-copy">{{ application.applicationReason }}</p></section>
         <section v-if="detail.arrearsDetail || detail.subsidyDetail" class="detail-section"><div class="section-title"><Money /><h3>金额信息</h3></div><div class="money-card"><div><span>学生申报金额</span><strong>¥{{ application.declaredAmount?.toLocaleString() }}</strong></div><div v-if="detail.arrearsDetail"><span>欠费项目</span><strong>{{ arrearsItems.map(item => item.feeItemName || item.name).join('、') }}</strong></div><div v-else><span>补助类型</span><strong>{{ application.applicationTypeName }}</strong></div></div></section>
-        <section class="detail-section"><div class="section-title"><Paperclip /><h3>申请附件</h3><span>{{ detail.attachments.length }} 份</span></div><div class="attachment-list"><button v-for="file in detail.attachments" :key="file.id" type="button"><Document /><span><strong>{{ file.fileName }}</strong><small>{{ file.fileSize }}</small></span><Download /></button></div></section>
+        <section class="detail-section"><div class="section-title"><Paperclip /><h3>申请附件</h3><span>{{ detail.attachments.length }} 份</span></div><div class="attachment-list"><button v-for="file in detail.attachments" :key="file.id || file.attachmentId" type="button" @click="previewAttachment(file)"><Document /><span><strong>{{ file.fileName }}</strong><small>{{ file.fileSize }}</small></span><Download /></button></div></section>
         <section class="detail-section"><div class="section-title"><h3>审核流程</h3><el-button type="primary" plain @click="flowOpen = true">查看完整流程</el-button></div><p class="reason-copy">申请提交、辅导员审核、学院审核和学校审核均使用同一份实时审批记录。</p></section>
       </template>
     </div>

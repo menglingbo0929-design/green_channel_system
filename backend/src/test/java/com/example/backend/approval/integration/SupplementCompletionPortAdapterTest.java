@@ -2,8 +2,8 @@ package com.example.backend.approval.integration;
 
 import com.example.backend.approval.api.ApplicationStatusResult;
 import com.example.backend.approval.api.ApprovalTransitionService;
-import com.example.backend.approval.domain.ApplicationStatus;
-import com.example.backend.approval.domain.ApprovalLevel;
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApprovalLevel;
 import com.example.backend.model.vo.supplement.SupplementCompletionResultVO;
 import org.junit.jupiter.api.Test;
 

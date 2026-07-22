@@ -1,7 +1,7 @@
 package com.example.backend.approval.api;
 
-import com.example.backend.approval.domain.ApplicationStatus;
-import com.example.backend.approval.domain.ApprovalLevel;
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApprovalLevel;
 
 public record ApplicationStatusResult(
         Long applicationId,

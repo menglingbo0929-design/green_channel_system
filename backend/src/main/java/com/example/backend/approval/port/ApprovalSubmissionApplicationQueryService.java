@@ -1,6 +1,7 @@
 package com.example.backend.approval.port;
 
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
+import com.example.backend.application.dto.ApplicationStateSnapshot;
 
 import java.util.List;
 

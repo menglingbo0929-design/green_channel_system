@@ -1,6 +1,6 @@
 package com.example.backend.approval.api;
 
-import com.example.backend.approval.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationStatus;
 import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
 

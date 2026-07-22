@@ -1,20 +1,20 @@
 package com.example.backend.approval.service;
 
 import com.example.backend.approval.api.ApplicationStatusResult;
-import com.example.backend.approval.domain.ApplicationStatus;
-import com.example.backend.approval.domain.ApplicationType;
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationType;
 import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.domain.ApprovalErrorCode;
 import com.example.backend.approval.domain.ApprovalException;
-import com.example.backend.approval.domain.ApprovalLevel;
+import com.example.backend.application.domain.ApprovalLevel;
 import com.example.backend.approval.domain.ApprovalStateMachine;
 import com.example.backend.approval.persistence.entity.ApprovalRecordEntity;
 import com.example.backend.approval.persistence.mapper.ApprovalRecordMapper;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
-import com.example.backend.approval.persistence.type.BatchType;
-import com.example.backend.approval.port.ApplicationStateQueryService;
-import com.example.backend.approval.port.ApplicationStateSnapshot;
-import com.example.backend.approval.port.ApplicationStateWriteService;
+import com.example.backend.application.domain.BatchType;
+import com.example.backend.application.port.ApplicationStateQueryService;
+import com.example.backend.application.dto.ApplicationStateSnapshot;
+import com.example.backend.application.port.ApplicationStateWriteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

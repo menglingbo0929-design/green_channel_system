@@ -16,7 +16,7 @@ import com.example.backend.model.vo.statistics.ApplicationStatisticsVO;
  */
 public interface ApplicationStatisticsQueryPort {
     /**
-     * 按已校验的筛选条件查询 APPROVED/COMPLETED 的完整统计大盘。
+     * 按已校验的筛选条件查询 APPROVED/CONFIRM_PENDING/COMPLETED 的完整统计大盘。
      *
      * @param filter 学校端筛选参数，不含前端伪造的用户权限范围
      * @return 所有数值和列表均有确定默认值的真实聚合结果

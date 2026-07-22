@@ -31,27 +31,23 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 class SupplementApplicationServiceTest {
     private final ApplicationService applications = mock(ApplicationService.class);
     private final ApplicationMapper mapper = mock(ApplicationMapper.class);
     private final ApplicationOperationMapper operations = mock(ApplicationOperationMapper.class);
     private final ApplicationResourceMapper resources = mock(ApplicationResourceMapper.class);
-    @SuppressWarnings("unchecked") private final ObjectProvider<ApprovalTransitionService> transitions = mock(ObjectProvider.class);
-    @SuppressWarnings("unchecked") private final ObjectProvider<SchoolProxyStudentQueryPort> studentQueries = mock(ObjectProvider.class);
+    private final ApprovalTransitionService transitions = mock(ApprovalTransitionService.class);
     private final SchoolProxyStudentQueryPort students = mock(SchoolProxyStudentQueryPort.class);
-    private final SupplementApplicationService service = new SupplementApplicationService(applications, mapper, operations, resources, transitions, studentQueries);
+    private final SupplementApplicationService service = new SupplementApplicationService(applications, mapper, operations, resources, transitions, students);
 
     @Test
     void createsSubsidySupplementAndCompletesTheAutomaticReview() {
         SupplementCreateDTO command = subsidyCommand();
         SchoolProxyStudentVO student = student();
-        ApprovalTransitionService transition = mock(ApprovalTransitionService.class);
         when(operations.findApplicationIdByRequestId(command.getRequestId())).thenReturn(null);
         when(applications.createSupplementApplication(anyLong(), anyLong(), any())).thenReturn(snapshot(42L, 0));
         when(applications.getRequiredState(42L)).thenReturn(snapshot(42L, 1));
-        when(transitions.getIfAvailable()).thenReturn(transition);
         when(mapper.findBySource(42L, ApplicationSource.SUPPLEMENT)).thenReturn(supplementApplication(42L));
         when(applications.containsArrears(42L)).thenReturn(false);
 
@@ -60,7 +56,7 @@ class SupplementApplicationServiceTest {
         assertEquals("SUPPLEMENT", result.getSource());
         assertEquals("LIVING_SUBSIDY", result.getApplicationType());
         verify(applications).replaceSubsidy(42L, 0, new BigDecimal("300.00"), 7L);
-        verify(transition).completeSupplementReview(42L, false, 1, "SUPPLEMENT_COMPLETE_42", 7L);
+        verify(transitions).completeSupplementReview(42L, false, 1, "SUPPLEMENT_COMPLETE_42", 7L);
     }
 
     @Test
@@ -79,7 +75,6 @@ class SupplementApplicationServiceTest {
     void returnsSupplementHistoryWithBatchStudentSnapshots() {
         SupplementQueryDTO query = new SupplementQueryDTO();
         query.setStatus("COMPLETED");
-        when(studentQueries.getIfAvailable()).thenReturn(students);
         when(mapper.countSupplementPage(any(), any(), any(), any())).thenReturn(1L);
         when(mapper.findSupplementPage(any(), any(), any(), any(), anyLong(), anyLong()))
                 .thenReturn(List.of(supplementApplication(42L)));
@@ -95,7 +90,6 @@ class SupplementApplicationServiceTest {
 
     @Test
     void returnsSupplementDetailWithStudentSnapshot() {
-        when(studentQueries.getIfAvailable()).thenReturn(students);
         when(mapper.findBySource(42L, ApplicationSource.SUPPLEMENT)).thenReturn(supplementApplication(42L));
         when(students.findEnabledStudentById(8L)).thenReturn(student());
         when(applications.containsArrears(42L)).thenReturn(false);

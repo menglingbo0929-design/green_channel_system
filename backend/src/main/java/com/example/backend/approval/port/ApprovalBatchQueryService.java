@@ -1,6 +1,6 @@
 package com.example.backend.approval.port;
 
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 
 import java.time.LocalDateTime;
 

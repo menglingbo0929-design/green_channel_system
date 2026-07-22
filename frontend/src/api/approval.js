@@ -91,6 +91,14 @@ export async function getApprovalDetail(applicationId, role) {
   if (useMock) return mock.getApprovalDetail(applicationId, role)
   return normalizeDetail(unwrap(await client.get(`/approvals/${applicationId}`)))
 }
+export async function readApprovalAttachment(applicationId, attachmentId) {
+  if (useMock) throw new Error('模拟模式不提供真实附件内容')
+  const response = await client.get(
+    `/approvals/${applicationId}/attachments/${attachmentId}/content`,
+    { responseType: 'blob' },
+  )
+  return response.data
+}
 export async function reviewApplication(role, applicationId, payload) {
   if (useMock) return mock.reviewApplication(role, applicationId, payload)
   return unwrap(await client.post(`/approvals/${role.toLowerCase()}/${applicationId}/review`, payload))

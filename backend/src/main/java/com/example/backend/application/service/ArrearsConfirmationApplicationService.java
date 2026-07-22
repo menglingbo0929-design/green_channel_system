@@ -6,16 +6,15 @@ import com.example.backend.application.mapper.ArrearsApplicationMapper;
 import com.example.backend.application.port.*;
 import java.math.BigDecimal;
 import java.util.*;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ArrearsConfirmationApplicationService implements ArrearsConfirmationApplicationPort, ArrearsVoucherApplicantQueryPort {
     private final ApplicationMapper applicationMapper; private final ArrearsApplicationMapper arrearsMapper;
-    private final ObjectProvider<StudentOrganizationSnapshotQuery> studentQueryProvider;
+    private final StudentOrganizationSnapshotQuery studentQuery;
     public ArrearsConfirmationApplicationService(ApplicationMapper applicationMapper, ArrearsApplicationMapper arrearsMapper,
-                                                 ObjectProvider<StudentOrganizationSnapshotQuery> studentQueryProvider) {
-        this.applicationMapper = applicationMapper; this.arrearsMapper = arrearsMapper; this.studentQueryProvider = studentQueryProvider;
+                                                 StudentOrganizationSnapshotQuery studentQuery) {
+        this.applicationMapper = applicationMapper; this.arrearsMapper = arrearsMapper; this.studentQuery = studentQuery;
     }
     @Override public PageResult<PendingArrearsApplication> pagePending(PendingArrearsQuery query) {
         return new PageResult<>(arrearsMapper.countPending(), query.pageNo(), query.pageSize(), arrearsMapper.pagePending(query.pageSize(), query.offset()));
@@ -26,7 +25,6 @@ public class ArrearsConfirmationApplicationService implements ArrearsConfirmatio
     @Override public Map<Long, ArrearsVoucherApplicantSnapshot> findVoucherApplicantsByApplicationIds(Collection<Long> applicationIds) {
         if (applicationIds == null || applicationIds.isEmpty()) return Map.of();
         var applications = applicationIds.stream().distinct().map(applicationMapper::findRequired).toList();
-        StudentOrganizationSnapshotQuery studentQuery = studentQueryProvider.getObject();
         Map<Long, StudentOrganizationSnapshot> students = studentQuery.findByStudentIds(applications.stream().map(a -> a.getStudentId()).toList());
         Map<Long, List<ArrearsItemSnapshot>> items = new HashMap<>();
         for (ArrearsItemSnapshot item : arrearsMapper.findItemsByApplicationIds(applications.stream().map(a -> a.getId()).toList())) items.computeIfAbsent(item.applicationId(), ignored -> new ArrayList<>()).add(item);

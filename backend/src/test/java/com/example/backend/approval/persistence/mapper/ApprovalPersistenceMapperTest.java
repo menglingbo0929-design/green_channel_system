@@ -1,13 +1,13 @@
 package com.example.backend.approval.persistence.mapper;
 
-import com.example.backend.approval.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationStatus;
 import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.persistence.entity.ApprovalRecordEntity;
 import com.example.backend.approval.persistence.entity.ApprovalSubmissionRecordEntity;
 import com.example.backend.approval.persistence.entity.MessageReadRecordEntity;
 import com.example.backend.approval.persistence.entity.SystemMessageEntity;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.persistence.type.MessageBusinessType;
 import com.example.backend.approval.persistence.type.MessageType;
 import com.example.backend.approval.persistence.type.SubmissionLevel;

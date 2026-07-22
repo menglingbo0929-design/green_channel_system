@@ -1,10 +1,10 @@
 package com.example.backend.approval.api;
 
-import com.example.backend.approval.domain.ApplicationStatus;
-import com.example.backend.approval.domain.ApplicationType;
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationType;
 import com.example.backend.approval.domain.ApprovalAction;
-import com.example.backend.approval.domain.ApprovalLevel;
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.ApprovalLevel;
+import com.example.backend.application.domain.BatchType;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 

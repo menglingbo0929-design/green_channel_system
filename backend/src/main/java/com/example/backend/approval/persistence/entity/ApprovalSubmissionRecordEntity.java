@@ -1,6 +1,6 @@
 package com.example.backend.approval.persistence.entity;
 
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.persistence.type.SubmissionLevel;
 import com.example.backend.approval.persistence.type.SubmissionScopeType;
 import com.example.backend.approval.persistence.type.SubmissionStatus;

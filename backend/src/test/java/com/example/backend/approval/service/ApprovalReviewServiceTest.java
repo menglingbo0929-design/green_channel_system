@@ -1,26 +1,27 @@
 package com.example.backend.approval.service;
 
 import com.example.backend.approval.api.SystemMessageService;
-import com.example.backend.approval.domain.ApplicationStatus;
-import com.example.backend.approval.domain.ApplicationType;
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationType;
 import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.domain.ApprovalErrorCode;
 import com.example.backend.approval.domain.ApprovalException;
-import com.example.backend.approval.domain.ApprovalLevel;
+import com.example.backend.application.domain.ApprovalLevel;
 import com.example.backend.approval.persistence.entity.ApprovalRecordEntity;
 import com.example.backend.approval.persistence.mapper.ApprovalRecordMapper;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.port.ApprovalMessageRecipientResolver;
 import com.example.backend.approval.port.ApprovalResourceService;
-import com.example.backend.approval.port.ApplicationStateQueryService;
-import com.example.backend.approval.port.ApplicationStateSnapshot;
-import com.example.backend.approval.port.ApplicationStateWriteService;
+import com.example.backend.application.port.ApplicationStateQueryService;
+import com.example.backend.application.dto.ApplicationStateSnapshot;
+import com.example.backend.application.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import com.example.backend.application.dto.ArrearsItemCommand;
 import com.example.backend.application.port.ReviewableApplicationEditService;
+import com.example.backend.application.port.ApplicationDetailService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -43,12 +44,12 @@ class ApprovalReviewServiceTest {
     private ApplicationStateQueryService query;
     private ApplicationStateWriteService writer;
     private ApprovalRecordMapper records;
-    private ObjectProvider<ApprovalResourceService> resources;
-    private ObjectProvider<com.example.backend.application.port.ApplicationDetailService> details;
-    private ObjectProvider<ApprovalMessageRecipientResolver> recipients;
+    private ApprovalResourceService resources;
+    private ApplicationDetailService details;
+    private ApprovalMessageRecipientResolver recipients;
     private ObjectProvider<SystemMessageService> messages;
-    private ObjectProvider<StudentScopeService> scopes;
-    private ObjectProvider<ReviewableApplicationEditService> edits;
+    private StudentScopeService scopes;
+    private ReviewableApplicationEditService edits;
     private ReviewableApplicationEditService editService;
     private StudentScopeService scopeService;
     private ApprovalReviewService service;
@@ -59,21 +60,19 @@ class ApprovalReviewServiceTest {
         query = mock(ApplicationStateQueryService.class);
         writer = mock(ApplicationStateWriteService.class);
         records = mock(ApprovalRecordMapper.class);
-        resources = mock(ObjectProvider.class);
-        details = mock(ObjectProvider.class);
-        recipients = mock(ObjectProvider.class);
+        resources = mock(ApprovalResourceService.class);
+        details = mock(ApplicationDetailService.class);
+        recipients = mock(ApprovalMessageRecipientResolver.class);
         messages = mock(ObjectProvider.class);
-        scopes = mock(ObjectProvider.class);
-        edits = mock(ObjectProvider.class);
+        scopes = mock(StudentScopeService.class);
+        edits = mock(ReviewableApplicationEditService.class);
         editService = mock(ReviewableApplicationEditService.class);
         scopeService = mock(StudentScopeService.class);
         when(records.findByRequestId(anyString())).thenReturn(Optional.empty());
         when(query.getRequiredState(10L)).thenReturn(snapshot());
-        when(scopes.getIfAvailable()).thenReturn(scopeService);
         when(scopeService.isCounselorResponsibleFor(99L, 20L)).thenReturn(true);
-        when(edits.getIfAvailable()).thenReturn(editService);
         service = new ApprovalReviewService(
-                query, writer, records, resources, details, recipients, messages, scopes, edits
+                query, writer, records, resources, details, recipients, messages, scopeService, editService
         );
     }
 

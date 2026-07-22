@@ -100,12 +100,14 @@ public class UserController {
     /** 用户列表 */
     @GetMapping("list")
     public JsonResponse<List<UserVO>> list() {
+        requireSchool();
         return JsonResponse.success(userService.listUsers());
     }
 
     /** 新增用户 */
     @PostMapping
     public JsonResponse<Void> create(@Valid @RequestBody CreateUserRequest request) {
+        requireSchool();
         userService.createUser(
                 request.getLoginName(), request.getPassword(),
                 request.getRemark(), request.getRoleIds());
@@ -116,6 +118,7 @@ public class UserController {
     @PutMapping("{id}")
     public JsonResponse<Void> update(@PathVariable Long id,
                                      @Valid @RequestBody UpdateUserRequest request) {
+        requireSchool();
         userService.updateUser(
                 id, request.getLoginName(), request.getRemark(), request.getRoleIds());
         return JsonResponse.successMessage("更新成功");
@@ -124,6 +127,7 @@ public class UserController {
     /** 切换启用/停用 */
     @PutMapping("{id}/status")
     public JsonResponse<Void> toggleStatus(@PathVariable Long id) {
+        requireSchool();
         userService.toggleStatus(id);
         return JsonResponse.successMessage("操作成功");
     }
@@ -142,5 +146,12 @@ public class UserController {
                 req.getOldPassword(), req.getNewPassword());
         if (!ok) return JsonResponse.failure("旧密码错误");
         return JsonResponse.successMessage("密码修改成功");
+    }
+
+    private void requireSchool() {
+        LoginUser user = currentUserProvider.getRequiredUser();
+        if (user.getRoles() == null || !user.getRoles().contains("SCHOOL")) {
+            throw new SecurityException("仅学校管理员可维护用户账号");
+        }
     }
 }

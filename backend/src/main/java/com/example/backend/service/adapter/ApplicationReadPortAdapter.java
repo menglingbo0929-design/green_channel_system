@@ -13,7 +13,7 @@ import com.example.backend.model.dto.confirmation.ArrearsConfirmationQueryDTO;
 import com.example.backend.model.vo.confirmation.PendingArrearsApplicationVO;
 import com.example.backend.model.vo.voucher.ArrearsVoucherItemVO;
 import com.example.backend.service.port.ArrearsVoucherApplicantQueryPort;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -30,13 +30,13 @@ import java.util.Map;
  * 详情和单据继续复用成员二的批量申请快照，不逐行访问其他成员维护的数据表。</p>
  */
 @Component
+@RequiredArgsConstructor
 public class ApplicationReadPortAdapter implements
         com.example.backend.service.port.ArrearsConfirmationApplicationPort,
         ArrearsVoucherApplicantQueryPort {
 
     /** 成员二拥有的正式只读接口。 */
-    @Autowired
-    private com.example.backend.application.port.ArrearsConfirmationApplicationPort applicationReadPort;
+    private final com.example.backend.application.port.ArrearsConfirmationApplicationPort applicationReadPort;
 
     /**
      * 成员一已经提供的学生与组织只读快照。
@@ -44,8 +44,7 @@ public class ApplicationReadPortAdapter implements
      * <p>列表只按当前页的 studentId 做一次批量读取，既不逐行查询，也不让成员四
      * 直接访问 student、college、major、grade、class 等成员一维护的数据表。</p>
      */
-    @Autowired
-    private StudentOrganizationSnapshotQuery studentOrganizationSnapshotQuery;
+    private final StudentOrganizationSnapshotQuery studentOrganizationSnapshotQuery;
 
     /**
      * 接通页面 8 的待确认分页。

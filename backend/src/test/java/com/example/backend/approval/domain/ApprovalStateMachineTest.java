@@ -1,5 +1,8 @@
 package com.example.backend.approval.domain;
 
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationType;
+import com.example.backend.application.domain.ApprovalLevel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;

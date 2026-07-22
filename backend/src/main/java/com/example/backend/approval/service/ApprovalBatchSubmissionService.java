@@ -3,17 +3,17 @@ package com.example.backend.approval.service;
 import com.example.backend.approval.api.ApprovalSubmissionResult;
 import com.example.backend.approval.api.ApprovalSubmissionService;
 import com.example.backend.approval.api.ApprovalSubmissionStatus;
-import com.example.backend.approval.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationStatus;
 import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.domain.ApprovalErrorCode;
 import com.example.backend.approval.domain.ApprovalException;
-import com.example.backend.approval.domain.ApprovalLevel;
+import com.example.backend.application.domain.ApprovalLevel;
 import com.example.backend.approval.persistence.entity.ApprovalRecordEntity;
 import com.example.backend.approval.persistence.entity.ApprovalSubmissionRecordEntity;
 import com.example.backend.approval.persistence.mapper.ApprovalRecordMapper;
 import com.example.backend.approval.persistence.mapper.ApprovalSubmissionRecordMapper;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.persistence.type.SubmissionLevel;
 import com.example.backend.approval.persistence.type.SubmissionScopeType;
 import com.example.backend.approval.persistence.type.SubmissionStatus;
@@ -21,13 +21,12 @@ import com.example.backend.approval.persistence.type.SubmissionType;
 import com.example.backend.approval.port.ApprovalBatchQueryService;
 import com.example.backend.approval.port.ApprovalResourceService;
 import com.example.backend.approval.port.ApprovalSubmissionApplicationQueryService;
-import com.example.backend.approval.port.ApplicationStateQueryService;
-import com.example.backend.approval.port.ApplicationStateSnapshot;
-import com.example.backend.approval.port.ApplicationStateWriteService;
+import com.example.backend.application.port.ApplicationStateQueryService;
+import com.example.backend.application.dto.ApplicationStateSnapshot;
+import com.example.backend.application.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
-import com.example.backend.approval.web.ApprovalIntegrationUnavailableException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +34,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -48,10 +46,10 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
     private final ApprovalRecordMapper approvalRecords;
     private final ApplicationStateQueryService stateQueryService;
     private final ApplicationStateWriteService stateWriteService;
-    private final ObjectProvider<ApprovalBatchQueryService> batchQueryProvider;
-    private final ObjectProvider<ApprovalSubmissionApplicationQueryService> applicationQueryProvider;
-    private final ObjectProvider<StudentScopeService> scopeServiceProvider;
-    private final ObjectProvider<ApprovalResourceService> resourceServiceProvider;
+    private final ApprovalBatchQueryService batchQueryService;
+    private final ApprovalSubmissionApplicationQueryService applicationQueryService;
+    private final StudentScopeService scopeService;
+    private final ApprovalResourceService resourceService;
     private final Clock clock;
 
     public ApprovalBatchSubmissionService(
@@ -59,20 +57,20 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
             ApprovalRecordMapper approvalRecords,
             ApplicationStateQueryService stateQueryService,
             ApplicationStateWriteService stateWriteService,
-            ObjectProvider<ApprovalBatchQueryService> batchQueryProvider,
-            ObjectProvider<ApprovalSubmissionApplicationQueryService> applicationQueryProvider,
-            ObjectProvider<StudentScopeService> scopeServiceProvider,
-            ObjectProvider<ApprovalResourceService> resourceServiceProvider,
+            ApprovalBatchQueryService batchQueryService,
+            ApprovalSubmissionApplicationQueryService applicationQueryService,
+            StudentScopeService scopeService,
+            ApprovalResourceService resourceService,
             Clock clock
     ) {
         this.submissionRecords = submissionRecords;
         this.approvalRecords = approvalRecords;
         this.stateQueryService = stateQueryService;
         this.stateWriteService = stateWriteService;
-        this.batchQueryProvider = batchQueryProvider;
-        this.applicationQueryProvider = applicationQueryProvider;
-        this.scopeServiceProvider = scopeServiceProvider;
-        this.resourceServiceProvider = resourceServiceProvider;
+        this.batchQueryService = batchQueryService;
+        this.applicationQueryService = applicationQueryService;
+        this.scopeService = scopeService;
+        this.resourceService = resourceService;
         this.clock = clock;
     }
 
@@ -248,11 +246,7 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
         if (level != SubmissionLevel.COLLEGE) {
             return;
         }
-        ApprovalResourceService resources = resourceServiceProvider.getIfAvailable();
-        if (resources == null) {
-            throw new ApprovalIntegrationUnavailableException("成员二 ApprovalResourceService（学院上报资源校验）");
-        }
-        applications.forEach(application -> resources.validateCollegeApproval(application.applicationId()));
+        applications.forEach(application -> resourceService.validateCollegeApproval(application.applicationId()));
     }
 
     private List<ApplicationStateSnapshot> scopedApplications(BatchType batchType, Long batchId, Scope scope) {
@@ -269,13 +263,9 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
     }
 
     private boolean inScope(ApplicationStateSnapshot application, Scope scope) {
-        StudentScopeService scopes = scopeServiceProvider.getIfAvailable();
-        if (scopes == null) {
-            throw new ApprovalIntegrationUnavailableException("成员一 StudentScopeService");
-        }
         return scope.level() == SubmissionLevel.COUNSELOR
-                ? scopes.isCounselorResponsibleFor(scope.scopeId(), application.studentId())
-                : scopes.isStudentInCollege(application.studentId(), scope.scopeId());
+                ? scopeService.isCounselorResponsibleFor(scope.scopeId(), application.studentId())
+                : scopeService.isStudentInCollege(application.studentId(), scope.scopeId());
     }
 
     private Optional<ApprovalRecordEntity> latestDecision(ApplicationStateSnapshot application, SubmissionLevel level) {
@@ -425,19 +415,11 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
     }
 
     private ApprovalBatchQueryService requiredBatchQuery() {
-        ApprovalBatchQueryService service = batchQueryProvider.getIfAvailable();
-        if (service == null) {
-            throw new ApprovalIntegrationUnavailableException("成员一 ApprovalBatchQueryService");
-        }
-        return service;
+        return batchQueryService;
     }
 
     private ApprovalSubmissionApplicationQueryService requiredApplicationQuery() {
-        ApprovalSubmissionApplicationQueryService service = applicationQueryProvider.getIfAvailable();
-        if (service == null) {
-            throw new ApprovalIntegrationUnavailableException("成员二 ApprovalSubmissionApplicationQueryService");
-        }
-        return service;
+        return applicationQueryService;
     }
 
     private record Scope(SubmissionLevel level, SubmissionScopeType scopeType, Long scopeId) {

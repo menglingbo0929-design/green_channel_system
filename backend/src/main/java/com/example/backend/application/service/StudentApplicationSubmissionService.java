@@ -18,7 +18,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.UUID;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,15 +30,15 @@ public class StudentApplicationSubmissionService implements ApplicationAttachmen
     private final ApplicationMapper applications;
     private final ApplicationResourceMapper resources;
     private final ApplicationOperationMapper operations;
-    private final ObjectProvider<ApprovalResourceService> resourceServices;
-    private final ObjectProvider<ApprovalTransitionService> transitions;
+    private final ApprovalResourceService resourceService;
+    private final ApprovalTransitionService transitionService;
     @Value("${application.attachment-storage-path:./private-uploads}") private String attachmentStoragePath;
 
     public StudentApplicationSubmissionService(ApplicationMapper applications, ApplicationResourceMapper resources,
-                                                ApplicationOperationMapper operations, ObjectProvider<ApprovalResourceService> resourceServices,
-                                                ObjectProvider<ApprovalTransitionService> transitions) {
+                                                ApplicationOperationMapper operations, ApprovalResourceService resourceService,
+                                                ApprovalTransitionService transitionService) {
         this.applications = applications; this.resources = resources; this.operations = operations;
-        this.resourceServices = resourceServices; this.transitions = transitions;
+        this.resourceService = resourceService; this.transitionService = transitionService;
     }
 
     @Transactional
@@ -67,11 +66,8 @@ public class StudentApplicationSubmissionService implements ApplicationAttachmen
         validateRequestId(requestId); requireEditable(application);
         if (!application.getVersion().equals(version)) throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
         if (resources.countActiveAttachments(applicationId) < 1) throw conflict("APPLICATION_ATTACHMENT_REQUIRED", "正式提交前至少上传一份证明附件");
-        ApprovalResourceService resourceService = resourceServices.getIfAvailable();
-        ApprovalTransitionService transition = transitions.getIfAvailable();
-        if (resourceService == null || transition == null) throw new ApplicationException("DEPENDENCY_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "资源或审核服务尚未就绪");
         resourceService.reserveOnSubmit(applicationId, requestId, operatorId);
-        transition.submitInitial(applicationId, version, requestId, operatorId);
+        transitionService.submitInitial(applicationId, version, requestId, operatorId);
     }
 
     public ApplicationAttachmentContent readAttachment(Long applicationId, Long studentId, Long attachmentId) {

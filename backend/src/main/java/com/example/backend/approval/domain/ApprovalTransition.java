@@ -1,5 +1,8 @@
 package com.example.backend.approval.domain;
 
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApprovalLevel;
+
 import java.util.Objects;
 
 public record ApprovalTransition(

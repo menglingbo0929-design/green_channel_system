@@ -1,6 +1,6 @@
 package com.example.backend.approval.api;
 
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.port.LoginUser;
 
 /** Member-three batch submission boundary used by the REST controller. */

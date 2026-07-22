@@ -2,19 +2,19 @@ package com.example.backend.approval.service;
 
 import com.example.backend.approval.api.ApplicationStatusResult;
 import com.example.backend.approval.api.SystemMessageService;
-import com.example.backend.approval.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationStatus;
 import com.example.backend.approval.domain.ApprovalAction;
 import com.example.backend.approval.domain.ApprovalErrorCode;
 import com.example.backend.approval.domain.ApprovalException;
-import com.example.backend.approval.domain.ApprovalLevel;
+import com.example.backend.application.domain.ApprovalLevel;
 import com.example.backend.approval.persistence.entity.ApprovalRecordEntity;
 import com.example.backend.approval.persistence.mapper.ApprovalRecordMapper;
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
 import com.example.backend.approval.port.ApprovalMessageRecipientResolver;
 import com.example.backend.approval.port.ApprovalResourceService;
-import com.example.backend.approval.port.ApplicationStateQueryService;
-import com.example.backend.approval.port.ApplicationStateSnapshot;
-import com.example.backend.approval.port.ApplicationStateWriteService;
+import com.example.backend.application.port.ApplicationStateQueryService;
+import com.example.backend.application.dto.ApplicationStateSnapshot;
+import com.example.backend.application.port.ApplicationStateWriteService;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.service.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
@@ -39,33 +39,33 @@ public class ApprovalReviewService {
     private final ApplicationStateQueryService stateQueryService;
     private final ApplicationStateWriteService stateWriteService;
     private final ApprovalRecordMapper approvalRecordMapper;
-    private final ObjectProvider<ApprovalResourceService> resourceServiceProvider;
-    private final ObjectProvider<com.example.backend.application.port.ApplicationDetailService> detailServiceProvider;
-    private final ObjectProvider<ApprovalMessageRecipientResolver> recipientResolverProvider;
+    private final ApprovalResourceService resourceService;
+    private final com.example.backend.application.port.ApplicationDetailService detailService;
+    private final ApprovalMessageRecipientResolver recipientResolver;
     private final ObjectProvider<SystemMessageService> messageServiceProvider;
-    private final ObjectProvider<StudentScopeService> studentScopeServiceProvider;
-    private final ObjectProvider<ReviewableApplicationEditService> applicationEditServiceProvider;
+    private final StudentScopeService studentScopeService;
+    private final ReviewableApplicationEditService applicationEditService;
 
     public ApprovalReviewService(
             ApplicationStateQueryService stateQueryService,
             ApplicationStateWriteService stateWriteService,
             ApprovalRecordMapper approvalRecordMapper,
-            ObjectProvider<ApprovalResourceService> resourceServiceProvider,
-            ObjectProvider<com.example.backend.application.port.ApplicationDetailService> detailServiceProvider,
-            ObjectProvider<ApprovalMessageRecipientResolver> recipientResolverProvider,
+            ApprovalResourceService resourceService,
+            com.example.backend.application.port.ApplicationDetailService detailService,
+            ApprovalMessageRecipientResolver recipientResolver,
             ObjectProvider<SystemMessageService> messageServiceProvider,
-            ObjectProvider<StudentScopeService> studentScopeServiceProvider,
-            ObjectProvider<ReviewableApplicationEditService> applicationEditServiceProvider
+            StudentScopeService studentScopeService,
+            ReviewableApplicationEditService applicationEditService
     ) {
         this.stateQueryService = stateQueryService;
         this.stateWriteService = stateWriteService;
         this.approvalRecordMapper = approvalRecordMapper;
-        this.resourceServiceProvider = resourceServiceProvider;
-        this.detailServiceProvider = detailServiceProvider;
-        this.recipientResolverProvider = recipientResolverProvider;
+        this.resourceService = resourceService;
+        this.detailService = detailService;
+        this.recipientResolver = recipientResolver;
         this.messageServiceProvider = messageServiceProvider;
-        this.studentScopeServiceProvider = studentScopeServiceProvider;
-        this.applicationEditServiceProvider = applicationEditServiceProvider;
+        this.studentScopeService = studentScopeService;
+        this.applicationEditService = applicationEditService;
     }
 
     @Transactional
@@ -243,13 +243,9 @@ public class ApprovalReviewService {
 
     private void validateScope(LoginUser user, ApplicationStateSnapshot state) {
         if (user.role() == UserRole.SCHOOL) return;
-        StudentScopeService scopes = studentScopeServiceProvider.getIfAvailable();
-        if (scopes == null) {
-            throw new com.example.backend.approval.web.ApprovalIntegrationUnavailableException("成员一学生数据范围 Service");
-        }
         boolean allowed = user.role() == UserRole.COUNSELOR
-                ? scopes.isCounselorResponsibleFor(user.userId(), state.studentId())
-                : user.collegeId() != null && scopes.isStudentInCollege(state.studentId(), user.collegeId());
+                ? studentScopeService.isCounselorResponsibleFor(user.userId(), state.studentId())
+                : user.collegeId() != null && studentScopeService.isStudentInCollege(state.studentId(), user.collegeId());
         if (!allowed) {
             throw new ApprovalException(ApprovalErrorCode.APPROVAL_FORBIDDEN_SCOPE, "当前用户不在该申请的数据范围内");
         }
@@ -292,11 +288,7 @@ public class ApprovalReviewService {
     }
 
     private ReviewableApplicationEditService requireApplicationEditService() {
-        ReviewableApplicationEditService service = applicationEditServiceProvider.getIfAvailable();
-        if (service == null) {
-            throw new com.example.backend.approval.web.ApprovalIntegrationUnavailableException("成员二审核允许字段写入 Service");
-        }
-        return service;
+        return applicationEditService;
     }
 
     private String toJsonArray(List<String> fields) {
@@ -326,22 +318,17 @@ public class ApprovalReviewService {
     }
 
     private ApprovalResourceService requireResourceService() {
-        ApprovalResourceService service = resourceServiceProvider.getIfAvailable();
-        if (service == null) throw new com.example.backend.approval.web.ApprovalIntegrationUnavailableException("成员二资源 Service");
-        return service;
+        return resourceService;
     }
 
     private com.example.backend.application.port.ApplicationDetailService requireDetailService() {
-        var service = detailServiceProvider.getIfAvailable();
-        if (service == null) throw new com.example.backend.approval.web.ApprovalIntegrationUnavailableException("成员二申请详情 Service");
-        return service;
+        return detailService;
     }
 
     private void notifyStudent(Long studentId, Long applicationId, ApprovalAction action, String comment, ApplicationStatus status) {
-        ApprovalMessageRecipientResolver resolver = recipientResolverProvider.getIfAvailable();
         SystemMessageService messages = messageServiceProvider.getIfAvailable();
-        if (resolver == null || messages == null) return;
-        Long receiverUserId = resolver.getStudentUserId(studentId);
+        if (messages == null) return;
+        Long receiverUserId = recipientResolver.getStudentUserId(studentId);
         if (receiverUserId == null) return;
         if (action == ApprovalAction.RETURN) messages.sendApprovalReturned(receiverUserId, applicationId, comment);
         if (action == ApprovalAction.REJECT) messages.sendApprovalRejected(receiverUserId, applicationId, comment);

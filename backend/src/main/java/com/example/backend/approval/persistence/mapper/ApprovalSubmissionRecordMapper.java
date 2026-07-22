@@ -1,7 +1,7 @@
 package com.example.backend.approval.persistence.mapper;
 
 import com.example.backend.approval.persistence.entity.ApprovalSubmissionRecordEntity;
-import com.example.backend.approval.persistence.type.BatchType;
+import com.example.backend.application.domain.BatchType;
 import com.example.backend.approval.persistence.type.SubmissionLevel;
 import com.example.backend.approval.persistence.type.SubmissionScopeType;
 import org.apache.ibatis.annotations.Insert;

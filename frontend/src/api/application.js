@@ -34,6 +34,14 @@ export const studentProfileAPI = {
   update: (data) => api.put('/student/profile', data).then(payload),
 }
 
+export const policyRuleAPI = {
+  enabled: (batchType = 'GREEN_CHANNEL') => api.get('/policy-rules/enabled', { params: { batchType } }).then(payload),
+  list: () => api.get('/policy-rules').then(payload),
+  create: (data) => api.post('/policy-rules', data).then(payload),
+  update: (id, data) => api.put(`/policy-rules/${id}`, data).then(payload),
+  delete: (id) => api.delete(`/policy-rules/${id}`),
+}
+
 export const studentApplicationAPI = {
   mine: () => api.get('/applications/mine').then(payload),
   createDraft: (data) => api.post('/applications/drafts', data).then(payload),

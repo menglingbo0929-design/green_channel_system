@@ -7,17 +7,15 @@ import com.example.backend.model.dto.voucher.ArrearsVoucherQueryDTO;
 import com.example.backend.model.vo.voucher.ArrearsVoucherVO;
 import com.example.backend.security.ICurrentUserProvider;
 import com.example.backend.service.IArrearsVoucherService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /** 6.1.2 单据接口：学校列表、预览、打印数据和学生本人查看。 */
 @RestController
+@RequiredArgsConstructor
 public class ArrearsVoucherController {
-
-    @Autowired
-    private IArrearsVoucherService service;
-    @Autowired
-    private ICurrentUserProvider currentUserProvider;
+    private final IArrearsVoucherService service;
+    private final ICurrentUserProvider currentUserProvider;
 
     @GetMapping("/api/arrears-vouchers")
     public JsonResponse<Page<ArrearsVoucherVO>> page(ArrearsVoucherQueryDTO query, PageDTO page){return JsonResponse.success(service.pageForSchool(query,page,currentUserId()));}

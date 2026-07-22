@@ -1,19 +1,23 @@
 package com.example.backend.approval.domain;
 
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationType;
+import com.example.backend.application.domain.ApprovalLevel;
+
 import java.util.Objects;
 
-import static com.example.backend.approval.domain.ApplicationStatus.APPROVED;
-import static com.example.backend.approval.domain.ApplicationStatus.CANCELLED;
-import static com.example.backend.approval.domain.ApplicationStatus.COLLEGE_PENDING;
-import static com.example.backend.approval.domain.ApplicationStatus.COLLEGE_RETURNED;
-import static com.example.backend.approval.domain.ApplicationStatus.COMPLETED;
-import static com.example.backend.approval.domain.ApplicationStatus.CONFIRM_PENDING;
-import static com.example.backend.approval.domain.ApplicationStatus.COUNSELOR_PENDING;
-import static com.example.backend.approval.domain.ApplicationStatus.COUNSELOR_RETURNED;
-import static com.example.backend.approval.domain.ApplicationStatus.DRAFT;
-import static com.example.backend.approval.domain.ApplicationStatus.REJECTED;
-import static com.example.backend.approval.domain.ApplicationStatus.SCHOOL_PENDING;
-import static com.example.backend.approval.domain.ApplicationStatus.SCHOOL_RETURNED;
+import static com.example.backend.application.domain.ApplicationStatus.APPROVED;
+import static com.example.backend.application.domain.ApplicationStatus.CANCELLED;
+import static com.example.backend.application.domain.ApplicationStatus.COLLEGE_PENDING;
+import static com.example.backend.application.domain.ApplicationStatus.COLLEGE_RETURNED;
+import static com.example.backend.application.domain.ApplicationStatus.COMPLETED;
+import static com.example.backend.application.domain.ApplicationStatus.CONFIRM_PENDING;
+import static com.example.backend.application.domain.ApplicationStatus.COUNSELOR_PENDING;
+import static com.example.backend.application.domain.ApplicationStatus.COUNSELOR_RETURNED;
+import static com.example.backend.application.domain.ApplicationStatus.DRAFT;
+import static com.example.backend.application.domain.ApplicationStatus.REJECTED;
+import static com.example.backend.application.domain.ApplicationStatus.SCHOOL_PENDING;
+import static com.example.backend.application.domain.ApplicationStatus.SCHOOL_RETURNED;
 
 public final class ApprovalStateMachine {
 

@@ -11,8 +11,7 @@ import com.example.backend.model.vo.confirmation.PendingArrearsApplicationVO;
 import com.example.backend.service.IArrearsConfirmationService;
 import com.example.backend.service.port.ArrearsConfirmationApplicationPort;
 import com.example.backend.service.port.ArrearsConfirmationCompletionPort;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,18 +24,14 @@ import java.time.LocalDateTime;
  * 返回结果。重复确认继续由数据库唯一约束控制，不在 Service 中包装异常。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class ArrearsConfirmationServiceImpl
         implements IArrearsConfirmationService {
 
     /** 只操作成员四拥有的 arrears_confirmation 表。 */
-    @Autowired
-    private ArrearsConfirmationMapper arrearsConfirmationMapper;
-
-    @Autowired
-    private ObjectProvider<ArrearsConfirmationApplicationPort> applicationPortProvider;
-
-    @Autowired
-    private ObjectProvider<ArrearsConfirmationCompletionPort> completionPortProvider;
+    private final ArrearsConfirmationMapper arrearsConfirmationMapper;
+    private final ArrearsConfirmationApplicationPort applicationPort;
+    private final ArrearsConfirmationCompletionPort completionPort;
 
     @Override
     public Page<PendingArrearsApplicationVO> listPending(
@@ -44,14 +39,12 @@ public class ArrearsConfirmationServiceImpl
             PageDTO pageDTO
     ) {
         PageDTO actualPage = pageDTO == null ? new PageDTO() : pageDTO;
-        return applicationPortProvider.getObject()
-                .findPendingPage(queryDTO, actualPage);
+        return applicationPort.findPendingPage(queryDTO, actualPage);
     }
 
     @Override
     public PendingArrearsApplicationVO getPendingDetail(Long applicationId) {
-        return applicationPortProvider.getObject()
-                .findPendingByApplicationId(applicationId);
+        return applicationPort.findPendingByApplicationId(applicationId);
     }
 
     @Override
@@ -77,7 +70,7 @@ public class ArrearsConfirmationServiceImpl
                 .setDeleted(0L);
         arrearsConfirmationMapper.insert(confirmation);
 
-        completionPortProvider.getObject().completeAfterConfirmation(
+        completionPort.completeAfterConfirmation(
                 applicationId,
                 confirmDTO.getVersion(),
                 confirmDTO.getRequestId(),

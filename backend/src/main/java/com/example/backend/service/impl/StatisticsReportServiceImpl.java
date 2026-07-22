@@ -20,8 +20,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -42,6 +41,7 @@ import java.util.List;
  * Excel 使用 SXSSFWorkbook 写出真正的 xlsx 文件。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class StatisticsReportServiceImpl implements IStatisticsReportService {
 
     /** Excel 分页读取大小；它只决定每次读取多少，不限制导出总数。 */
@@ -50,11 +50,8 @@ public class StatisticsReportServiceImpl implements IStatisticsReportService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    @Autowired
-    private ObjectProvider<StatisticsReportQueryPort> reportQueryPortProvider;
-
-    @Autowired
-    private ObjectProvider<StatisticsAccessPort> statisticsAccessPortProvider;
+    private final StatisticsReportQueryPort reportQueryPort;
+    private final StatisticsAccessPort statisticsAccessPort;
 
     @Override
     public StatisticsReportPageVO queryDetails(
@@ -64,11 +61,10 @@ public class StatisticsReportServiceImpl implements IStatisticsReportService {
         StatisticsReportQueryDTO actualQuery = query == null
                 ? new StatisticsReportQueryDTO()
                 : query;
-        statisticsAccessPortProvider.getObject()
-                .checkSchoolStatisticsUser(currentUserId);
+        statisticsAccessPort.checkSchoolStatisticsUser(currentUserId);
 
         List<StatisticsReportColumn> columns = resolveColumns(actualQuery.getColumns());
-        Page<StatisticsReportRowVO> source = reportQueryPortProvider.getObject()
+        Page<StatisticsReportRowVO> source = reportQueryPort
                 .queryReportPage(actualQuery, currentUserId);
         return convertPage(source, columns);
     }
@@ -89,8 +85,7 @@ public class StatisticsReportServiceImpl implements IStatisticsReportService {
         StatisticsReportQueryDTO actualQuery = query == null
                 ? new StatisticsReportQueryDTO()
                 : query;
-        statisticsAccessPortProvider.getObject()
-                .checkSchoolStatisticsUser(currentUserId);
+        statisticsAccessPort.checkSchoolStatisticsUser(currentUserId);
 
         List<StatisticsReportColumn> columns = resolveColumns(actualQuery.getColumns());
         List<StatisticsReportRowVO> rows = loadAllRows(actualQuery, currentUserId);
@@ -118,11 +113,10 @@ public class StatisticsReportServiceImpl implements IStatisticsReportService {
         StatisticsReportQueryDTO actualQuery = query == null
                 ? new StatisticsReportQueryDTO()
                 : query;
-        statisticsAccessPortProvider.getObject()
-                .checkSchoolStatisticsUser(currentUserId);
+        statisticsAccessPort.checkSchoolStatisticsUser(currentUserId);
 
         List<StatisticsReportColumn> columns = resolveColumns(actualQuery.getColumns());
-        StatisticsReportQueryPort reportPort = reportQueryPortProvider.getObject();
+        StatisticsReportQueryPort reportPort = reportQueryPort;
         SXSSFWorkbook workbook = new SXSSFWorkbook(100);
         workbook.setCompressTempFiles(true);
         SXSSFSheet sheet = workbook.createSheet("统计明细");
@@ -183,7 +177,7 @@ public class StatisticsReportServiceImpl implements IStatisticsReportService {
         pageQuery.setPageSize(EXPORT_PAGE_SIZE);
 
         List<StatisticsReportRowVO> rows = new ArrayList<>();
-        Page<StatisticsReportRowVO> page = reportQueryPortProvider.getObject()
+        Page<StatisticsReportRowVO> page = reportQueryPort
                 .queryReportPage(pageQuery, currentUserId);
         while (!page.getRecords().isEmpty()) {
             rows.addAll(page.getRecords());
@@ -191,7 +185,7 @@ public class StatisticsReportServiceImpl implements IStatisticsReportService {
                 break;
             }
             pageQuery.setPageNo(pageQuery.getPageNo() + 1);
-            page = reportQueryPortProvider.getObject()
+            page = reportQueryPort
                     .queryReportPage(pageQuery, currentUserId);
         }
         return rows;

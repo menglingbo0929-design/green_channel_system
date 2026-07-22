@@ -1,8 +1,8 @@
 package com.example.backend.approval.service;
 
-import com.example.backend.approval.domain.ApplicationStatus;
-import com.example.backend.approval.domain.ApplicationType;
-import com.example.backend.approval.port.ApplicationStateSnapshot;
+import com.example.backend.application.domain.ApplicationStatus;
+import com.example.backend.application.domain.ApplicationType;
+import com.example.backend.application.dto.ApplicationStateSnapshot;
 import com.example.backend.approval.port.LoginUser;
 import com.example.backend.approval.port.UserRole;
 import java.util.ArrayList;

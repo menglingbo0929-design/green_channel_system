@@ -5,8 +5,7 @@ import com.example.backend.model.vo.statistics.ApplicationStatisticsVO;
 import com.example.backend.service.IApplicationStatisticsService;
 import com.example.backend.service.port.ApplicationStatisticsQueryPort;
 import com.example.backend.service.port.StatisticsAccessPort;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,13 +15,10 @@ import org.springframework.stereotype.Service;
  * 不在本类增加额外异常包装或复杂边界判断。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class ApplicationStatisticsServiceImpl implements IApplicationStatisticsService {
-
-    @Autowired
-    private ObjectProvider<ApplicationStatisticsQueryPort> statisticsQueryPortProvider;
-
-    @Autowired
-    private ObjectProvider<StatisticsAccessPort> statisticsAccessPortProvider;
+    private final ApplicationStatisticsQueryPort statisticsQueryPort;
+    private final StatisticsAccessPort statisticsAccessPort;
 
     @Override
     public ApplicationStatisticsVO querySummary(
@@ -32,9 +28,7 @@ public class ApplicationStatisticsServiceImpl implements IApplicationStatisticsS
         StatisticsFilterDTO actualFilter = filter == null
                 ? new StatisticsFilterDTO()
                 : filter;
-        statisticsAccessPortProvider.getObject()
-                .checkSchoolStatisticsUser(currentUserId);
-        return statisticsQueryPortProvider.getObject()
-                .queryFinalStatistics(actualFilter);
+        statisticsAccessPort.checkSchoolStatisticsUser(currentUserId);
+        return statisticsQueryPort.queryFinalStatistics(actualFilter);
     }
 }
