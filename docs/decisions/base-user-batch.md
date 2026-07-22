@@ -25,7 +25,7 @@
 - 负责人：成员一
 - 涉及表：`sys_user`、`sys_role`、`sys_user_role`
 - 涉及接口：用户管理 CRUD、登录
-- 涉及文件：`database/02_create_database.sql`、`database/03_create_database.sql`
+- 涉及文件：`database/02_create_tables.sql`、`database/03_create_database.sql`
 - 具体规定：
   1. 系统角色固定为 4 种：`STUDENT`（学生）、`COUNSELOR`（辅导员）、`COLLEGE`（学院管理员）、`SCHOOL`（学校管理员）。
   2. 用户与角色通过 `sys_user_role` 多对多关联，一个用户可同时拥有多个角色。
@@ -41,7 +41,7 @@
 - 负责人：成员一
 - 涉及表：`college`、`major`、`grade`、`class_info`
 - 涉及接口：`OrganizationController` CRUD
-- 涉及文件：`database/02_create_database.sql`、`database/03_create_database.sql`
+- 涉及文件：`database/02_create_tables.sql`、`database/03_create_database.sql`
 - 具体规定：
   1. 四张表形成学院 → 专业 → 班级的树形层级，年级独立存在。
   2. `major.college_id` 关联学院，`class_info.major_id` + `class_info.grade_id` + `class_info.college_id`（冗余加速查询）。
@@ -57,7 +57,7 @@
 - 负责人：成员一
 - 涉及表：`student`
 - 涉及接口：`StudentController` CRUD、`StudentProfileQueryService`
-- 涉及文件：`database/02_create_database.sql`、`backend/.../model/domain/Student.java`
+- 涉及文件：`database/02_create_tables.sql`、`backend/.../model/domain/Student.java`
 - 具体规定：
   1. 学生通过 `student_no`（学号）唯一标识。
   2. 学生必须关联 `college_id`、`major_id`、`grade_id`、`class_id` 四个组织维度。
@@ -75,7 +75,7 @@
 - 负责人：成员一
 - 涉及表：`counselor_student`
 - 涉及接口：辅导员分配管理（待实现）
-- 涉及文件：`database/02_create_database.sql`
+- 涉及文件：`database/02_create_tables.sql`
 - 具体规定：
   1. 辅导员与学生的多对多关系通过 `counselor_student` 表维护。
   2. `student` 表的 `counselor_id` 字段作为主要辅导员冗余，配合关联表支持多辅导员场景。
@@ -90,7 +90,7 @@
 - 负责人：成员一
 - 涉及表：`green_channel_batch`、`batch_eligible_grade`、`subsidy_batch`、`subsidy_batch_eligible_grade`
 - 涉及接口：批次管理 CRUD（待实现）、`BatchQueryService`
-- 涉及文件：`database/02_create_database.sql`、`database/03_create_database.sql`
+- 涉及文件：`database/02_create_tables.sql`、`database/03_create_database.sql`
 - 具体规定：
   1. 绿色通道和补助使用不同的批次表，通过 `application.batch_type` 区分。
   2. `green_channel_batch` 包含 `start_time`（申请开始）、`end_time`（申请截止）、`college_deadline`（学院上报截止）。
@@ -123,7 +123,7 @@
 - 负责人：成员一
 - 涉及表：所有成员一负责的表
 - 涉及接口：全部查询/写入接口
-- 涉及文件：`database/02_create_database.sql`
+- 涉及文件：`database/02_create_tables.sql`
 - 具体规定：
   1. 成员一所有表使用 `deleted BIGINT DEFAULT 0` 作为逻辑删除标记。
   2. 删除时写入当前行 `id` 值，查询时附加 `deleted = 0` 条件。

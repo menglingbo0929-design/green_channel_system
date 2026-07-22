@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { fetchApplicationStatistics } from '../../../api/statistics'
-import { useUserStore } from '../../../stores/user'
 
 /**
  * 6.1.5、6.1.6 的统计联调示意页。
@@ -13,7 +12,6 @@ const filter = reactive({
   applicationType: '', applicationStatus: '', feeItemId: '',
   applicationStartTime: '', applicationEndTime: '',
 })
-const userStore = useUserStore()
 const data = ref(null)
 const loading = ref(false)
 
@@ -30,7 +28,7 @@ const requestParams = computed(() => {
 
 async function loadStatistics() {
   loading.value = true
-  const response = await fetchApplicationStatistics(requestParams.value, userStore.userId)
+  const response = await fetchApplicationStatistics(requestParams.value)
   data.value = response.data.data
   loading.value = false
 }

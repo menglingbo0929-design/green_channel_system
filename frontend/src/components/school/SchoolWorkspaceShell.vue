@@ -6,9 +6,13 @@
  * 菜单来源、图标映射、尺寸与交互规则；这样学校审核、欠费确认、补录和统计
  * 在同一角色下保持一套导航体验。
  */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user.js'
+import { ElMessage } from 'element-plus'
+import { changePasswordAPI } from '../../api/index.js'
+import { getMessages } from '../../api/approval.js'
+import FormDialog from '../FormDialog.vue'
 import {
   HomeFilled, User, School, EditPen, Document, CircleCheck, Flag, Coin,
   Plus, TrendCharts, Coin as Database, InfoFilled, Fold, Bell, ArrowDown, Setting,
@@ -17,6 +21,18 @@ import {
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const unreadCount = ref(0)
+const pwdDialog = ref(false)
+const pwdSaving = ref(false)
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+const pwdRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码' }],
+  newPassword: [{ required: true, message: '请输入新密码', min: 6 }],
+  confirmPassword: [
+    { required: true, message: '请确认新密码' },
+    { validator: (_, value, callback) => value === pwdForm.newPassword ? callback() : callback(new Error('两次密码不一致')) },
+  ],
+}
 
 const iconMap = {
   home: HomeFilled,
@@ -53,9 +69,51 @@ function openMessages() {
   router.push('/school/messages')
 }
 
+/** 读取当前登录学校管理员的未读消息总数，供顶栏铃铛角标显示。 */
+async function loadUnreadCount() {
+  try {
+    const page = await getMessages({ page: 1, size: 100, read: false })
+    unreadCount.value = page.total || 0
+  } catch {
+    unreadCount.value = 0
+  }
+}
+
+function handleMessageRead() {
+  loadUnreadCount()
+}
+
+async function handlePasswordSave() {
+  pwdSaving.value = true
+  try {
+    await changePasswordAPI({ oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword })
+    ElMessage.success('密码修改成功，请重新登录')
+    pwdDialog.value = false
+    userStore.logout()
+    router.push('/login')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '修改失败')
+  } finally {
+    pwdSaving.value = false
+  }
+}
+
+onMounted(() => {
+  loadUnreadCount()
+  window.addEventListener('green-channel:message-read', handleMessageRead)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('green-channel:message-read', handleMessageRead)
+})
+
 function handleCommand(command) {
-  if (command === 'profile') router.push('/profile')
-  if (command === 'logout') {
+  if (command === 'password') {
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
+    pwdDialog.value = true
+  } else if (command === 'logout') {
     userStore.logout()
     router.push('/login')
   }
@@ -103,7 +161,7 @@ function handleCommand(command) {
         </div>
 
         <div class="topbar-right">
-          <el-badge :value="0" :hidden="true" class="topbar-badge" @click="openMessages">
+          <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="topbar-badge" @click="openMessages">
             <el-icon class="topbar-icon"><Bell /></el-icon>
           </el-badge>
           <div class="user-info">
@@ -115,7 +173,7 @@ function handleCommand(command) {
             <el-icon class="topbar-icon dropdown-arrow"><ArrowDown /></el-icon>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
+                <el-dropdown-item command="password">修改密码</el-dropdown-item>
                 <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -125,6 +183,20 @@ function handleCommand(command) {
 
       <main class="content"><slot /></main>
     </section>
+
+    <FormDialog
+      v-model:visible="pwdDialog"
+      title="修改密码"
+      :formData="pwdForm"
+      :rules="pwdRules"
+      :loading="pwdSaving"
+      submitText="确认修改"
+      @submit="handlePasswordSave"
+    >
+      <el-form-item label="旧密码" prop="oldPassword"><el-input v-model="pwdForm.oldPassword" type="password" show-password /></el-form-item>
+      <el-form-item label="新密码" prop="newPassword"><el-input v-model="pwdForm.newPassword" type="password" show-password /></el-form-item>
+      <el-form-item label="确认新密码" prop="confirmPassword"><el-input v-model="pwdForm.confirmPassword" type="password" show-password /></el-form-item>
+    </FormDialog>
   </div>
 </template>
 
