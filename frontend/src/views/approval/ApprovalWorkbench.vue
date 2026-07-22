@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CircleCheck, Clock, Download, Refresh, Search, Tickets, UploadFilled, View, Warning } from '@element-plus/icons-vue'
+import { CircleCheck, Clock, Refresh, Search, Tickets, UploadFilled, View, Warning } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ApprovalDetailDrawer from '../../components/approval/ApprovalDetailDrawer.vue'
 import ReviewDialog from '../../components/approval/ReviewDialog.vue'
@@ -19,7 +19,7 @@ const list = ref([])
 const total = ref(0)
 const dashboard = ref({ pending: 0, approvedWaitingSubmit: 0, returned: 0, processed: 0, deadline: '—' })
 const submission = ref(null)
-const filters = reactive({ page: 1, size: 10, batchType: '', batchId: '', applicationType: '', applicationNo: '', studentNo: '', studentName: '', status: '' })
+const filters = reactive({ page: 1, size: 10, batchType: '', batchId: null, applicationType: '', applicationNo: '', studentNo: '', studentName: '', status: '' })
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref(null)
@@ -29,6 +29,7 @@ const reviewTarget = ref(null)
 const batchSubmitting = ref(false)
 const resubmittingId = ref(null)
 const errorMessage = (error, fallback) => error.response?.data?.message || error.message || fallback
+const hasSelectedBatch = computed(() => Boolean(filters.batchType) && Number(filters.batchId) > 0)
 
 const metrics = computed(() => {
   const common = [
@@ -57,8 +58,8 @@ async function loadWorkspace() {
     const [pageData, dashboardData, submissionData] = await Promise.all([
       getApprovalList(role.value, currentTab.value, queryParams()),
       getApprovalDashboard(role.value, queryParams()),
-      usesBatchSubmission.value
-        ? getSubmissionStatus(role.value, { batchType: filters.batchType || 'GREEN_CHANNEL', batchId: filters.batchId || 1 })
+      usesBatchSubmission.value && hasSelectedBatch.value
+        ? getSubmissionStatus(role.value, { batchType: filters.batchType, batchId: Number(filters.batchId) })
         : Promise.resolve(null),
     ])
     list.value = pageData.records
@@ -73,7 +74,7 @@ async function loadWorkspace() {
 }
 
 function resetFilters() {
-  Object.assign(filters, { page: 1, size: 10, batchType: '', batchId: '', applicationType: '', applicationNo: '', studentNo: '', studentName: '', status: '' })
+  Object.assign(filters, { page: 1, size: 10, batchType: '', batchId: null, applicationType: '', applicationNo: '', studentNo: '', studentName: '', status: '' })
   loadWorkspace()
 }
 
@@ -123,6 +124,10 @@ async function submitReview(payload) {
 }
 
 async function submitBatch() {
+  if (!hasSelectedBatch.value) {
+    ElMessage.warning('请先选择批次类型并填写真实批次 ID')
+    return
+  }
   try {
     await ElMessageBox.confirm(
       `系统将自动提交当前范围内 ${submission.value.approvedWaitingSubmitCount} 条已通过申请，任一失败将整批回滚。`,
@@ -130,7 +135,11 @@ async function submitBatch() {
       { confirmButtonText: '确认提交', cancelButtonText: '取消', type: 'warning' },
     )
     batchSubmitting.value = true
-    const result = await submitInitialBatch(role.value, { batchType: 'GREEN_CHANNEL', batchId: 1, requestId: createRequestId() })
+    const result = await submitInitialBatch(role.value, {
+      batchType: filters.batchType,
+      batchId: Number(filters.batchId),
+      requestId: createRequestId(),
+    })
     ElMessage.success(`提交成功，共推进 ${result.submittedCount} 条申请`)
     await loadWorkspace()
   } catch (error) {
@@ -158,10 +167,6 @@ async function resubmitReturned(row) {
   }
 }
 
-function exportList() {
-  ElMessage.success('已按当前查询条件生成导出任务')
-}
-
 watch(role, () => {
   currentTab.value = 'pending'
   resetFilters()
@@ -178,7 +183,6 @@ onMounted(loadWorkspace)
       </div>
       <div class="page-actions">
         <el-button @click="loadWorkspace"><el-icon><Refresh /></el-icon>刷新</el-button>
-        <el-button plain type="primary" @click="exportList"><el-icon><Download /></el-icon>导出</el-button>
       </div>
     </section>
 
@@ -209,7 +213,8 @@ onMounted(loadWorkspace)
       </div>
 
       <div class="standard-filter-grid">
-        <div class="filter-field"><label>申请批次</label><el-select v-model="filters.batchId" clearable placeholder="全部批次"><el-option label="2026 年绿色通道" :value="1" /><el-option label="2026 年新生补助" :value="2" /></el-select></div>
+        <div class="filter-field"><label>批次类型</label><el-select v-model="filters.batchType" clearable placeholder="全部类型"><el-option label="绿色通道" value="GREEN_CHANNEL" /><el-option label="新生补助" value="SUBSIDY" /></el-select></div>
+        <div class="filter-field"><label>批次 ID</label><el-input-number v-model="filters.batchId" :min="1" :precision="0" controls-position="right" placeholder="真实批次 ID" /></div>
         <div class="filter-field"><label>申请类型</label><el-select v-model="filters.applicationType" clearable placeholder="全部类型"><el-option v-for="(label, value) in APPLICATION_TYPE_META" :key="value" :label="label" :value="value" /></el-select></div>
         <div class="filter-field"><label>学号</label><el-input v-model="filters.studentNo" clearable placeholder="请输入学号" /></div>
         <div class="filter-field"><label>学生姓名</label><el-input v-model="filters.studentName" clearable placeholder="请输入姓名" /></div>
