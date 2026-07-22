@@ -10,7 +10,7 @@ function developmentIdentity() {
   if (!studentId || !userId) {
     throw new Error('当前后端仍使用临时开发身份头；请在本地 .env 设置 VITE_DEV_STUDENT_ID 和 VITE_DEV_USER_ID，或等待可信登录上下文接入。')
   }
-  return { 'X-Student-Id': studentId, 'X-User-Id': userId }
+  return {}
 }
 
 export const catalogAPI = {
@@ -30,18 +30,18 @@ export const catalogAPI = {
 }
 
 export const studentApplicationAPI = {
-  mine: () => api.get('/applications/mine', { headers: developmentIdentity() }).then(payload),
-  createDraft: (data) => api.post('/applications/drafts', data, { headers: developmentIdentity() }).then(payload),
-  updateDraft: (id, data) => api.put(`/applications/${id}`, data, { headers: developmentIdentity() }).then(payload),
-  deleteDraft: (id, version) => api.delete(`/applications/${id}`, { params: { version }, headers: developmentIdentity() }),
-  arrears: (id) => api.get(`/applications/${id}/arrears`, { headers: developmentIdentity() }).then(payload),
-  replaceArrears: (id, data) => api.put(`/applications/${id}/arrears`, data, { headers: developmentIdentity() }).then(payload),
-  gifts: (id) => api.get(`/applications/${id}/gifts`, { headers: developmentIdentity() }).then(payload),
-  replaceGifts: (id, data) => api.put(`/applications/${id}/gifts`, data, { headers: developmentIdentity() }).then(payload),
-  subsidy: (id) => api.get(`/applications/${id}/subsidy`, { headers: developmentIdentity() }).then(payload),
-  replaceSubsidy: (id, data) => api.put(`/applications/${id}/subsidy`, data, { headers: developmentIdentity() }).then(payload),
-  uploadAttachment: (id, file, requestId) => { const form = new FormData(); form.append('file', file); return api.post(`/applications/${id}/attachments`, form, { params: { requestId }, headers: { ...developmentIdentity(), 'Content-Type': 'multipart/form-data' } }) },
-  submit: (id, version, requestId) => api.post(`/applications/${id}/submit`, null, { params: { version, requestId }, headers: developmentIdentity() }).then(payload),
+  mine: () => api.get('/applications/mine').then(payload),
+  createDraft: (data) => api.post('/applications/drafts', data).then(payload),
+  updateDraft: (id, data) => api.put(`/applications/${id}`, data).then(payload),
+  deleteDraft: (id, version) => api.delete(`/applications/${id}`, { params: { version } }),
+  arrears: (id) => api.get(`/applications/${id}/arrears`).then(payload),
+  replaceArrears: (id, data) => api.put(`/applications/${id}/arrears`, data).then(payload),
+  gifts: (id) => api.get(`/applications/${id}/gifts`).then(payload),
+  replaceGifts: (id, data) => api.put(`/applications/${id}/gifts`, data).then(payload),
+  subsidy: (id) => api.get(`/applications/${id}/subsidy`).then(payload),
+  replaceSubsidy: (id, data) => api.put(`/applications/${id}/subsidy`, data).then(payload),
+  uploadAttachment: (id, file, requestId) => { const form = new FormData(); form.append('file', file); return api.post(`/applications/${id}/attachments`, form, { params: { requestId }, headers: { 'Content-Type': 'multipart/form-data' } }) },
+  submit: (id, version, requestId) => api.post(`/applications/${id}/submit`, null, { params: { version, requestId } }).then(payload),
 }
 
 export const resourceConfigAPI = {

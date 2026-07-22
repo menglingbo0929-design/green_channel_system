@@ -20,4 +20,18 @@ memberFourClient.interceptors.request.use((config) => {
   return config
 })
 
+memberFourClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userId')
+      localStorage.removeItem('loginName')
+      localStorage.removeItem('roles')
+      window.location.assign('/login')
+    }
+    return Promise.reject(error)
+  },
+)
+
 export default memberFourClient

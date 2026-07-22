@@ -96,7 +96,7 @@ public class JwtTokenProvider {
      * 在 JwtAuthenticationFilter 中调用，用于识别当前请求是谁发的
      */
     public Long getUserIdFromToken(String token) {
-        return parseClaims(token).get("userId", Long.class);
+        return claimAsLong(token, "userId");
     }
 
     /**
@@ -115,15 +115,19 @@ public class JwtTokenProvider {
     public List<String> getRolesFromToken(String token) {
         String rolesStr = parseClaims(token).get("roles", String.class);
         if (rolesStr == null || rolesStr.isEmpty()) return List.of();
-        return List.of(rolesStr.split(","));
+        return List.of(rolesStr.split(",")).stream()
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .toList();
     }
 
     public Long getStudentIdFromToken(String token) {
-        return parseClaims(token).get("studentId", Long.class);
+        return claimAsLong(token, "studentId");
     }
 
     public Long getCollegeIdFromToken(String token) {
-        return parseClaims(token).get("collegeId", Long.class);
+        return claimAsLong(token, "collegeId");
     }
 
     /**
@@ -158,6 +162,11 @@ public class JwtTokenProvider {
      *
      * 如果签名不对或 Token 过期，parseSignedClaims 会抛异常
      */
+    private Long claimAsLong(String token, String claimName) {
+        Object value = parseClaims(token).get(claimName);
+        return value instanceof Number number ? number.longValue() : null;
+    }
+
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)       // 指定验证密钥
