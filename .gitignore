@@ -25,3 +25,7 @@ Thumbs.db
 
 # Local IntelliJ IDEA project settings
 .idea/
+
+# 本地测试数据与文档
+学生导入数据.xlsx
+答辩文档-成员一.md
