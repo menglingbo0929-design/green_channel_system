@@ -23,6 +23,17 @@ import java.util.Map;
 @Component
 public class StatisticsReportQueryPortAdapter implements StatisticsReportQueryPort {
 
+    /** 与统计看板共用的真实欠费确认记录约束，排除旧测试数据的裸 ID 串行。 */
+    private static final String VALID_CONFIRMATION_AGGREGATE =
+            "SELECT ac.application_id,MAX(ac.confirmed_amount) confirmed_amount "
+                    + "FROM arrears_confirmation ac "
+                    + "JOIN sys_user su ON su.id=ac.confirm_user_id AND su.deleted=0 "
+                    + "JOIN sys_user_role sur ON sur.user_id=su.id AND sur.role_id=4 "
+                    + "WHERE ac.deleted=0 "
+                    + "AND EXISTS (SELECT 1 FROM arrears_application valid_aa "
+                    + "WHERE valid_aa.application_id=ac.application_id AND valid_aa.deleted=0) "
+                    + "GROUP BY ac.application_id";
+
     /** 页面可用的排序 key 到固定 SQL 列的映射，不直接拼接前端传入的字符串。 */
     private static final Map<String, String> SORT_COLUMNS = new LinkedHashMap<>();
 
@@ -109,8 +120,7 @@ public class StatisticsReportQueryPortAdapter implements StatisticsReportQueryPo
                 + "JOIN fee_item fi ON fi.id=aa.fee_item_id AND fi.deleted=0 " 
                 + "WHERE aa.deleted=0 GROUP BY aa.application_id) arrears " 
                 + "ON arrears.application_id=a.id " 
-                + "LEFT JOIN (SELECT application_id,MAX(confirmed_amount) confirmed_amount " 
-                + "FROM arrears_confirmation WHERE deleted=0 GROUP BY application_id) confirmation " 
+                + "LEFT JOIN (" + VALID_CONFIRMATION_AGGREGATE + ") confirmation "
                 + "ON confirmation.application_id=a.id " 
                 + "LEFT JOIN (SELECT ga.application_id," 
                 + "GROUP_CONCAT(gi.item_name ORDER BY gi.id SEPARATOR '、') item_names " 

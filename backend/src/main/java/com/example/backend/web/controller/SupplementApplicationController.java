@@ -65,12 +65,4 @@ public class SupplementApplicationController {
         return user.getUserId();
     }
 
-    /** 返回已通过身份校验的学校管理员用户 ID。 */
-    private Long requireSchoolUser() {
-        LoginUser user = currentUserProvider.getRequiredUser();
-        if (user.getRoles() == null || !user.getRoles().contains("SCHOOL")) {
-            throw new SecurityException("仅学校管理员可执行线下补录");
-        }
-        return user.getUserId();
-    }
 }

@@ -25,6 +25,21 @@ import java.math.BigDecimal;
 @Component
 public class ApplicationStatisticsQueryPortAdapter implements ApplicationStatisticsQueryPort {
 
+    /**
+     * 只读取由真实欠费申请产生、且由学校管理员确认的有效记录。
+     * 旧测试脚本曾用裸 application_id 写入确认表，ID 与后续正式申请复用后会把
+     * 生活补助误算成欠费确认金额，因此所有统计入口统一使用这段关联约束。
+     */
+    private static final String VALID_CONFIRMATION_AGGREGATE =
+            "SELECT ac.application_id,MAX(ac.confirmed_amount) confirmed_amount "
+                    + "FROM arrears_confirmation ac "
+                    + "JOIN sys_user su ON su.id=ac.confirm_user_id AND su.deleted=0 "
+                    + "JOIN sys_user_role sur ON sur.user_id=su.id AND sur.role_id=4 "
+                    + "WHERE ac.deleted=0 "
+                    + "AND EXISTS (SELECT 1 FROM arrears_application valid_aa "
+                    + "WHERE valid_aa.application_id=ac.application_id AND valid_aa.deleted=0) "
+                    + "GROUP BY ac.application_id";
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -66,8 +81,7 @@ public class ApplicationStatisticsQueryPortAdapter implements ApplicationStatist
                 "SELECT COALESCE(SUM(confirmation.confirmed_amount),0) "
                         + "FROM application a "
                         + "JOIN student s ON s.id=a.student_id AND s.deleted=0 "
-                        + "LEFT JOIN (SELECT application_id,MAX(confirmed_amount) confirmed_amount "
-                        + "FROM arrears_confirmation WHERE deleted=0 GROUP BY application_id) confirmation "
+                        + "LEFT JOIN (" + VALID_CONFIRMATION_AGGREGATE + ") confirmation "
                         + "ON confirmation.application_id=a.id "
                         + whereSql,
                 parameters,
@@ -127,8 +141,7 @@ public class ApplicationStatisticsQueryPortAdapter implements ApplicationStatist
                         + "LEFT JOIN (SELECT application_id,SUM(declared_amount) total_declared_amount "
                         + "FROM arrears_application WHERE deleted=0 GROUP BY application_id) arrears_total "
                         + "ON arrears_total.application_id=a.id "
-                        + "LEFT JOIN (SELECT application_id,MAX(confirmed_amount) confirmed_amount "
-                        + "FROM arrears_confirmation WHERE deleted=0 GROUP BY application_id) confirmation "
+                        + "LEFT JOIN (" + VALID_CONFIRMATION_AGGREGATE + ") confirmation "
                         + "ON confirmation.application_id=a.id "
                         + whereSql
                         + " GROUP BY aa.arrears_reason_code ORDER BY aa.arrears_reason_code",
@@ -178,8 +191,7 @@ public class ApplicationStatisticsQueryPortAdapter implements ApplicationStatist
                         + "ON gcb.id=a.green_channel_batch_id AND gcb.deleted=0 "
                         + "LEFT JOIN subsidy_batch sb "
                         + "ON sb.id=a.subsidy_batch_id AND sb.deleted=0 "
-                        + "LEFT JOIN (SELECT application_id,MAX(confirmed_amount) confirmed_amount "
-                        + "FROM arrears_confirmation WHERE deleted=0 GROUP BY application_id) confirmation "
+                        + "LEFT JOIN (" + VALID_CONFIRMATION_AGGREGATE + ") confirmation "
                         + "ON confirmation.application_id=a.id "
                         + whereSql
                         + " GROUP BY a.batch_type,a.batch_id,gcb.batch_name,sb.batch_name "

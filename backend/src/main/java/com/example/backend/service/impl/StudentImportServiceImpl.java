@@ -93,13 +93,27 @@ public class StudentImportServiceImpl implements StudentImportService {
                         skipped++; continue;
                     }
 
-                    Long classId = null;
-                    if (!classCode.isEmpty()) {
-                        ClassInfo ci = classInfoMapper.selectOne(
-                                new LambdaQueryWrapper<ClassInfo>()
-                                        .eq(ClassInfo::getClassCode, classCode)
-                                        .eq(ClassInfo::getDeleted, 0));
-                        if (ci != null) classId = ci.getId();
+                    // student.class_id 是数据库必填字段。导入前必须定位到启用中的班级，
+                    // 并校验班级确实属于本行选择的学院、专业和年级，避免先创建账号后
+                    // 才在插入 student 时因 class_id 为空而留下半成品数据。
+                    if (classCode.isEmpty()) {
+                        errors.add("第" + (i + 1) + "行：班级编码不能为空");
+                        skipped++;
+                        continue;
+                    }
+                    ClassInfo classInfo = classInfoMapper.selectOne(
+                            new LambdaQueryWrapper<ClassInfo>()
+                                    .eq(ClassInfo::getClassCode, classCode)
+                                    .eq(ClassInfo::getCollegeId, college.getId())
+                                    .eq(ClassInfo::getMajorId, major.getId())
+                                    .eq(ClassInfo::getGradeId, grade.getId())
+                                    .eq(ClassInfo::getEnabled, 1)
+                                    .eq(ClassInfo::getDeleted, 0));
+                    if (classInfo == null) {
+                        errors.add("第" + (i + 1) + "行：班级编码不存在、已停用，或与学院/专业/年级不匹配："
+                                + classCode);
+                        skipped++;
+                        continue;
                     }
 
                     // 查已有用户（上次导入半路失败可能留下了孤儿记录）
@@ -133,7 +147,7 @@ public class StudentImportServiceImpl implements StudentImportService {
                     s.setCollegeId(college.getId());
                     s.setMajorId(major.getId());
                     s.setGradeId(grade.getId());
-                    s.setClassId(classId);
+                    s.setClassId(classInfo.getId());
                     s.setPhone(phone);
                     s.setOriginLoan(originLoan);
                     s.setCampusLoan(campusLoan);

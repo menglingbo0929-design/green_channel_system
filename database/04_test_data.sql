@@ -4,7 +4,9 @@
 -- 学生测试数据
 INSERT INTO `student` VALUES (1, '123', '奶龙', 9, 16, 3, 1, '10086', 1, 1, NULL, '困难', 0, NULL, NULL, 1, NULL, '2026-07-20 14:46:07', '2026-07-20 14:46:07', 0);
 
--- 欠费确认测试数据
+-- 欠费确认必须通过“学校审核通过 -> 欠费确认”真实流程生成，不能只写裸 application_id。
+-- 以下旧样例保留供历史对照，但禁用执行，避免它与之后生成的正式申请 ID 串行。
+/*
 INSERT INTO `arrears_confirmation`
 (`application_id`, `voucher_no`, `applied_amount`, `confirmed_amount`, `confirm_user_id`, `request_id`, `confirmed_at`)
 VALUES
@@ -108,6 +110,7 @@ VALUES
 (98,'GC2026000098', 1240.00, 1190.00, 10001, 'seed-confirm-98', '2026-07-03 10:10:00'),
 (99,'GC2026000099', 3480.00, 3380.00, 10003, 'seed-confirm-99', '2026-07-03 13:55:00'),
 (100,'GC2026000100', 5700.00, 5500.00, 10003, 'seed-confirm-100', '2026-07-03 15:22:00');
+*/
 
 DELIMITER $$
 CREATE PROCEDURE batch_insert_approval_record(IN total INT)
