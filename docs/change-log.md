@@ -1,6 +1,28 @@
 
 # 共享结构与接口变更记录
 
+## 2026-07-22｜成员四统计欠费原因对齐
+
+- 将统计和报表中的欠费原因由 `fee_item` 切换为成员二正式字段 `arrears_application.arrears_reason_code`，并固定五个代码的中文显示名称。
+- 多明细欠费申请的确认金额改为按明细申报金额占比统计，避免一笔确认金额重复累计。
+
+## 2026-07-22｜成员四取消申请欠费单据适配
+
+- 状态：IMPLEMENTED（成员四范围）；取消完整联调仍依赖成员一身份/消息收件人及成员二资源释放。
+- 提出人：成员四
+- 负责人：成员四（确认单据检查与逻辑作废）、成员三（取消事务编排）
+- 影响接口：成员三 `ArrearsDocumentService.hasIrreversibleOfflineProcessing`、
+  `ArrearsDocumentService.voidDocumentForCancellation`
+- 影响表：仅成员四 `arrears_confirmation`；不修改 `application`、资源表或成员三审核表。
+- 变更内容：新增 `ArrearsDocumentServiceImpl`。第一阶段确认表不存在不可逆线下履约字段，
+  因此不可逆检查固定为 false；取消时将有效确认记录逻辑作废（`deleted = id`），不物理删除。
+  无单据或已作废单据不更新，保证重复取消请求下的单据动作幂等；实现以 `MANDATORY` 加入
+  成员三取消事务。
+- 当前边界：未来引入线下领取/发放履约表后，必须由履约模块提供真实不可逆判断；成员四不得
+  以确认金额、确认时间或前端参数猜测履约状态。
+- 对应文档：`docs/member3-cancellation-dependencies.md`、
+  `docs/decisions/confirmation-statistics.md`。
+
 ## 2026-07-21｜成员三批量上报、工作台、取消与跨模块完成适配
 
 - 状态：IMPLEMENTED（成员三范围）；端到端联调待跨成员依赖就绪

@@ -50,6 +50,10 @@ application_operation_record, student_recommendation
 - 保存确认记录后，必须由成员三状态流转 Service 将申请从 `CONFIRM_PENDING` 流转为 `COMPLETED`；
 - 若状态流转失败，确认记录必须随事务回滚；
 - 欠费单据的查询、学生查看、打印属于 6.1.2，后续独立实现，不在本表增加展示状态字段。
+- 学校取消已确认申请时，成员三通过成员四 `ArrearsDocumentService` 将有效确认记录的
+  `deleted` 更新为本行 `id`，这表示“单据作废”，不物理删除；取消后的单据不进入有效
+  单据查询和统计口径。当前第一阶段没有线下领取或发放履约表，因此不存在可由本表判断的
+  “不可逆线下处理”状态；后续新增履约模块时必须由该模块提供判断，不得在本表增加猜测字段。
 
 > 本次变更只记录成员三拥有的表：`approval_record`、`approval_submission_record`、`system_message`、`message_read_record`。其他成员负责表的 DDL、字段、索引、Entity 和 Mapper 不在本文档中代为定义。
 
