@@ -16,6 +16,8 @@ public interface ApplicationMapper {
     @Select("SELECT * FROM application WHERE student_id=#{studentId} AND deleted=0 ORDER BY create_time DESC") List<Application> findMine(Long studentId);
     @Update("UPDATE application SET application_reason=#{reason}, version=version+1, update_by=#{operatorId} WHERE id=#{id} AND version=#{expectedVersion} AND status IN ('DRAFT','COUNSELOR_RETURNED','COLLEGE_RETURNED','SCHOOL_RETURNED') AND deleted=0")
     int updateDraft(Long id, String reason, Integer expectedVersion, Long operatorId);
+    @Update("UPDATE application SET application_reason=#{reason}, version=version+1, update_by=#{operatorId} WHERE id=#{id} AND version=#{expectedVersion} AND status IN ('COUNSELOR_PENDING','COLLEGE_PENDING','SCHOOL_PENDING') AND deleted=0")
+    int updateForReview(Long id, String reason, Integer expectedVersion, Long operatorId);
     @Update("UPDATE application SET deleted=id, update_by=#{operatorId} WHERE id=#{id} AND status='DRAFT' AND version=#{expectedVersion} AND deleted=0")
     int deleteDraft(Long id, Integer expectedVersion, Long operatorId);
     @Update("UPDATE application SET status=#{targetStatus},current_level=#{targetLevel},version=version+1,update_by=#{operatorId} WHERE id=#{id} AND status=#{expectedStatus} AND version=#{expectedVersion} AND deleted=0")
