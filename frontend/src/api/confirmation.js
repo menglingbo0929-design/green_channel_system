@@ -1,10 +1,9 @@
 import api from './index'
 
 /**
- * 欠费最终确认模块的临时联调客户端。
+ * 欠费最终确认模块统一使用项目公共 Axios 实例。
  *
- * 使用相对 /api 路径，开发环境由 Vite 代理转发给 8083 后端；正式接入统一 Axios
- * 封装、JWT 拦截器和全局错误提示时，可将此实例替换为公共 request 实例，而页面调用方式不变。
+ * 请求由公共拦截器携带 JWT；页面不再传递临时用户 ID 或角色请求头。
  */
 const confirmationClient = api
 

@@ -626,7 +626,7 @@ POST /api/school-proxy/applications/{applicationId}/submit?version={version}&req
 
 ### 15.4 当前用户身份的统一处理
 
-`X-User-Id` 只可用于本地手工调试，绝不是已确定的生产接口参数或权限方案。第一阶段正式实现必须使用成员一提供的 `CurrentUserProvider`（或其后续等价 JWT 实现）取得用户 ID、角色和数据范围；在该真实实现合入前，6.1.1、6.1.2、6.1.3 的权限成功场景均不可验证，也不得写入 `IMPLEMENTED`。
+`X-User-Id` 只可用于历史本地手工调试，绝不是正式接口参数或权限方案。当前成员四的欠费确认、单据、学校代申请、线下补录、统计与报表 Controller 均通过成员一的 `ICurrentUserProvider` 从 JWT 登录上下文取得用户 ID；前端统一使用公共 Axios 拦截器携带 JWT，不再发送可伪造的用户 ID 或角色请求头。权限接线完成不等于业务主链已经联调，仍须使用真实申请数据验证对应成功场景。
 
 ---
 
@@ -640,8 +640,8 @@ POST /api/school-proxy/applications/{applicationId}/submit?version={version}&req
 GET /api/statistics/applications/summary
 ```
 
-- 接口要求 `SCHOOL` 权限；正式实现从成员一 `CurrentUserProvider` 取得当前用户。`X-User-Id` 只用于本地连通性调试，真实演示前须接入成员一权限实现。
-- 只统计 `application.deleted = 0` 且状态为 `APPROVED` 或 `COMPLETED` 的申请；`CONFIRM_PENDING`、所有待审/退回/拒绝状态和 `CANCELLED` 一律排除。
+- 接口要求 `SCHOOL` 权限；当前实现从成员一 JWT 登录上下文取得当前用户，不接受 `X-User-Id`。
+- 只统计 `application.deleted = 0` 且已经完成学校最终审核的 `APPROVED`、`CONFIRM_PENDING` 或 `COMPLETED` 申请；所有待审、退回、拒绝和 `CANCELLED` 状态一律排除。
 - “申请总人数”固定为筛选范围内拥有最终状态申请的 `DISTINCT student_id` 数；“实报人数”固定为其中状态为 `COMPLETED` 的 `DISTINCT student_id` 数。两项均不以申请行数冒充人数。
 - “欠费总金额”固定为筛选范围内、关联有效 `arrears_confirmation.deleted = 0` 且申请状态为 `COMPLETED` 的 `SUM(confirmed_amount)`；没有确认记录时按 `0.00` 返回。
 - “欠费项目人数”固定为筛选范围内至少申报该欠费项目的 `DISTINCT student_id` 数；按项目分组时，同一学生对同一项目只能计一次。
@@ -657,7 +657,7 @@ GET /api/statistics/applications/summary
 | `batchId` | long | 大于 0；与 `batchType` 共同定位历史或当前批次 |
 | `collegeId` / `majorId` / `gradeId` / `classId` | long | 大于 0；组织层级必须真实存在且相互隶属 |
 | `applicationType` | string | `GREEN_CHANNEL`、`LIVING_SUBSIDY`、`TRAVEL_SUBSIDY` 之一 |
-| `applicationStatus` | string | 仅允许 `APPROVED` 或 `COMPLETED`；不传时统计两种最终状态 |
+| `applicationStatus` | string | 仅允许 `APPROVED`、`CONFIRM_PENDING` 或 `COMPLETED`；不传时统计全部最终审核通过状态 |
 | `feeItemId` | long | 大于 0；只筛选含该欠费项目的申请 |
 | `applicationStartTime` / `applicationEndTime` | ISO 8601 datetime | 起始时间不得晚于结束时间；按申请创建时间闭区间筛选 |
 
@@ -687,17 +687,17 @@ batchHistoryStatistics[]            {batchType, batchId, batchName, applicantCou
 
 成员二实现本地适配接口 `ApplicationStatisticsQueryPort.queryFinalStatistics(StatisticsFilterDTO)`，其正式业务能力对应已批准的 `ApplicationStatisticsQueryService`。它负责一次性读取申请、学生组织、欠费项目、礼包和批次数据，并以只读方式关联成员四 `arrears_confirmation`；成员四只负责学校端权限编排、参数校验和接口返回。
 
-截图要求的“欠费原因”在当前 `arrears_application` 结构说明中尚无可统计字段，不能把自由文本 `applicationReason` 当作原因分组。为使该功能可实现，新增以下**待成员二确认的表字段提案**：
+欠费原因固定读取成员二已经合入的正式字段：
 
 ```text
 arrears_application.arrears_reason_code VARCHAR(32) NOT NULL
 ```
 
-允许值固定为 `FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`；返回名称分别为“家庭经济困难”“家庭突发变故”“重大疾病”“灾害或事故”“其他”。成员二须按共享结构流程更新其 DDL、Entity、DTO、迁移和测试数据；字段合入前不演示欠费原因统计。
+允许值固定为 `FAMILY_FINANCIAL_DIFFICULTY`、`FAMILY_EMERGENCY`、`MAJOR_ILLNESS`、`DISASTER_ACCIDENT`、`OTHER`；返回名称分别为“家庭经济困难”“家庭突发变故”“重大疾病”“灾害或事故”“其他”。统计人数和确认金额均由 `ApplicationStatisticsQueryPortAdapter` 使用真实集合查询返回，不以自由文本 `applicationReason` 或欠费项目名称代替原因。
 
 ### 16.5 完成边界
 
-成员四可独立完成 Controller、筛选 DTO、统计 VO、前端筛选页和对成员二集合查询 Service 的调用外壳。以下条件全部满足后，6.1.5 与 6.1.6 才能标记为 `IMPLEMENTED`：成员一合入学校统计权限能力；成员二合入统计聚合 Service、真实批次/组织/申请/礼包测试数据，以及已确认的欠费原因字段；接口使用真实数据在 Apifox 和前端联调成功。
+成员四的 Controller、筛选 DTO、统计 VO、真实集合查询 Adapter、前端筛选页、欠费原因人数/金额图和礼包物品数量图已经接线。成员一的 JWT 学校权限和组织下拉接口也已接入。只有使用前序流程产生的真实最终状态申请在 Apifox 和页面完成联调后，6.1.5 与 6.1.6 才能整体标记为 `IMPLEMENTED`；空数据库不得用模拟统计值替代。
 
 ---
 
@@ -714,7 +714,7 @@ GET  /api/supplements/{applicationId}
 POST /api/supplements
 ```
 
-- 四个接口均要求 `SCHOOL` 角色。正式实现必须从成员一 `CurrentUserProvider` 取得当前用户及数据范围；`X-User-Id` 只允许本地接口连通性调试，不能作为生产身份方案。
+- 四个接口均要求 `SCHOOL` 角色。当前 Controller 从成员一 `ICurrentUserProvider` 的 JWT 登录上下文取得当前用户；前端不发送 `X-User-Id`。
 - 学生查询只接受 `studentNo`，返回字段固定为 `studentId`、`studentNo`、`studentName`、`collegeName`、`majorName`、`gradeName`、`className`，不得返回身份证号、手机号等敏感字段。
 - 历史列表只查询 `application.source = SUPPLEMENT` 的记录，默认按 `create_time` 降序、同时间按 `application.id` 降序；`pageNo` 默认 `1`，`pageSize` 默认 `10` 且最大 `100`。
 - 历史列表允许的筛选参数固定为 `studentNo`、`applicationType`、`batchId`、`status`；详情接口只允许读取补录来源的申请，其他来源返回 404。
@@ -838,11 +838,11 @@ giftItemNames, subsidyAmount, applicationTime, completionTime
 
 ### 18.4 跨模块边界和完成判定
 
-- 成员一实现 `StatisticsAccessPort`，校验真实学校身份和数据范围。
-- 成员二实现 `StatisticsReportQueryPort.queryReportPage(StatisticsReportQueryDTO, currentUserId)`，以集合分页查询申请、学生组织、批次、欠费、礼包、补助和确认金额；成员四不得为 6.1.7 新建业务表或跨模块 Mapper。
+- 成员一的 `StatisticsAccessServiceImpl` 已实现 `StatisticsAccessPort`，从 JWT 校验真实学校身份。
+- 成员四的 `StatisticsReportQueryPortAdapter` 已以集合分页方式查询申请、学生组织、批次、欠费、礼包、补助和确认金额，并使用固定排序列映射；不得再为 6.1.7 新建业务表或第二套查询接口。
 - 成员四负责页面字段映射、分页编排、Excel 生成和打印数据组装。演示前需保证成员一权限 Bean 和成员二明细 Bean 已经存在；本地不增加自定义异常包装。
 - `backend/pom.xml` 新增 `org.apache.poi:poi-ooxml:5.3.0` 是公共构建变更；其他成员合并前须确认依赖无冲突。
-- 只有成员一权限、成员二明细查询和真实 SQL 数据合入，并完成明细/历史/Excel/打印联调后，6.1.7 才能标记为 `IMPLEMENTED`。
+- 后端明细、历史、Excel、打印和前端列选择已经接线；只有使用真实最终状态申请完成上述四条链路联调后，6.1.7 才能整体标记为 `IMPLEMENTED`。
 
 ---
 

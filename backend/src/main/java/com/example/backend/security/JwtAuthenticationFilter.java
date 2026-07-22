@@ -91,6 +91,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Long studentId = jwtTokenProvider.getStudentIdFromToken(token);
         Long collegeId = jwtTokenProvider.getCollegeIdFromToken(token);
 
+        if (userId == null || !StringUtils.hasText(loginName)) {
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
+                    "Token missing required user information");
+            return;
+        }
+
         List<SimpleGrantedAuthority> authorities = roles.stream()
                 .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
                 .collect(Collectors.toList());

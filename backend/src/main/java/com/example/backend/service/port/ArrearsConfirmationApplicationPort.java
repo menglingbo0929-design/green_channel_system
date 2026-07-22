@@ -19,8 +19,8 @@ import com.example.backend.model.vo.confirmation.PendingArrearsApplicationVO;
  * <p>完成状态由 {@link ArrearsConfirmationCompletionPort} 单独负责，避免成员二读取能力
  * 与成员三状态机职责混在同一个实现中。</p>
  *
- * <p>TODO(成员二/成员四)：成员二已提供 {@code ArrearsConfirmationApplicationService}
- * 基础实现；待成员一学生组织快照能力合入后，由成员四完成真实待确认数据联调并关闭 TODO。</p>
+ * <p>成员二的待确认读取和成员一的学生组织快照已经通过成员四适配器接通；
+ * 当前列表只消费这些正式 Port，不跨模块访问 Mapper。</p>
  */
 public interface ArrearsConfirmationApplicationPort {
 
@@ -36,7 +36,7 @@ public interface ArrearsConfirmationApplicationPort {
 
     /**
      * 读取一笔仍处于 CONFIRM_PENDING 的欠费申请，用于在确认前获得可信的申报金额快照。
-     * 若申请不存在、不是欠费申请或状态不允许确认，实现方应抛出 BusinessException。
+     * 演示版本直接返回查询结果，不在成员四接口层增加自定义异常包装。
      */
     PendingArrearsApplicationVO findPendingByApplicationId(Long applicationId);
 

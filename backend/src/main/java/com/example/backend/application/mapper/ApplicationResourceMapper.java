@@ -53,6 +53,8 @@ public interface ApplicationResourceMapper {
     int insertAttachment(@Param("applicationId") Long applicationId, @Param("fileId") String fileId,
                          @Param("originalFilename") String originalFilename, @Param("contentType") String contentType,
                          @Param("fileSize") long fileSize);
+    @Select("SELECT id, application_id AS applicationId, file_id AS fileId, original_filename AS originalFilename, content_type AS contentType, file_size AS fileSize FROM application_attachment WHERE id=#{attachmentId} AND application_id=#{applicationId} AND deleted=0")
+    com.example.backend.application.dto.ApplicationAttachmentSnapshot findAttachment(@Param("applicationId") Long applicationId, @Param("attachmentId") Long attachmentId);
 
     @Update("UPDATE batch_gift_item SET reserved_count=reserved_count+#{quantity} WHERE id=#{batchGiftItemId} AND deleted=0 AND stock_total-reserved_count>=#{quantity}")
     int reserveGiftStock(@Param("batchGiftItemId") Long batchGiftItemId, @Param("quantity") int quantity);
