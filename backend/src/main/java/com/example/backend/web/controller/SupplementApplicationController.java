@@ -11,7 +11,8 @@ import com.example.backend.model.vo.supplement.SupplementApplicationVO;
 import com.example.backend.security.ICurrentUserProvider;
 import com.example.backend.service.ISupplementApplicationService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,63 +20,49 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
-/**
- * 6.1.4 绿色通道线下补录 Controller。
- *
- * <p>保持视频中的写法：Controller 通过字段 {@code @Autowired} 调用 Service，
- * 只负责接收 HTTP 参数和包装 JsonResponse，业务校验和事务全部放在 Service。</p>
- */
+/** Offline supplementary applications are always operated by the JWT school user. */
 @RestController
 @RequestMapping("/api/supplements")
+@RequiredArgsConstructor
 public class SupplementApplicationController {
 
-    @Autowired
-    private ISupplementApplicationService supplementApplicationService;
+    private final ISupplementApplicationService supplementApplicationService;
+    private final ICurrentUserProvider currentUsers;
 
-    /** 操作人统一取自成员一登录模块写入的 JWT 上下文。 */
-    @Autowired
-    private ICurrentUserProvider currentUserProvider;
-
-    /** 按学号查询学生，供补录表单确认学生身份。 */
     @GetMapping("/students")
-    public JsonResponse<SchoolProxyStudentVO> findStudent(
-            @RequestParam String studentNo
-    ) {
-        return JsonResponse.success(
-                supplementApplicationService.findStudent(studentNo, requireSchoolUser())
-        );
+    public JsonResponse<SchoolProxyStudentVO> findStudent(@RequestParam String studentNo) {
+        return JsonResponse.success(supplementApplicationService
+                .findStudent(studentNo, currentSchoolUserId()));
     }
 
-    /** 查询 source=SUPPLEMENT 的历史补录记录。 */
     @GetMapping
     public JsonResponse<Page<SupplementApplicationVO>> pageSupplements(
-            SupplementQueryDTO query,
-            PageDTO page
-    ) {
-        return JsonResponse.success(
-                supplementApplicationService.pageSupplements(query, page, requireSchoolUser())
-        );
+            SupplementQueryDTO query, PageDTO page) {
+        return JsonResponse.success(supplementApplicationService
+                .pageSupplements(query, page, currentSchoolUserId()));
     }
 
-    /** 查询一条补录详情。 */
     @GetMapping("/{applicationId}")
-    public JsonResponse<SupplementApplicationVO> getSupplement(
-            @PathVariable Long applicationId
-    ) {
-        return JsonResponse.success(
-                supplementApplicationService.getSupplement(applicationId, requireSchoolUser())
-        );
+    public JsonResponse<SupplementApplicationVO> getSupplement(@PathVariable Long applicationId) {
+        return JsonResponse.success(supplementApplicationService
+                .getSupplement(applicationId, currentSchoolUserId()));
     }
 
-    /** 创建线下补录并在同一事务中完成自动审核。 */
     @PostMapping
     public JsonResponse<SupplementApplicationVO> createSupplement(
-            @Valid @RequestBody SupplementCreateDTO request
-    ) {
-        SupplementApplicationVO result = supplementApplicationService
-                .createSupplement(request, requireSchoolUser());
-        return JsonResponse.success(result, "线下补录完成");
+            @Valid @RequestBody SupplementCreateDTO request) {
+        return JsonResponse.success(supplementApplicationService
+                .createSupplement(request, currentSchoolUserId()), "线下补录完成");
+    }
+
+    private Long currentSchoolUserId() {
+        LoginUser user = currentUsers.getRequiredUser();
+        if (user.getRoles() == null || !user.getRoles().contains("SCHOOL")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only SCHOOL users can manage supplements");
+        }
+        return user.getUserId();
     }
 
     /** 返回已通过身份校验的学校管理员用户 ID。 */

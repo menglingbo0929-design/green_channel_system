@@ -4,6 +4,8 @@ import com.example.backend.application.dto.CatalogItemCommand;
 import com.example.backend.application.dto.CatalogItemView;
 import com.example.backend.application.dto.FeeAmountOptionCommand;
 import com.example.backend.application.dto.FeeAmountOptionView;
+import com.example.backend.application.dto.GiftItemCommand;
+import com.example.backend.application.dto.GiftItemView;
 import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationCatalogMapper;
 import java.math.BigDecimal;
@@ -121,22 +123,22 @@ public class ApplicationCatalogService {
         if (mapper.deleteFeeAmountOption(id) != 1) throw notFound("FEE_AMOUNT_OPTION_NOT_FOUND", "金额档位不存在");
     }
 
-    public List<CatalogItemView> findGiftItems(boolean includeDisabled) {
+    public List<GiftItemView> findGiftItems(boolean includeDisabled) {
         return mapper.findGiftItems(includeDisabled);
     }
 
     @Transactional
-    public CatalogItemView createGiftItem(CatalogItemCommand command) {
+    public GiftItemView createGiftItem(GiftItemCommand command) {
         validateUniqueGiftItemName(command.name(), null);
-        mapper.insertGiftItem(normalizeName(command.name()), command.enabled());
+        mapper.insertGiftItem(normalizeName(command.name()), command.enabled(), command.imageUrl(), command.itemType(), command.itemSize(), command.description(), command.unitPrice() == null ? BigDecimal.ZERO : command.unitPrice(), normalizeGender(command.genderRestriction()), command.required());
         return requiredGiftItem(mapper.lastInsertId());
     }
 
     @Transactional
-    public CatalogItemView updateGiftItem(Long id, CatalogItemCommand command) {
+    public GiftItemView updateGiftItem(Long id, GiftItemCommand command) {
         requiredGiftItem(id);
         validateUniqueGiftItemName(command.name(), id);
-        if (mapper.updateGiftItem(id, normalizeName(command.name()), command.enabled()) != 1) {
+        if (mapper.updateGiftItem(id, normalizeName(command.name()), command.enabled(), command.imageUrl(), command.itemType(), command.itemSize(), command.description(), command.unitPrice() == null ? BigDecimal.ZERO : command.unitPrice(), normalizeGender(command.genderRestriction()), command.required()) != 1) {
             throw notFound("GIFT_ITEM_NOT_FOUND", "礼包物品不存在");
         }
         return requiredGiftItem(id);
@@ -169,8 +171,8 @@ public class ApplicationCatalogService {
         return option;
     }
 
-    private CatalogItemView requiredGiftItem(Long id) {
-        CatalogItemView item = mapper.findGiftItem(id);
+    private GiftItemView requiredGiftItem(Long id) {
+        GiftItemView item = mapper.findGiftItem(id);
         if (item == null) throw notFound("GIFT_ITEM_NOT_FOUND", "礼包物品不存在");
         return item;
     }
@@ -195,6 +197,11 @@ public class ApplicationCatalogService {
 
     private String normalizeName(String name) {
         return name.trim();
+    }
+    private String normalizeGender(String value) {
+        String gender = value == null || value.isBlank() ? "ALL" : value.trim().toUpperCase();
+        if (!Set.of("ALL", "MALE", "FEMALE").contains(gender)) throw new ApplicationException("GIFT_ITEM_GENDER_INVALID", HttpStatus.BAD_REQUEST, "性别限制仅支持 ALL、MALE 或 FEMALE");
+        return gender;
     }
 
     private ApplicationException conflict(String code, String message) {

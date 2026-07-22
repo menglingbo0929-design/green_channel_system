@@ -3,6 +3,7 @@ package com.example.backend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.mapper.ArrearsConfirmationMapper;
+import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.model.domain.ArrearsConfirmation;
 import com.example.backend.model.dto.PageDTO;
 import com.example.backend.model.dto.voucher.ArrearsVoucherQueryDTO;
@@ -13,6 +14,7 @@ import com.example.backend.service.port.ArrearsVoucherAccessPort;
 import com.example.backend.service.port.ArrearsVoucherApplicantQueryPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -82,11 +84,19 @@ public class ArrearsVoucherServiceImpl implements IArrearsVoucherService {
     }
 
     private ArrearsConfirmation one(String voucherNo) {
-        return confirmationMapper.selectOne(
+        ArrearsConfirmation confirmation = confirmationMapper.selectOne(
                 new LambdaQueryWrapper<ArrearsConfirmation>()
                         .eq(ArrearsConfirmation::getVoucherNo, voucherNo)
                         .eq(ArrearsConfirmation::getDeleted, 0L)
         );
+        if (confirmation == null) {
+            throw new ApplicationException(
+                    "ARREARS_VOUCHER_NOT_FOUND",
+                    HttpStatus.NOT_FOUND,
+                    "欠费确认单不存在：" + voucherNo
+            );
+        }
+        return confirmation;
     }
 
     private Page<ArrearsVoucherVO> assemblePage(

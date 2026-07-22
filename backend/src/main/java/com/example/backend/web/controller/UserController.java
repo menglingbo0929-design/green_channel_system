@@ -12,6 +12,7 @@ import com.example.backend.model.dto.*;
 import com.example.backend.security.JwtTokenProvider;
 import com.example.backend.service.IUserService;
 import com.example.backend.security.ICurrentUserProvider;
+import com.example.backend.service.StudentUserMappingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +31,7 @@ public class UserController {
     private final UserMapper userMapper;
     private final VerificationCodeStore codeStore;
     private final ICurrentUserProvider currentUserProvider;
+    private final StudentUserMappingService studentUserMappings;
 
     /** 登录 */
     @PostMapping("login")
@@ -43,10 +45,7 @@ public class UserController {
         // 查询该用户是否关联学生，填充 studentId 和 collegeId 到 JWT
         Long studentId = null;
         Long collegeId = null;
-        Student student = studentMapper.selectOne(
-                new LambdaQueryWrapper<Student>()
-                        .eq(Student::getUserId, user.getId())
-                        .eq(Student::getDeleted, 0));
+        Student student = studentUserMappings.findActiveStudentByUserId(user.getId());
         if (student != null) {
             studentId = student.getId();
             collegeId = student.getCollegeId();
@@ -125,6 +124,12 @@ public class UserController {
     }
 
     /** 修改当前用户的密码 */
+    /** Returns the trusted identity decoded from the request JWT. */
+    @GetMapping("current")
+    public JsonResponse<LoginUser> current() {
+        return JsonResponse.success(currentUserProvider.getRequiredUser());
+    }
+
     @PutMapping("password")
     public JsonResponse<Void> changePassword(@Valid @RequestBody PasswordChangeRequest req) {
         Long userId = currentUserProvider.getRequiredUser().getUserId();

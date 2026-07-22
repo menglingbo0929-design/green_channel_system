@@ -71,22 +71,22 @@ public interface ApplicationCatalogMapper {
     @Update("UPDATE fee_amount_option SET fee_item_id=#{targetFeeItemId} WHERE id=#{id} AND deleted=0")
     int moveFeeAmountOption(@Param("id") Long id, @Param("targetFeeItemId") Long targetFeeItemId);
 
-    @Select("SELECT id, item_name AS name, enabled FROM gift_item WHERE deleted=0 "
+    @Select("SELECT id, item_name AS name, enabled, image_url AS imageUrl, item_type AS itemType, item_size AS itemSize, description, unit_price AS unitPrice, gender_restriction AS genderRestriction, required_flag AS required FROM gift_item WHERE deleted=0 "
             + "AND (#{includeDisabled}=true OR enabled=1) ORDER BY id")
-    List<CatalogItemView> findGiftItems(@Param("includeDisabled") boolean includeDisabled);
+    List<com.example.backend.application.dto.GiftItemView> findGiftItems(@Param("includeDisabled") boolean includeDisabled);
 
-    @Select("SELECT id, item_name AS name, enabled FROM gift_item WHERE id=#{id} AND deleted=0")
-    CatalogItemView findGiftItem(@Param("id") Long id);
+    @Select("SELECT id, item_name AS name, enabled, image_url AS imageUrl, item_type AS itemType, item_size AS itemSize, description, unit_price AS unitPrice, gender_restriction AS genderRestriction, required_flag AS required FROM gift_item WHERE id=#{id} AND deleted=0")
+    com.example.backend.application.dto.GiftItemView findGiftItem(@Param("id") Long id);
 
     @Select("SELECT COUNT(*) FROM gift_item WHERE item_name=#{name} AND deleted=0 "
             + "AND (#{excludedId} IS NULL OR id<>#{excludedId})")
     int countGiftItemsByName(@Param("name") String name, @Param("excludedId") Long excludedId);
 
-    @Insert("INSERT INTO gift_item(item_name, enabled) VALUES(#{name}, #{enabled})")
-    int insertGiftItem(@Param("name") String name, @Param("enabled") boolean enabled);
+    @Insert("INSERT INTO gift_item(item_name, enabled, image_url, item_type, item_size, description, unit_price, gender_restriction, required_flag) VALUES(#{name}, #{enabled}, #{imageUrl}, #{itemType}, #{itemSize}, #{description}, #{unitPrice}, #{genderRestriction}, #{required})")
+    int insertGiftItem(@Param("name") String name, @Param("enabled") boolean enabled, @Param("imageUrl") String imageUrl, @Param("itemType") String itemType, @Param("itemSize") String itemSize, @Param("description") String description, @Param("unitPrice") BigDecimal unitPrice, @Param("genderRestriction") String genderRestriction, @Param("required") boolean required);
 
-    @Update("UPDATE gift_item SET item_name=#{name}, enabled=#{enabled} WHERE id=#{id} AND deleted=0")
-    int updateGiftItem(@Param("id") Long id, @Param("name") String name, @Param("enabled") boolean enabled);
+    @Update("UPDATE gift_item SET item_name=#{name}, enabled=#{enabled}, image_url=#{imageUrl}, item_type=#{itemType}, item_size=#{itemSize}, description=#{description}, unit_price=#{unitPrice}, gender_restriction=#{genderRestriction}, required_flag=#{required} WHERE id=#{id} AND deleted=0")
+    int updateGiftItem(@Param("id") Long id, @Param("name") String name, @Param("enabled") boolean enabled, @Param("imageUrl") String imageUrl, @Param("itemType") String itemType, @Param("itemSize") String itemSize, @Param("description") String description, @Param("unitPrice") BigDecimal unitPrice, @Param("genderRestriction") String genderRestriction, @Param("required") boolean required);
 
     @Select("SELECT COUNT(*) FROM batch_gift_item WHERE gift_item_id=#{id} AND deleted=0")
     int countActiveBatchGiftItemsByGiftItemId(@Param("id") Long id);
