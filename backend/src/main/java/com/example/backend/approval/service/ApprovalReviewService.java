@@ -19,6 +19,7 @@ import com.example.backend.approval.port.LoginUser;
 import com.example.backend.approval.port.StudentScopeService;
 import com.example.backend.approval.port.UserRole;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +63,7 @@ public class ApprovalReviewService {
         validate(command);
         Optional<ApprovalRecordEntity> previous = approvalRecordMapper.findByRequestId(command.requestId());
         if (previous.isPresent()) {
-            return idempotentResult(previous.get(), applicationId, command.version());
+            return idempotentResult(previous.get(), applicationId, command);
         }
 
         ApplicationStateSnapshot before = stateQueryService.getRequiredState(applicationId);
@@ -106,19 +107,25 @@ public class ApprovalReviewService {
     }
 
     private ApplicationStatus targetStatus(ApplicationStatus current, ReviewCommand command) {
-        if (command.action() == ApprovalAction.APPROVE) {
-            if (command.level() == ApprovalRecordLevel.SCHOOL) {
-                boolean hasArrears = requireDetailService().containsArrears(command.applicationId());
-                return hasArrears ? ApplicationStatus.CONFIRM_PENDING : ApplicationStatus.APPROVED;
+        return switch (command.action()) {
+            case APPROVE -> {
+                if (command.level() == ApprovalRecordLevel.SCHOOL) {
+                    boolean hasArrears = requireDetailService().containsArrears(command.applicationId());
+                    yield hasArrears ? ApplicationStatus.CONFIRM_PENDING : ApplicationStatus.APPROVED;
+                }
+                yield current;
             }
-            return current;
-        }
-        if (command.action() == ApprovalAction.REJECT) return ApplicationStatus.REJECTED;
-        return switch (command.level()) {
-            case COUNSELOR -> ApplicationStatus.COUNSELOR_RETURNED;
-            case COLLEGE -> ApplicationStatus.COLLEGE_RETURNED;
-            case SCHOOL -> ApplicationStatus.SCHOOL_RETURNED;
-            default -> throw new ApprovalException(ApprovalErrorCode.APPROVAL_INVALID_STATUS, "当前层级不支持退回");
+            case RETURN -> switch (command.level()) {
+                case COUNSELOR -> ApplicationStatus.COUNSELOR_RETURNED;
+                case COLLEGE -> ApplicationStatus.COLLEGE_RETURNED;
+                case SCHOOL -> ApplicationStatus.SCHOOL_RETURNED;
+                default -> throw new ApprovalException(ApprovalErrorCode.APPROVAL_INVALID_STATUS, "当前层级不支持退回");
+            };
+            case REJECT -> ApplicationStatus.REJECTED;
+            default -> throw new ApprovalException(
+                    ApprovalErrorCode.APPROVAL_ACTION_REQUIRED,
+                    "逐条审核只支持 APPROVE、RETURN 或 REJECT"
+            );
         };
     }
 
@@ -152,6 +159,14 @@ public class ApprovalReviewService {
                 || command.action() == null || command.requestId() == null || command.requestId().isBlank()) {
             throw new ApprovalException(ApprovalErrorCode.APPROVAL_ACTION_REQUIRED, "审核参数不完整");
         }
+        if (command.action() != ApprovalAction.APPROVE
+                && command.action() != ApprovalAction.RETURN
+                && command.action() != ApprovalAction.REJECT) {
+            throw new ApprovalException(
+                    ApprovalErrorCode.APPROVAL_ACTION_REQUIRED,
+                    "逐条审核只支持 APPROVE、RETURN 或 REJECT"
+            );
+        }
         if ((command.action() == ApprovalAction.RETURN || command.action() == ApprovalAction.REJECT)
                 && (command.comment() == null || command.comment().isBlank())) {
             throw new ApprovalException(ApprovalErrorCode.APPROVAL_COMMENT_REQUIRED, "退回或驳回必须填写原因");
@@ -172,11 +187,25 @@ public class ApprovalReviewService {
         }
     }
 
-    private ApplicationStatusResult idempotentResult(ApprovalRecordEntity record, Long applicationId, Integer version) {
-        if (!record.getApplicationId().equals(applicationId)) {
+    private ApplicationStatusResult idempotentResult(
+            ApprovalRecordEntity record,
+            Long applicationId,
+            ReviewCommand command
+    ) {
+        if (!Objects.equals(record.getApplicationId(), applicationId)
+                || record.getApprovalLevel() != command.level()
+                || record.getAction() != command.action()) {
             throw new ApprovalException(ApprovalErrorCode.APPROVAL_ALREADY_PROCESSED, "requestId 已被其他申请使用");
         }
-        return new ApplicationStatusResult(applicationId, record.getNewStatus(), record.getNewStatus().level(), version + 1);
+        int resultVersion = Objects.equals(record.getOldStatus(), record.getNewStatus())
+                ? command.version()
+                : command.version() + 1;
+        return new ApplicationStatusResult(
+                applicationId,
+                record.getNewStatus(),
+                record.getNewStatus().level(),
+                resultVersion
+        );
     }
 
     private ApprovalResourceService requireResourceService() {

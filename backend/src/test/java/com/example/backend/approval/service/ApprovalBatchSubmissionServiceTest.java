@@ -13,6 +13,8 @@ import com.example.backend.approval.persistence.mapper.ApprovalSubmissionRecordM
 import com.example.backend.approval.persistence.type.ApprovalRecordLevel;
 import com.example.backend.approval.persistence.type.BatchType;
 import com.example.backend.approval.persistence.type.SubmissionLevel;
+import com.example.backend.approval.persistence.type.SubmissionScopeType;
+import com.example.backend.approval.persistence.type.SubmissionStatus;
 import com.example.backend.approval.persistence.type.SubmissionType;
 import com.example.backend.approval.port.ApprovalBatchQueryService;
 import com.example.backend.approval.port.ApprovalResourceService;
@@ -145,6 +147,65 @@ class ApprovalBatchSubmissionServiceTest {
         assertFalse(status.canSubmit());
     }
 
+    @Test
+    void collegeInitialSubmissionValidatesResourcesAndAdvancesToSchool() {
+        ApplicationStateSnapshot approved = new ApplicationStateSnapshot(
+                10L, 20L, BatchType.GREEN_CHANNEL, 30L, ApplicationType.GREEN_CHANNEL,
+                ApplicationStatus.COLLEGE_PENDING, ApprovalLevel.COLLEGE, 1, 3
+        );
+        when(applications.listByBatch(BatchType.GREEN_CHANNEL, 30L)).thenReturn(List.of(approved));
+        when(scopes.isStudentInCollege(20L, 8L)).thenReturn(true);
+        when(records.findLatestDecision(10L, 1, ApprovalRecordLevel.COLLEGE))
+                .thenReturn(Optional.of(decision(10L, ApprovalAction.APPROVE)));
+
+        var result = service.submitInitial(
+                new LoginUser(77L, UserRole.COLLEGE, null, 8L),
+                BatchType.GREEN_CHANNEL,
+                30L,
+                "college-batch"
+        );
+
+        assertEquals(SubmissionLevel.COLLEGE, result.submissionLevel());
+        verify(resources).validateCollegeApproval(10L);
+        verify(stateWriter).updateState(
+                10L, ApplicationStatus.COLLEGE_PENDING, ApplicationStatus.SCHOOL_PENDING,
+                ApprovalLevel.SCHOOL, 3, 77L
+        );
+    }
+
+    @Test
+    void returnResubmissionAdvancesOneApprovedApplicationAfterInitialSubmission() {
+        ApplicationStateSnapshot approved = snapshot(10L, ApplicationStatus.COUNSELOR_PENDING, 3);
+        when(stateQuery.getRequiredState(10L)).thenReturn(approved);
+        when(records.findLatestDecision(10L, 1, ApprovalRecordLevel.COUNSELOR))
+                .thenReturn(Optional.of(decision(10L, ApprovalAction.APPROVE)));
+        when(submissions.listByScope(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(initialSubmission("first-batch")));
+
+        var result = service.submitReturnResubmit(counselor(), 10L, 3, "return-submit");
+
+        assertEquals(SubmissionType.RETURN_RESUBMIT, result.submissionType());
+        assertEquals(10L, result.applicationId());
+        verify(stateWriter).updateState(
+                10L, ApplicationStatus.COUNSELOR_PENDING, ApplicationStatus.COLLEGE_PENDING,
+                ApprovalLevel.COLLEGE, 3, 99L
+        );
+    }
+
+    @Test
+    void repeatedInitialSubmissionReturnsTheStoredResultWithoutSideEffects() {
+        ApprovalSubmissionRecordEntity existing = initialSubmission("same-batch");
+        when(submissions.findByRequestId("same-batch")).thenReturn(Optional.of(existing));
+
+        var result = service.submitInitial(counselor(), BatchType.GREEN_CHANNEL, 30L, "same-batch");
+
+        assertEquals(2, result.submittedCount());
+        assertEquals(existing.getSubmitTime(), result.submittedAt());
+        verify(applications, never()).listByBatch(any(), any());
+        verify(stateWriter, never()).updateState(any(), any(), any(), any(), any(), any());
+        verify(submissions, never()).insert(any());
+    }
+
     private LoginUser counselor() {
         return new LoginUser(99L, UserRole.COUNSELOR, null, null);
     }
@@ -172,6 +233,24 @@ class ApprovalBatchSubmissionServiceTest {
                 .reviewRound(1)
                 .approvalLevel(ApprovalRecordLevel.COUNSELOR)
                 .action(action)
+                .build();
+    }
+
+    private ApprovalSubmissionRecordEntity initialSubmission(String requestId) {
+        return ApprovalSubmissionRecordEntity.builder()
+                .batchType(BatchType.GREEN_CHANNEL)
+                .greenChannelBatchId(30L)
+                .submissionLevel(SubmissionLevel.COUNSELOR)
+                .submissionType(SubmissionType.INITIAL_BATCH)
+                .scopeType(SubmissionScopeType.COUNSELOR)
+                .scopeId(99L)
+                .applicationId(0L)
+                .reviewRound(0)
+                .submitterId(99L)
+                .submittedCount(2)
+                .status(SubmissionStatus.SUBMITTED)
+                .requestId(requestId)
+                .submitTime(LocalDateTime.of(2026, 7, 21, 12, 0))
                 .build();
     }
 }
