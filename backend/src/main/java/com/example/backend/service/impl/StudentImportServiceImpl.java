@@ -102,18 +102,29 @@ public class StudentImportServiceImpl implements StudentImportService {
                         if (ci != null) classId = ci.getId();
                     }
 
-                    // 创建用户
-                    User user = new User();
-                    user.setLoginName(studentNo);
-                    user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
-                    user.setRemark("Excel导入");
-                    userMapper.insert(user);
+                    // 查已有用户（上次导入半路失败可能留下了孤儿记录）
+                    User user = userMapper.selectOne(
+                            new LambdaQueryWrapper<User>()
+                                    .eq(User::getLoginName, studentNo));
+                    if (user == null) {
+                        user = new User();
+                        user.setLoginName(studentNo);
+                        user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
+                        user.setRemark("Excel导入");
+                        userMapper.insert(user);
+                    }
 
-                    // 绑定学生角色
-                    UserRole ur = new UserRole();
-                    ur.setUserId(user.getId());
-                    ur.setRoleId(1L); // STUDENT
-                    userRoleMapper.insert(ur);
+                    // 绑定学生角色（幂等：已有则不重复插入）
+                    boolean hasStudentRole = userRoleMapper.exists(
+                            new LambdaQueryWrapper<UserRole>()
+                                    .eq(UserRole::getUserId, user.getId())
+                                    .eq(UserRole::getRoleId, 1L));
+                    if (!hasStudentRole) {
+                        UserRole ur = new UserRole();
+                        ur.setUserId(user.getId());
+                        ur.setRoleId(1L); // STUDENT
+                        userRoleMapper.insert(ur);
+                    }
 
                     // 创建学生
                     Student s = new Student();
