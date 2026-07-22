@@ -4,6 +4,8 @@ import com.example.backend.application.dto.CatalogItemCommand;
 import com.example.backend.application.dto.CatalogItemView;
 import com.example.backend.application.dto.FeeAmountOptionCommand;
 import com.example.backend.application.dto.FeeAmountOptionView;
+import com.example.backend.application.dto.GiftItemCommand;
+import com.example.backend.application.dto.GiftItemView;
 import com.example.backend.application.service.ApplicationCatalogService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -83,18 +85,18 @@ public class ApplicationCatalogController {
     }
 
     @GetMapping("/gift-items")
-    public List<CatalogItemView> giftItems(@RequestParam(defaultValue = "false") boolean includeDisabled) {
+    public List<GiftItemView> giftItems(@RequestParam(defaultValue = "false") boolean includeDisabled) {
         return service.findGiftItems(includeDisabled);
     }
 
     @PostMapping("/gift-items")
     @ResponseStatus(HttpStatus.CREATED)
-    public CatalogItemView createGiftItem(@Valid @RequestBody CatalogItemCommand command) {
+    public GiftItemView createGiftItem(@Valid @RequestBody GiftItemCommand command) {
         return service.createGiftItem(command);
     }
 
     @PutMapping("/gift-items/{id}")
-    public CatalogItemView updateGiftItem(@PathVariable Long id, @Valid @RequestBody CatalogItemCommand command) {
+    public GiftItemView updateGiftItem(@PathVariable Long id, @Valid @RequestBody GiftItemCommand command) {
         return service.updateGiftItem(id, command);
     }
 

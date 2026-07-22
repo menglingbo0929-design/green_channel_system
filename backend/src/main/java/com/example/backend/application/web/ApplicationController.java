@@ -22,6 +22,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -135,6 +139,17 @@ public class ApplicationController {
     public void uploadAttachment(@PathVariable Long id, @RequestParam String requestId, @RequestParam("file") MultipartFile file) {
         LoginUser user = assertOwns(id);
         submissions.upload(id, user.getStudentId(), user.getUserId(), requestId, file);
+    }
+
+    @GetMapping("/{id}/attachments/{attachmentId}/content")
+    public ResponseEntity<ByteArrayResource> readAttachment(@PathVariable Long id, @PathVariable Long attachmentId) {
+        LoginUser user = assertOwns(id);
+        var content = submissions.readAttachment(id, user.getStudentId(), attachmentId);
+        MediaType type;
+        try { type = MediaType.parseMediaType(content.contentType()); } catch (Exception ignored) { type = MediaType.APPLICATION_OCTET_STREAM; }
+        return ResponseEntity.ok().contentType(type).contentLength(content.content().length)
+                .header("Content-Disposition", ContentDisposition.inline().filename(content.originalFilename()).build().toString())
+                .body(new ByteArrayResource(content.content()));
     }
 
     @PostMapping("/{id}/submit")

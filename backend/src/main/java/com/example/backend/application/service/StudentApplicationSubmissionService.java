@@ -7,6 +7,9 @@ import com.example.backend.application.exception.ApplicationException;
 import com.example.backend.application.mapper.ApplicationMapper;
 import com.example.backend.application.mapper.ApplicationOperationMapper;
 import com.example.backend.application.mapper.ApplicationResourceMapper;
+import com.example.backend.application.dto.ApplicationAttachmentSnapshot;
+import com.example.backend.application.dto.ApplicationAttachmentContent;
+import com.example.backend.application.port.ApplicationAttachmentReadService;
 import com.example.backend.approval.api.ApprovalTransitionService;
 import com.example.backend.approval.port.ApprovalResourceService;
 import java.io.IOException;
@@ -24,7 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /** Student-facing attachment and submit boundary owned by member two. */
 @Service
-public class StudentApplicationSubmissionService {
+public class StudentApplicationSubmissionService implements ApplicationAttachmentReadService {
     private final ApplicationMapper applications;
     private final ApplicationResourceMapper resources;
     private final ApplicationOperationMapper operations;
@@ -69,6 +72,24 @@ public class StudentApplicationSubmissionService {
         if (resourceService == null || transition == null) throw new ApplicationException("DEPENDENCY_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "资源或审核服务尚未就绪");
         resourceService.reserveOnSubmit(applicationId, requestId, operatorId);
         transition.submitInitial(applicationId, version, requestId, operatorId);
+    }
+
+    public ApplicationAttachmentContent readAttachment(Long applicationId, Long studentId, Long attachmentId) {
+        requiredStudentApplication(applicationId, studentId);
+        return readForAuthorizedReviewer(applicationId, attachmentId);
+    }
+
+    @Override
+    public ApplicationAttachmentContent readForAuthorizedReviewer(Long applicationId, Long attachmentId) {
+        ApplicationAttachmentSnapshot attachment = resources.findAttachment(applicationId, attachmentId);
+        if (attachment == null) throw new ApplicationException("APPLICATION_ATTACHMENT_NOT_FOUND", HttpStatus.NOT_FOUND, "附件不存在");
+        Path file = Path.of(attachmentStoragePath == null ? "./private-uploads" : attachmentStoragePath, "student", attachment.fileId()).toAbsolutePath().normalize();
+        try {
+            if (!Files.isRegularFile(file)) throw new ApplicationException("APPLICATION_ATTACHMENT_NOT_FOUND", HttpStatus.NOT_FOUND, "附件文件不存在");
+            return new ApplicationAttachmentContent(attachment.originalFilename(), attachment.contentType(), Files.readAllBytes(file));
+        } catch (IOException exception) {
+            throw new ApplicationException("APPLICATION_ATTACHMENT_READ_FAILED", HttpStatus.INTERNAL_SERVER_ERROR, "附件读取失败");
+        }
     }
 
     private Application requiredStudentApplication(Long applicationId, Long studentId) {
