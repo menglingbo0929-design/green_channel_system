@@ -313,6 +313,8 @@ POST /api/approvals/school/{applicationId}/review
 
 ### 4.4 修改审核允许字段
 
+> 当前状态：跨模块依赖未闭合。成员三已在详情响应中返回 `editableFields`，但该接口要修改成员二拥有的申请业务字段，仍需成员二提供带字段白名单、状态和版本条件的写入 Service；成员三不得直接写 `application` 或申请明细表。
+
 ```http
 PUT /api/approvals/{applicationId}/editable-fields
 ```
@@ -669,7 +671,7 @@ GET /api/statistics/applications/summary
 
 ## 14. 6.1.4 绿色通道线下补录（PROPOSED，成员四外壳已实现）
 
-使用角色：`SCHOOL`。当前本地联调临时使用 `X-User-Id`；正式演示前合入成员一登录、成员二补录写入/查询和成员三自动审核。
+使用角色：`SCHOOL`。当前本地联调临时使用 `X-User-Id`；成员三补录自动审核及事务适配已经完成，正式演示仍需成员一可信登录/学生快照、成员二补录详情与历史查询和真实数据联调。
 
 ### 14.1 查询可补录学生
 
