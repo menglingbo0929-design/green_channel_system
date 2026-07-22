@@ -1,0 +1,27 @@
+package com.example.backend.model.domain;
+
+import com.baomidou.mybatisplus.annotation.*;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Data
+@TableName("subsidy_batch")
+public class SubsidyBatch {
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
+    @TableField("batch_code")  private String batchCode;
+    @TableField("batch_name")  private String batchName;
+    @TableField("batch_type")  private String batchType;
+    @TableField("start_time")  private LocalDateTime startTime;
+    @TableField("end_time")    private LocalDateTime endTime;
+    @TableField("status")      private String status;
+    @TableField("enabled")     private Integer enabled;
+    @TableField("remark")      private String remark;
+    @TableField("create_time") private LocalDateTime createTime;
+    @TableField("update_time") private LocalDateTime updateTime;
+
+    @TableField("deleted")
+    private Long deleted;
+}
