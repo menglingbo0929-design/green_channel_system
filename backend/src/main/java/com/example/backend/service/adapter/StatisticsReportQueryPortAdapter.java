@@ -166,7 +166,9 @@ public class StatisticsReportQueryPortAdapter implements StatisticsReportQueryPo
     ) {
         StringBuilder sql = new StringBuilder(" WHERE a.deleted=0 ");
         if (query.getApplicationStatus() == null || query.getApplicationStatus().isBlank()) {
-            sql.append("AND a.status IN ('APPROVED','COMPLETED') ");
+            // 与统计大盘使用同一最终审核口径：欠费申请在金额确认前为
+            // CONFIRM_PENDING，确认完成后才会进入 COMPLETED。
+            sql.append("AND a.status IN ('APPROVED','CONFIRM_PENDING','COMPLETED') ");
         } else {
             sql.append("AND a.status=:applicationStatus ");
             parameters.addValue("applicationStatus", query.getApplicationStatus());

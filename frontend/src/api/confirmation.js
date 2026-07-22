@@ -1,4 +1,4 @@
-import memberFourClient from './memberFourClient'
+import api from './index'
 
 /**
  * 欠费最终确认模块的临时联调客户端。
@@ -6,7 +6,7 @@ import memberFourClient from './memberFourClient'
  * 使用相对 /api 路径，开发环境由 Vite 代理转发给 8083 后端；正式接入统一 Axios
  * 封装、JWT 拦截器和全局错误提示时，可将此实例替换为公共 request 实例，而页面调用方式不变。
  */
-const confirmationClient = memberFourClient
+const confirmationClient = api
 
 /**
  * 查询状态为 CONFIRM_PENDING 的欠费申请。
@@ -35,10 +35,7 @@ export function fetchPendingArrearsDetail(applicationId) {
  *
  * @param {number|string} applicationId 统一申请主表 ID。
  * @param {object} payload confirmedAmount、version、requestId。
- * @param {number|string} userId 临时联调确认人；JWT 接入后由后端当前用户替代。
  */
-export function confirmArrears(applicationId, payload, userId) {
-  return confirmationClient.post(`/confirm/${applicationId}`, payload, {
-    headers: { 'X-User-Id': userId },
-  })
+export function confirmArrears(applicationId, payload) {
+  return confirmationClient.post(`/confirm/${applicationId}`, payload)
 }

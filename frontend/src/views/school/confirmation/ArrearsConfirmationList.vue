@@ -6,7 +6,6 @@ import {
   fetchPendingArrearsDetail,
 } from '../../../api/confirmation'
 import BusinessConfirmDialog from '../../../components/school/BusinessConfirmDialog.vue'
-import { useUserStore } from '../../../stores/user'
 
 const query = reactive({
   applicationNo: '',
@@ -23,7 +22,6 @@ const message = ref('')
 const selected = ref(null)
 const confirmDialogOpen = ref(false)
 const confirmSubmitting = ref(false)
-const userStore = useUserStore()
 
 function newRequestId() {
   return globalThis.crypto?.randomUUID?.()
@@ -70,7 +68,6 @@ async function submitConfirmation(dialogForm) {
       version: selected.value.version,
       requestId: newRequestId(),
     },
-    userStore.userId,
   )
   message.value = `确认成功，单据号：${response.data.data.voucherNo}`
   confirmSubmitting.value = false
