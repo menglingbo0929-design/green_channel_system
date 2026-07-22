@@ -5,8 +5,9 @@ import com.example.backend.common.JsonResponse;
 import com.example.backend.mapper.StudentMapper;
 import com.example.backend.model.domain.Student;
 import com.example.backend.model.dto.ImportResult;
-import com.example.backend.service.StudentImportService;
+import com.example.backend.security.ICurrentUserProvider;
 import com.example.backend.service.CounselorStudentService;
+import com.example.backend.service.StudentImportService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
@@ -18,6 +19,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/student")
@@ -26,6 +28,7 @@ public class StudentController {
 
     private final StudentMapper studentMapper;
     private final StudentImportService importService;
+    private final ICurrentUserProvider currentUserProvider;
     private final CounselorStudentService counselorStudents;
 
     /** 列表查询 + 多条件筛选 */
@@ -96,6 +99,34 @@ public class StudentController {
             return JsonResponse.failure("请选择文件");
         }
         return JsonResponse.success(importService.importExcel(file), "导入完成");
+    }
+
+    /** 学生查看本人资料 */
+    @GetMapping("profile")
+    public JsonResponse<Student> getProfile() {
+        Long studentId = currentUserProvider.getRequiredUser().getStudentId();
+        if (studentId == null) return JsonResponse.failure("当前用户不是学生");
+        Student s = studentMapper.selectById(studentId);
+        if (s == null || s.getDeleted() != 0) return JsonResponse.failure("学生不存在");
+        return JsonResponse.success(s);
+    }
+
+    /** 学生完善本人资料（禁止修改学号和组织） */
+    @PutMapping("profile")
+    public JsonResponse<Void> updateProfile(@RequestBody Map<String, Object> body) {
+        Long studentId = currentUserProvider.getRequiredUser().getStudentId();
+        if (studentId == null) return JsonResponse.failure("当前用户不是学生");
+        Student s = studentMapper.selectById(studentId);
+        if (s == null || s.getDeleted() != 0) return JsonResponse.failure("学生不存在");
+
+        if (body.containsKey("phone")) s.setPhone((String) body.get("phone"));
+        if (body.containsKey("originLoan")) s.setOriginLoan((Integer) body.get("originLoan"));
+        if (body.containsKey("campusLoan")) s.setCampusLoan((Integer) body.get("campusLoan"));
+        if (body.containsKey("difficultyLevel")) s.setDifficultyLevel((String) body.get("difficultyLevel"));
+        s.setInfoComplete(1);
+        s.setUpdateTime(LocalDateTime.now());
+        studentMapper.updateById(s);
+        return JsonResponse.successMessage("保存成功");
     }
 
     /** 下载导入模板 */

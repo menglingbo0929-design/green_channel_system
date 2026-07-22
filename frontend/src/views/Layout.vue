@@ -99,6 +99,9 @@
       <el-form-item label="新密码" prop="newPassword"><el-input v-model="pwdForm.newPassword" type="password" show-password /></el-form-item>
       <el-form-item label="确认新密码" prop="confirmPassword"><el-input v-model="pwdForm.confirmPassword" type="password" show-password /></el-form-item>
     </FormDialog>
+
+    <!-- 学生完善资料弹窗 -->
+    <ProfileDialog v-model="showProfileDialog" @done="showProfileDialog=false" />
   </div>
 </template>
 
@@ -110,6 +113,8 @@ import { ElMessage } from 'element-plus'
 import { changePasswordAPI } from '../api/index.js'
 import { getMessages } from '../api/approval.js'
 import FormDialog from '../components/FormDialog.vue'
+import ProfileDialog from '../components/ProfileDialog.vue'
+import axios from 'axios'
 import {
   HomeFilled, User, School, EditPen, Document,
   CircleCheck, Flag, Money, Plus, TrendCharts,
@@ -191,9 +196,22 @@ function handleMessageRead() {
   loadUnreadCount()
 }
 
-onMounted(() => {
+const showProfileDialog = ref(false)
+
+onMounted(async () => {
   loadUnreadCount()
   window.addEventListener('green-channel:message-read', handleMessageRead)
+  if (userStore.hasRole('STUDENT')) {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.get('/api/student/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.data.data && res.data.data.infoComplete === 0) {
+        showProfileDialog.value = true
+      }
+    } catch { /* ignore */ }
+  }
 })
 
 onBeforeUnmount(() => {
