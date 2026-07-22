@@ -3,7 +3,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { fetchSupplementDetail, fetchSupplementHistory } from '../../../api/supplement'
 
 const props = defineProps({
-  userId: { type: [String, Number], required: true },
   refreshKey: { type: Number, default: 0 },
 })
 
@@ -27,7 +26,7 @@ const requestParams = computed(() => {
 
 async function loadHistory() {
   loading.value = true
-  const response = await fetchSupplementHistory(requestParams.value, props.userId)
+  const response = await fetchSupplementHistory(requestParams.value)
   page.value = response.data.data
   loading.value = false
 }
@@ -50,7 +49,7 @@ function nextPage() {
 }
 
 async function openDetail(applicationId) {
-  detail.value = (await fetchSupplementDetail(applicationId, props.userId)).data.data
+  detail.value = (await fetchSupplementDetail(applicationId)).data.data
   detailVisible.value = true
 }
 

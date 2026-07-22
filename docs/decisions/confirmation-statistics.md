@@ -14,7 +14,7 @@
   1. 单据编号格式为 `GC + 确认年份 + 申请 ID 六位补零`。例如 2026 年确认申请 ID 为 1 时，编号为 `GC2026000001`。
   2. 实际确认金额必须大于 `0.00`，且不得超过学生申报金额；金额字段统一使用 `DECIMAL(12,2)` / Java `BigDecimal`。
   3. 同一申请仅允许一条有效确认记录，通过唯一约束 `(application_id, deleted)` 防止重复确认；确认请求必须携带 requestId，确认表以 request_id 唯一约束识别网络重试；并发下由数据库唯一约束作为最终防线。
-  4. 成员一登录模块未合入前，学校管理员 ID 暂由 `X-User-Id` 请求头传递，仅用于后端联调。登录模块合入后，只替换 Controller 的当前用户获取方式。
+  4. 学校管理员 ID 统一由成员一 `ICurrentUserProvider` 从 JWT 登录上下文取得；正式接口和前端不传递 `X-User-Id`。
   5. 成员四不直接查询或更新 `application`、`arrears_application`、`student`。读取待确认申请由成员二提供；成员三负责 `CONFIRM_PENDING -> COMPLETED`。演示前保证相关 Bean 已合入。
 - 做出原因：遵守表所有权、统一字段格式和状态流转权限，避免成员四根据未定字段编写跨模块 SQL。
 - 对其他模块的影响：成员二、三需要在合入 main 后实现 `ArrearsConfirmationApplicationPort` 的读取与状态流转契约；状态流转实现必须加入成员四确认事务。
@@ -27,7 +27,7 @@
 - 涉及表：成员四不直接写表；申请、明细、附件由成员二维护，审核记录与状态由成员三维护。
 - 涉及接口：GET /api/school-proxy/students；POST /api/school-proxy/applications/drafts；POST /api/school-proxy/applications/{applicationId}/attachments；POST /api/school-proxy/applications/{applicationId}/submit。
 - 具体规定：
-  1. 仅学校管理员可调用；JWT 未合入时临时使用 X-User-Id。
+  1. 仅学校管理员可调用；当前 Controller 从 JWT 登录上下文取得用户身份，前端不传递用户 ID 或角色请求头。
   2. 创建草稿必须包含 studentNo、batchType=GREEN_CHANNEL、batchId、requestId；可填写 applicationReason、欠费项目列表（feeItemId + declaredAmount）和礼包物品列表（giftItemId + quantity）。
   3. 成员四先调用成员一学生查询能力确认学号存在，再调用成员二创建来源为 SCHOOL_PROXY 的 DRAFT；成员二负责重复校验和申请/明细物理写入。
   4. 附件以 multipart/form-data 上传，字段名 file，另带 requestId；成员二负责类型、大小、受控存储和附件表写入。
@@ -64,12 +64,12 @@
 - 涉及文件：`ArrearsVoucherController`、`ArrearsVoucherServiceImpl`、`ArrearsVoucherApplicantQueryPort`、`ArrearsVoucherAccessPort`、`docs/collaboration-rules.md` 第 13 节。
 - 具体规定：
   1. 成员四仅从确认表取得单据编号、申请 ID、金额和确认信息；不新建学生/申请的临时表，不跨模块写 Mapper，也不硬编码学生或欠费项目。
-  2. 成员二必须实现 `findVoucherApplicantsByApplicationIds(Collection<Long>)`，返回学生身份、组织信息和欠费项目快照；成员一必须实现学校权限、学生本人归属及确认人姓名查询。
-  3. 上述依赖未合入时不进行成功场景演示，不用模拟数据声称单据可用。
-  4. 当前已完成的是成员四自身的查询编排、路由、分页上限和打印请求触发；完整单据展示、权限校验、学生本人查看及真实数据联调均处于阻塞状态。
+  2. 成员二的 `findVoucherApplicantsByApplicationIds(Collection<Long>)`、成员一学生组织快照，以及成员四学校权限、学生本人归属和确认人姓名适配已经接线。
+  3. 单据列表、详情、学生本人查看和打印均使用真实确认记录与批量申请快照，不返回模拟数据。
+  4. 当前代码链已经完整；整体完成状态仍取决于前序流程产生真实 `COMPLETED` 确认记录并完成页面联调。
 - 做出原因：欠费单据要求展示的数据分属三位成员；在依赖没有真实实现和测试数据前，越权访问或模拟数据会造成错误接口契约和后续合并冲突。
 - 对其他模块的影响：成员一、成员二合入真实实现后，需提供实现类位置、调用方式和最小测试数据；成员四收到后只进行接入和联调。
-- 是否需要其他成员确认：需要，成员一、成员二分别确认自己的 Port 实现后才能将 6.1.2 标记为 `IMPLEMENTED`。
+- 是否需要其他成员确认：依赖 Bean 已存在；需用真实确认记录完成最终联调后再把 6.1.2 整体标记为 `IMPLEMENTED`。
 
 ## 学校取消申请：欠费单据检查与作废
 
@@ -104,10 +104,10 @@
 - 涉及表：成员四只读 `arrears_confirmation`；申请、组织、批次、欠费项目、礼包和欠费原因均由成员二/成员一维护。
 - 涉及接口：`GET /api/statistics/applications/summary`、`ApplicationStatisticsQueryPort.queryFinalStatistics`。
 - 具体规定：
-  1. 仅统计有效且为 `APPROVED` 或 `COMPLETED` 的申请，取消、拒绝、退回、待审核、待确认全部排除。
-  2. 成员二必须用一次集合聚合查询返回所有统计维度；成员四不得逐条读取申请后在内存汇总。
+  1. 仅统计有效且已经完成学校最终审核的 `APPROVED`、`CONFIRM_PENDING` 或 `COMPLETED` 申请，取消、拒绝、退回和待审核状态全部排除。
+  2. `ApplicationStatisticsQueryPortAdapter` 使用集合聚合查询返回所有统计维度；不得逐条读取申请后在内存汇总。
   3. 筛选字段、返回字段、人数和金额口径以 `collaboration-rules.md` 第 16 节为准；统计无数据时返回 `0.00` 或空数组，不返回模拟数据。
-  4. 欠费原因采用成员二 `arrears_application.arrears_reason_code` 的固定枚举；字段未合入时不演示该统计项。
+  4. 欠费原因采用成员二 `arrears_application.arrears_reason_code` 的固定枚举，并同时统计人数和按明细申报比例分摊的确认金额。
 - 做出原因：统计跨越四类成员二表、成员一组织表和成员四确认表，只有集合聚合才能正确保证筛选口径与性能。
 - 对其他模块的影响：成员一提供学校统计权限；成员二实现聚合查询、提供真实数据并确认欠费原因字段；成员四提供接口和前端展示。
 - 是否需要其他成员确认：需要；当前状态为 `PROPOSED`，不以 Controller 可启动认定功能完成。
@@ -120,7 +120,7 @@
 - 涉及接口：`GET /api/statistics/reports/details`、`GET /api/statistics/reports/history`、`GET /api/statistics/reports/print`、`GET /api/statistics/reports/export`、`StatisticsReportQueryPort`。
 - 涉及文件：`StatisticsReportController`、`StatisticsReportServiceImpl`、统计报表 DTO/VO/字段枚举、`backend/pom.xml`、`docs/collaboration-rules.md` 第 18 节。
 - 具体规定：
-  1. 明细、历史、Excel 和打印使用完全相同的 `StatisticsReportQueryDTO`，复用 6.1.6 筛选口径，只读取 `APPROVED/COMPLETED`。
+  1. 明细、历史、Excel 和打印使用完全相同的 `StatisticsReportQueryDTO`，复用 6.1.6 筛选口径，只读取 `APPROVED/CONFIRM_PENDING/COMPLETED`。
   2. 自定义列和排序均采用 `StatisticsReportColumn` 白名单；成员二必须把 key 显式映射到 SQL，禁止前端字段直接拼接 SQL。
   3. 成员二按分页返回 `StatisticsReportRowVO`；成员四动态选择字段并用 `LinkedHashMap` 维持响应、Excel、打印顺序一致。
   4. Excel 使用 `SXSSFWorkbook`，每批读取 500 行、内存窗口 100 行；演示版本不设置导出和打印总数拦截。

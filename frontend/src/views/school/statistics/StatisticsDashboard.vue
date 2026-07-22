@@ -7,6 +7,7 @@ import {
   fetchStatisticsPrintData,
   fetchStatisticsReport,
 } from '../../../api/statistics'
+import { classAPI, collegeAPI, gradeAPI, majorAPI } from '../../../api/index'
 import SchoolWorkspaceShell from '../../../components/school/SchoolWorkspaceShell.vue'
 
 /**
@@ -20,6 +21,7 @@ const summary = ref(null)
 const report = ref({ columns: [], records: [], total: 0, pageNo: 1, pageSize: 20, pages: 0 })
 const collegeChartRef = ref(null)
 const reasonChartRef = ref(null)
+const giftChartRef = ref(null)
 const batchSelectRef = ref(null)
 const columnDialogVisible = ref(false)
 const currentPage = ref(1)
@@ -28,6 +30,14 @@ const selectedBatchKey = ref('')
 
 let collegeChart
 let reasonChart
+let giftChart
+
+const organizationOptions = reactive({
+  colleges: [],
+  majors: [],
+  grades: [],
+  classes: [],
+})
 
 const filters = reactive({
   batchType: '',
@@ -73,8 +83,8 @@ const visibleColumns = computed(() => {
 })
 
 const batchOptions = computed(() => summary.value?.batchHistoryStatistics ?? [])
-const collegeOptions = computed(() => summary.value?.collegeApplicantCounts ?? [])
-const gradeOptions = computed(() => summary.value?.gradeApplicantCounts ?? [])
+const collegeOptions = computed(() => organizationOptions.colleges)
+const gradeOptions = computed(() => organizationOptions.grades)
 
 const giftApplicantCount = computed(() =>
   (summary.value?.giftItemApplicationCounts ?? []).reduce(
@@ -88,8 +98,6 @@ const metricCards = computed(() => [
   { label: '欠费项目人数', value: numberText(summary.value?.feeItemApplicantCount), color: '#ff7a00' },
   { label: '欠费确认金额', value: moneyText(summary.value?.confirmedArrearsAmount), color: '#1677ff' },
   { label: '礼包申请人数', value: numberText(summary.value ? giftApplicantCount.value : undefined), color: '#08ad5c' },
-  { label: '学院覆盖数量', value: numberText(summary.value?.collegeApplicantCounts?.length), color: '#ff7a00' },
-  { label: '历史批次数量', value: numberText(summary.value?.batchHistoryStatistics?.length), color: '#1677ff' },
 ])
 
 const queryParams = computed(() => {
@@ -153,6 +161,41 @@ async function loadReport() {
   report.value = response.data.data
 }
 
+/**
+ * 统计筛选直接复用成员一的组织结构接口，不从统计结果反推下拉选项。
+ * 这样即使某个学院当前没有最终状态申请，也仍能作为合法筛选条件出现。
+ */
+async function loadOrganizationOptions() {
+  const [collegeResponse, gradeResponse] = await Promise.all([
+    collegeAPI.list(),
+    gradeAPI.list(),
+  ])
+  organizationOptions.colleges = collegeResponse.data.data ?? []
+  organizationOptions.grades = gradeResponse.data.data ?? []
+}
+
+async function loadMajorOptions() {
+  filters.majorId = ''
+  filters.classId = ''
+  organizationOptions.classes = []
+  if (!filters.collegeId) {
+    organizationOptions.majors = []
+    return
+  }
+  const response = await majorAPI.list(Number(filters.collegeId))
+  organizationOptions.majors = response.data.data ?? []
+}
+
+async function loadClassOptions() {
+  filters.classId = ''
+  const response = await classAPI.list({
+    collegeId: filters.collegeId || undefined,
+    majorId: filters.majorId || undefined,
+    gradeId: filters.gradeId || undefined,
+  })
+  organizationOptions.classes = response.data.data ?? []
+}
+
 async function queryDashboard() {
   loading.value = true
   currentPage.value = 1
@@ -168,9 +211,10 @@ async function resetFilters() {
 }
 
 function renderCharts() {
-  if (!collegeChartRef.value || !reasonChartRef.value) return
+  if (!collegeChartRef.value || !reasonChartRef.value || !giftChartRef.value) return
   collegeChart ??= echarts.init(collegeChartRef.value)
   reasonChart ??= echarts.init(reasonChartRef.value)
+  giftChart ??= echarts.init(giftChartRef.value)
 
   const colleges = summary.value?.collegeApplicantCounts ?? []
   collegeChart.setOption({
@@ -207,21 +251,75 @@ function renderCharts() {
   }, true)
 
   const reasons = summary.value?.arrearsReasonStatistics ?? []
+  const reasonPeople = reasons.map(item => ({
+    name: item.arrearsReasonName,
+    value: Number(item.applicantCount ?? 0),
+  }))
+  const reasonAmounts = reasons.map(item => ({
+    name: item.arrearsReasonName,
+    value: Number(item.confirmedAmount ?? 0),
+  }))
   reasonChart.setOption({
     animationDuration: 450,
     color: ['#1677ff', '#0bb55e', '#ff8a00', '#40a9ff', '#8b5cf6'],
-    tooltip: { trigger: 'item', formatter: '{b}<br/>{c} 人（{d}%）' },
-    legend: { orient: 'vertical', right: 28, top: 'middle', itemWidth: 10, itemHeight: 10 },
-    series: [{
-      name: '欠费原因',
-      type: 'pie',
-      radius: ['43%', '67%'],
-      center: ['36%', '53%'],
-      label: { show: false },
-      data: reasons.map(item => ({ name: item.arrearsReasonName, value: item.applicantCount })),
-    }],
+    tooltip: {
+      trigger: 'item',
+      formatter: ({ seriesName, name, value, percent }) => seriesName === '按人数'
+        ? `${name}<br/>${value} 人（${percent}%）`
+        : `${name}<br/>${moneyText(value)}（${percent}%）`,
+    },
+    legend: { orient: 'vertical', right: 8, top: 'middle', itemWidth: 10, itemHeight: 10 },
+    series: [
+      {
+        name: '按人数',
+        type: 'pie',
+        radius: ['29%', '48%'],
+        center: ['23%', '55%'],
+        label: { show: true, position: 'center', formatter: '人数', color: '#5f6875' },
+        data: reasonPeople,
+      },
+      {
+        name: '按确认金额',
+        type: 'pie',
+        radius: ['29%', '48%'],
+        center: ['55%', '55%'],
+        label: { show: true, position: 'center', formatter: '金额', color: '#5f6875' },
+        data: reasonAmounts,
+      },
+    ],
     graphic: reasons.length ? [] : [{
       type: 'text', left: 'center', top: 'middle', style: { text: '暂无统计数据', fill: '#9aa2ad', fontSize: 14 },
+    }],
+  }, true)
+
+  const gifts = summary.value?.giftItemApplicationCounts ?? []
+  giftChart.setOption({
+    animationDuration: 450,
+    color: ['#08ad5c'],
+    grid: { left: 44, right: 18, top: 22, bottom: 45 },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    xAxis: {
+      type: 'category',
+      data: gifts.map(item => item.giftItemName),
+      axisLabel: { color: '#515967', interval: 0, width: 90, overflow: 'truncate' },
+      axisLine: { lineStyle: { color: '#dfe5ec' } },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: { color: '#6e7683' },
+      splitLine: { lineStyle: { color: '#edf1f5' } },
+    },
+    series: [{
+      name: '申请数量',
+      type: 'bar',
+      barMaxWidth: 48,
+      data: gifts.map(item => item.applicationCount),
+      label: { show: true, position: 'top', color: '#222' },
+    }],
+    graphic: gifts.length ? [] : [{
+      type: 'text', left: 'center', top: 'middle', style: { text: '暂无礼包申请数据', fill: '#9aa2ad', fontSize: 14 },
     }],
   }, true)
 }
@@ -229,6 +327,7 @@ function renderCharts() {
 function resizeCharts() {
   collegeChart?.resize()
   reasonChart?.resize()
+  giftChart?.resize()
 }
 
 function openColumnDialog() {
@@ -272,6 +371,11 @@ function changePage(target) {
 }
 
 watch(selectedBatchKey, updateBatch)
+watch(() => filters.collegeId, loadMajorOptions)
+watch(
+  [() => filters.collegeId, () => filters.majorId, () => filters.gradeId],
+  loadClassOptions,
+)
 watch(currentPage, loadReport)
 watch(pageSize, () => {
   currentPage.value = 1
@@ -279,6 +383,7 @@ watch(pageSize, () => {
 })
 
 onMounted(async () => {
+  await loadOrganizationOptions()
   await nextTick()
   renderCharts()
   window.addEventListener('resize', resizeCharts)
@@ -291,6 +396,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
   collegeChart?.dispose()
   reasonChart?.dispose()
+  giftChart?.dispose()
 })
 </script>
 
@@ -310,13 +416,13 @@ onBeforeUnmount(() => {
         </section>
 
         <section class="filter-panel">
-          <div class="filter-header"><h2>筛选条件</h2><select ref="batchSelectRef" v-model="selectedBatchKey"><option value="">全部批次</option><option v-for="batch in batchOptions" :key="`${batch.batchType}:${batch.batchId}`" :value="`${batch.batchType}:${batch.batchId}`">{{ batch.batchName }}</option></select></div>
+          <div class="filter-header"><h2>筛选条件</h2></div>
           <div class="filter-grid">
-            <label><span>批次筛选</span><select v-model="selectedBatchKey"><option value="">全部批次</option><option v-for="batch in batchOptions" :key="`${batch.batchType}:${batch.batchId}`" :value="`${batch.batchType}:${batch.batchId}`">{{ batch.batchName }}</option></select></label>
-            <label><span>学院筛选</span><select v-model="filters.collegeId"><option value="">全部</option><option v-for="item in collegeOptions" :key="item.collegeId" :value="item.collegeId">{{ item.collegeName }}</option></select></label>
-            <label><span>专业筛选</span><select v-model="filters.majorId"><option value="">全部</option></select></label>
-            <label><span>年级筛选</span><select v-model="filters.gradeId"><option value="">全部</option><option v-for="item in gradeOptions" :key="item.gradeId" :value="item.gradeId">{{ item.gradeName }}</option></select></label>
-            <label><span>班级筛选</span><select v-model="filters.classId"><option value="">全部</option></select></label>
+            <label><span>批次筛选</span><select ref="batchSelectRef" v-model="selectedBatchKey"><option value="">全部批次</option><option v-for="batch in batchOptions" :key="`${batch.batchType}:${batch.batchId}`" :value="`${batch.batchType}:${batch.batchId}`">{{ batch.batchName }}</option></select></label>
+            <label><span>学院筛选</span><select v-model="filters.collegeId"><option value="">全部</option><option v-for="item in collegeOptions" :key="item.id" :value="item.id">{{ item.collegeName }}</option></select></label>
+            <label><span>专业筛选</span><select v-model="filters.majorId" :disabled="!filters.collegeId"><option value="">全部</option><option v-for="item in organizationOptions.majors" :key="item.id" :value="item.id">{{ item.majorName }}</option></select></label>
+            <label><span>年级筛选</span><select v-model="filters.gradeId"><option value="">全部</option><option v-for="item in gradeOptions" :key="item.id" :value="item.id">{{ item.gradeName }}</option></select></label>
+            <label><span>班级筛选</span><select v-model="filters.classId"><option value="">全部</option><option v-for="item in organizationOptions.classes" :key="item.id" :value="item.id">{{ item.className }}</option></select></label>
             <label><span>申请类型筛选</span><select v-model="filters.applicationType"><option value="">全部</option><option value="GREEN_CHANNEL">绿色通道</option><option value="LIVING_SUBSIDY">生活补助</option><option value="TRAVEL_SUBSIDY">路费补助</option></select></label>
             <label><span>申请状态筛选</span><select v-model="filters.applicationStatus"><option value="">全部最终状态</option><option value="APPROVED">审核通过</option><option value="CONFIRM_PENDING">待欠费确认</option><option value="COMPLETED">已完成</option></select></label>
             <label><span>欠费项目筛选</span><input v-model="filters.feeItemId" type="number" min="1" placeholder="全部" /></label>
@@ -331,7 +437,8 @@ onBeforeUnmount(() => {
 
         <section class="chart-grid">
           <article><h2>各学院申请人数统计</h2><div ref="collegeChartRef" class="chart"></div></article>
-          <article><h2>欠费原因占比</h2><div ref="reasonChartRef" class="chart"></div></article>
+          <article><h2>欠费原因人数与金额占比</h2><div ref="reasonChartRef" class="chart"></div></article>
+          <article><h2>爱心礼包物品申请数量</h2><div ref="giftChartRef" class="chart"></div></article>
         </section>
 
         <section class="detail-panel">
@@ -386,8 +493,8 @@ onBeforeUnmount(() => {
 .filter-grid input, .filter-grid select, .filter-header select { width: 100%; height: 34px; padding: 0 10px; border: 1px solid #d6dce5; border-radius: 3px; color: #454c56; background: #fff; }
 .date-filter { grid-column: span 2; }.date-filter div { display: flex; align-items: center; gap: 7px; }.date-filter input { min-width: 120px; }.date-filter i { color: #888; font-style: normal; }
 .filter-actions { display: flex; justify-content: flex-end; gap: 14px; margin-top: 8px; }.filter-actions button { min-width: 80px; height: 32px; }.filter-actions button:disabled { opacity: .55; }
-.metric-grid { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); gap: 7px; margin: 7px 0; }.metric-grid article { display: grid; min-height: 104px; place-items: center; padding: 13px 7px; border: 1px solid #dce2e9; border-radius: 3px; background: #fff; text-align: center; }.metric-grid span { font-size: 13px; font-weight: 700; }.metric-grid strong { font-size: 25px; line-height: 1; }.metric-grid small { color: #6d7480; }
-.chart-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 7px; }.chart-grid article { height: 190px; padding: 11px 16px 5px; border: 1px solid #dce2e9; border-radius: 3px; background: #fff; }.chart { width: 100%; height: 155px; }
+.metric-grid { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 7px; margin: 7px 0; }.metric-grid article { display: grid; min-height: 104px; place-items: center; padding: 13px 7px; border: 1px solid #dce2e9; border-radius: 3px; background: #fff; text-align: center; }.metric-grid span { font-size: 13px; font-weight: 700; }.metric-grid strong { font-size: 25px; line-height: 1; }.metric-grid small { color: #6d7480; }
+.chart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }.chart-grid article { height: 190px; padding: 11px 16px 5px; border: 1px solid #dce2e9; border-radius: 3px; background: #fff; }.chart { width: 100%; height: 155px; }
 .detail-panel { min-height: 246px; margin-top: 7px; border: 1px solid #dce2e9; border-radius: 3px; background: #fff; }.detail-panel > header { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 16px; }.detail-panel header div { display: flex; gap: 28px; color: #444; font-size: 12px; }
 .table-wrap { width: 100%; overflow-x: auto; padding: 0 10px; }table { width: 100%; min-width: 1200px; border-collapse: collapse; table-layout: auto; font-size: 11px; }th, td { height: 31px; padding: 5px 8px; border: 1px solid #dce3eb; text-align: center; white-space: nowrap; }th { color: #202733; background: #eef5fc; }.empty { height: 78px; color: #9098a3; }
 .pager { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 54px; font-size: 12px; }.pager select, .pager input, .pager button { height: 32px; border: 1px solid #d7dde5; border-radius: 4px; background: #fff; }.pager select { padding: 0 8px; }.pager input { width: 48px; text-align: center; }.pager button { min-width: 32px; cursor: pointer; }.pager .current { border-color: #1677ff; color: #fff; background: #1677ff; }

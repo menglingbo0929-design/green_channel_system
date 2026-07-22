@@ -114,7 +114,7 @@ onMounted(loadList)
               <td><span class="status-tag">待欠费确认</span></td>
               <td><button type="button" class="text-button" @click="openConfirmation(row)">确认金额</button></td>
             </tr>
-            <tr v-if="!loading && rows.length === 0"><td colspan="7" class="empty">暂无待确认数据</td></tr>
+            <tr v-if="!loading && rows.length === 0"><td colspan="7" class="empty">当前数据库中没有进入 CONFIRM_PENDING 的待确认申请</td></tr>
           </tbody>
         </table>
       </div>

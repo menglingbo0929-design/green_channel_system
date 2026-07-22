@@ -1,9 +1,6 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { createProxyDraft, findProxyStudent, submitProxyDraft, uploadProxyAttachment } from '../../../api/schoolProxy'
-import { useUserStore } from '../../../stores/user'
-
-const userStore = useUserStore()
 const student = ref(null)
 const result = ref(null)
 const loading = ref(false)
@@ -17,13 +14,13 @@ const draft = async () => {
   const data={ studentNo:form.studentNo,batchType:'GREEN_CHANNEL',batchId:Number(form.batchId),applicationReason:form.applicationReason,requestId:uuid(),
     arrearsItems: form.feeItemId ? [{feeItemId:Number(form.feeItemId),declaredAmount:Number(form.declaredAmount),arrearsReasonCode:form.arrearsReasonCode}] : [],
     giftItems: form.giftItemId ? [{giftItemId:Number(form.giftItemId),quantity:Number(form.giftQuantity)}] : [] }
-  result.value=(await createProxyDraft(data,userStore.userId)).data.data
+  result.value=(await createProxyDraft(data)).data.data
   attachmentUploaded.value = false
   loading.value = false
 }
 const chooseAttachment = event => { selectedFile.value = event.target.files?.[0] ?? null; attachmentUploaded.value = false }
-const upload = async () => { loading.value = true; await uploadProxyAttachment(result.value.applicationId, selectedFile.value, uuid(), userStore.userId); attachmentUploaded.value = true; loading.value = false }
-const submit = async () => { loading.value = true; result.value=(await submitProxyDraft(result.value.applicationId,result.value.version,uuid(),userStore.userId)).data.data; loading.value = false }
+const upload = async () => { loading.value = true; await uploadProxyAttachment(result.value.applicationId, selectedFile.value, uuid()); attachmentUploaded.value = true; loading.value = false }
+const submit = async () => { loading.value = true; result.value=(await submitProxyDraft(result.value.applicationId,result.value.version,uuid())).data.data; loading.value = false }
 const arrearsReasonOptions = [
   { value: 'FAMILY_FINANCIAL_DIFFICULTY', label: '家庭经济困难' },
   { value: 'FAMILY_EMERGENCY', label: '家庭突发情况' },
