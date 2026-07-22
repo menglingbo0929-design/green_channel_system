@@ -21,7 +21,6 @@ const routes = [
     children: [
       { path: '', redirect: '/home' },
       { path: 'home', name: 'Home', component: Home, meta: { title: '首页' } },
-      { path: 'profile', name: 'Profile', component: () => import('../views/Home.vue'), meta: { title: '个人中心' } },
       { path: 'student-center', name: 'StudentCenter', component: () => import('../views/Home.vue'), meta: { title: '学生申请中心', roles: ['STUDENT'] } },
       {
         path: 'my-apply',

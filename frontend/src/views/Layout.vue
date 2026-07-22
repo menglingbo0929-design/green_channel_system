@@ -79,7 +79,6 @@
             <el-icon class="topbar-icon dropdown-arrow"><ArrowDown /></el-icon>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
                 <el-dropdown-item command="password">修改密码</el-dropdown-item>
                 <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
               </el-dropdown-menu>
@@ -194,8 +193,6 @@ function handleCommand(cmd) {
     userStore.logout()
     ElMessage.success('已退出登录')
     router.push('/login')
-  } else if (cmd === 'profile') {
-    router.push('/profile')
   } else if (cmd === 'password') {
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
