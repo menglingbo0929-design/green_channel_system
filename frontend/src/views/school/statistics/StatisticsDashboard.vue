@@ -8,6 +8,7 @@ import {
   fetchStatisticsReport,
 } from '../../../api/statistics'
 import { classAPI, collegeAPI, gradeAPI, majorAPI } from '../../../api/index'
+import { catalogAPI } from '../../../api/application.js'
 import SchoolWorkspaceShell from '../../../components/school/SchoolWorkspaceShell.vue'
 import { formatBatchLabel } from '../../../constants/batch.js'
 
@@ -28,6 +29,8 @@ const columnDialogVisible = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const selectedBatchKey = ref('')
+const batchOptions = ref([])
+const feeItemOptions = ref([])
 
 let collegeChart
 let reasonChart
@@ -83,7 +86,6 @@ const visibleColumns = computed(() => {
   return availableColumns.filter(column => selectedColumns.value.includes(column.key))
 })
 
-const batchOptions = computed(() => summary.value?.batchHistoryStatistics ?? [])
 const collegeOptions = computed(() => organizationOptions.colleges)
 const gradeOptions = computed(() => organizationOptions.grades)
 
@@ -173,6 +175,15 @@ async function loadOrganizationOptions() {
   ])
   organizationOptions.colleges = collegeResponse.data.data ?? []
   organizationOptions.grades = gradeResponse.data.data ?? []
+}
+
+async function loadFilterOptions() {
+  const [statisticsResponse, feeItems] = await Promise.all([
+    fetchApplicationStatistics({}),
+    catalogAPI.listFeeItems(false),
+  ])
+  batchOptions.value = statisticsResponse.data.data?.batchHistoryStatistics ?? []
+  feeItemOptions.value = feeItems ?? []
 }
 
 async function loadMajorOptions() {
@@ -384,7 +395,7 @@ watch(pageSize, () => {
 })
 
 onMounted(async () => {
-  await loadOrganizationOptions()
+  await Promise.all([loadOrganizationOptions(), loadFilterOptions()])
   await nextTick()
   renderCharts()
   window.addEventListener('resize', resizeCharts)
@@ -426,7 +437,7 @@ onBeforeUnmount(() => {
             <label><span>班级筛选</span><select v-model="filters.classId"><option value="">全部</option><option v-for="item in organizationOptions.classes" :key="item.id" :value="item.id">{{ item.className }}</option></select></label>
             <label><span>申请类型筛选</span><select v-model="filters.applicationType"><option value="">全部</option><option value="GREEN_CHANNEL">绿色通道</option><option value="LIVING_SUBSIDY">生活补助</option><option value="TRAVEL_SUBSIDY">路费补助</option></select></label>
             <label><span>申请状态筛选</span><select v-model="filters.applicationStatus"><option value="">全部最终状态</option><option value="APPROVED">审核通过</option><option value="CONFIRM_PENDING">待欠费确认</option><option value="COMPLETED">已完成</option></select></label>
-            <label><span>欠费项目筛选</span><input v-model="filters.feeItemId" type="number" min="1" placeholder="全部" /></label>
+            <label><span>欠费项目筛选</span><select v-model="filters.feeItemId"><option value="">全部欠费项目</option><option v-for="item in feeItemOptions" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
             <label class="date-filter"><span>申请时间筛选</span><div><input v-model="filters.applicationStartTime" type="date" /><i>~</i><input v-model="filters.applicationEndTime" type="date" /></div></label>
           </div>
           <div class="filter-actions"><button type="button" class="primary" :disabled="loading" @click="queryDashboard">查询</button><button type="button" :disabled="loading" @click="resetFilters">重置</button></div>

@@ -59,6 +59,7 @@ export const studentApplicationAPI = {
   replaceSubsidy: (id, data) => api.put(`/applications/${id}/subsidy`, data).then(payload),
   uploadAttachment: (id, file, requestId) => { const form = new FormData(); form.append('file', file); return api.post(`/applications/${id}/attachments`, form, { params: { requestId }, headers: { 'Content-Type': 'multipart/form-data' } }) },
   submit: (id, version, requestId) => api.post(`/applications/${id}/submit`, null, { params: { version, requestId } }).then(payload),
+  resubmit: (id, version, requestId) => api.post(`/approvals/${id}/resubmit`, { version, requestId }).then(payload),
 }
 
 export const resourceConfigAPI = {
