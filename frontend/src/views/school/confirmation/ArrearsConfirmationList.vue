@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { Search } from '@element-plus/icons-vue'
 import { confirmArrears, fetchPendingArrears, fetchPendingArrearsDetail } from '../../../api/confirmation'
 import BusinessConfirmDialog from '../../../components/school/BusinessConfirmDialog.vue'
+import StatusBadge from '../../../components/approval/StatusBadge.vue'
 
 const query = reactive({ applicationNo: '', studentNo: '', studentName: '', pageNo: 1, pageSize: 10 })
 const rows = ref([])
@@ -25,6 +27,11 @@ function resetQuery() {
   query.applicationNo = ''
   query.studentNo = ''
   query.studentName = ''
+  query.pageNo = 1
+  void loadList()
+}
+
+function search() {
   query.pageNo = 1
   void loadList()
 }
@@ -92,33 +99,32 @@ onMounted(() => { void loadList() })
 <template>
   <section class="confirmation-page">
     <header class="module-heading"><div><h2>欠费确认</h2><p>核对学校审核通过申请的欠费金额，确认后自动生成欠费确认单。</p></div></header>
-    <section class="filter-panel">
-      <div class="filter-fields">
-        <label><span>申请编号</span><input v-model.trim="query.applicationNo" placeholder="请输入申请编号" /></label>
-        <label><span>学号</span><input v-model.trim="query.studentNo" placeholder="请输入学号" /></label>
-        <label><span>姓名</span><input v-model.trim="query.studentName" placeholder="请输入姓名" /></label>
-      </div>
-      <div class="filter-actions"><button type="button" class="primary" :disabled="loading" @click="loadList">{{ loading ? '查询中' : '查询' }}</button><button type="button" :disabled="loading" @click="resetQuery">重置</button></div>
-    </section>
     <p v-if="message" class="notice" :class="messageType">{{ message }}</p>
-    <section class="table-panel">
-      <header class="table-heading"><h3>待确认申请</h3><span>共 {{ total }} 条</span></header>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>申请编号</th><th>学生信息</th><th>学院</th><th>申请类型</th><th>申报金额</th><th>当前状态</th><th>操作</th></tr></thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.applicationId">
-              <td>{{ row.applicationNo }}</td>
-              <td><strong>{{ row.studentName }}</strong><small>{{ row.studentNo }}</small></td>
-              <td>{{ row.collegeName || '—' }}</td>
-              <td>{{ row.applicationTypeName || row.applicationType || '绿色通道' }}</td>
-              <td class="money">{{ formatMoney(row.appliedAmount) }}</td>
-              <td><span class="status-tag">待欠费确认</span></td>
-              <td><button type="button" class="text-button" @click="openConfirmation(row)">确认金额</button></td>
-            </tr>
-            <tr v-if="!loading && rows.length === 0"><td colspan="7" class="empty">当前数据库中没有进入 CONFIRM_PENDING 的待确认申请</td></tr>
-          </tbody>
-        </table>
+    <section class="content-card records-card">
+      <div class="card-tabs">
+        <button type="button" class="active">待确认 <span>{{ total }}</span></button>
+      </div>
+
+      <div class="standard-filter-grid arrears-filter-grid">
+        <div class="filter-field"><label>申请编号</label><el-input v-model.trim="query.applicationNo" clearable placeholder="请输入申请编号" @keyup.enter="search" /></div>
+        <div class="filter-field"><label>学号</label><el-input v-model.trim="query.studentNo" clearable placeholder="请输入学号" @keyup.enter="search" /></div>
+        <div class="filter-field"><label>学生姓名</label><el-input v-model.trim="query.studentName" clearable placeholder="请输入学生姓名" @keyup.enter="search" /></div>
+        <div class="filter-buttons"><el-button type="primary" :loading="loading" @click="search"><el-icon><Search /></el-icon>查询</el-button><el-button :disabled="loading" @click="resetQuery">重置</el-button></div>
+      </div>
+
+      <el-table v-loading="loading" :data="rows" border class="standard-table" row-key="applicationId" empty-text="当前数据库中没有待确认申请">
+        <el-table-column label="申请编号" min-width="180"><template #default="{ row }"><strong class="primary-cell">{{ row.applicationNo }}</strong></template></el-table-column>
+        <el-table-column label="学生信息" min-width="160"><template #default="{ row }"><strong class="primary-cell">{{ row.studentName }}</strong><span class="secondary-cell">{{ row.studentNo }}</span></template></el-table-column>
+        <el-table-column label="学院" min-width="220"><template #default="{ row }">{{ row.collegeName || '—' }}</template></el-table-column>
+        <el-table-column label="申请类型" min-width="130"><template #default="{ row }">{{ row.applicationTypeName || row.applicationType || '绿色通道' }}</template></el-table-column>
+        <el-table-column label="申报金额" width="150"><template #default="{ row }"><strong class="money-cell">{{ formatMoney(row.appliedAmount) }}</strong></template></el-table-column>
+        <el-table-column label="状态" width="160"><template #default><StatusBadge status="CONFIRM_PENDING" /></template></el-table-column>
+        <el-table-column label="操作" width="150" fixed="right"><template #default="{ row }"><div class="table-actions"><el-button size="small" type="primary" @click="openConfirmation(row)">确认金额</el-button></div></template></el-table-column>
+      </el-table>
+
+      <div class="pagination-row">
+        <span>共 {{ total }} 条记录</span>
+        <el-pagination v-model:current-page="query.pageNo" :page-size="query.pageSize" layout="prev, pager, next" :total="total" @current-change="loadList" />
       </div>
     </section>
     <BusinessConfirmDialog v-model="confirmDialogOpen" mode="ARREARS_CONFIRM" :business="selected ?? {}" :submitting="confirmSubmitting" @confirm="submitConfirmation" />
@@ -126,8 +132,14 @@ onMounted(() => { void loadList() })
 </template>
 
 <style scoped>
-.confirmation-page { color: #303133; }.module-heading { display: flex; justify-content: space-between; margin-bottom: 18px; }.module-heading h2 { margin: 0 0 7px; font-size: 18px; }.module-heading p { margin: 0; color: #909399; font-size: 13px; }
-.filter-panel { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 18px 20px; border: 1px solid #ebeef5; border-radius: 4px; background: #fafcff; }.filter-fields { display: grid; flex: 1; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 18px; }.filter-fields label { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 10px; color: #606266; font-size: 14px; white-space: nowrap; }.filter-fields input { width: 100%; height: 34px; padding: 0 11px; border: 1px solid #dcdfe6; border-radius: 4px; color: #303133; outline: none; }.filter-fields input:focus { border-color: #409eff; }.filter-actions { display: flex; gap: 10px; }.filter-actions button { min-width: 72px; height: 34px; border: 1px solid #dcdfe6; border-radius: 4px; color: #606266; background: #fff; cursor: pointer; }.filter-actions .primary { border-color: #409eff; color: #fff; background: #409eff; }.filter-actions button:disabled { opacity: .6; cursor: not-allowed; }
-.notice { margin: 14px 0; padding: 10px 14px; border-radius: 4px; font-size: 13px; }.success { border: 1px solid #d9ecff; color: #409eff; background: #ecf5ff; }.error { border: 1px solid #fde2e2; color: #f56c6c; background: #fef0f0; }.table-panel { margin-top: 18px; border: 1px solid #ebeef5; border-radius: 4px; background: #fff; }.table-heading { display: flex; align-items: center; justify-content: space-between; height: 54px; padding: 0 18px; border-bottom: 1px solid #ebeef5; }.table-heading h3 { margin: 0; font-size: 16px; }.table-heading span { color: #909399; font-size: 13px; }.table-wrap { overflow-x: auto; }table { width: 100%; min-width: 840px; border-collapse: collapse; font-size: 14px; }th, td { height: 52px; padding: 8px 14px; border-bottom: 1px solid #ebeef5; text-align: left; }th { color: #606266; background: #f5f7fa; font-weight: 600; }tbody tr:hover { background: #f8fbff; }td strong, td small { display: block; }td small { margin-top: 3px; color: #909399; font-size: 12px; }.money { color: #f56c6c; font-weight: 600; }.status-tag { display: inline-block; padding: 4px 8px; border-radius: 3px; color: #e6a23c; background: #fdf6ec; font-size: 12px; }.text-button { border: 0; color: #409eff; background: transparent; cursor: pointer; font-size: 14px; }.empty { height: 88px; color: #909399; text-align: center; }
-@media (max-width: 1100px) { .filter-panel { align-items: stretch; flex-direction: column; }.filter-fields { grid-template-columns: 1fr; }.filter-actions { justify-content: flex-end; } }
+.confirmation-page { color: #303133; }
+.module-heading { display: flex; justify-content: space-between; margin-bottom: 18px; }
+.module-heading h2 { margin: 0 0 7px; color: #1f2937; font-size: 18px; }
+.module-heading p { margin: 0; color: #909399; font-size: 13px; }
+.arrears-filter-grid { grid-template-columns: repeat(3, minmax(180px, 1fr)) auto; }
+.money-cell { color: #f56c6c; font-weight: 600; }
+.notice { margin: 0 0 14px; padding: 10px 14px; border-radius: 4px; font-size: 13px; }
+.success { border: 1px solid #d9ecff; color: #409eff; background: #ecf5ff; }
+.error { border: 1px solid #fde2e2; color: #f56c6c; background: #fef0f0; }
+@media (max-width: 1100px) { .arrears-filter-grid { grid-template-columns: 1fr; } }
 </style>

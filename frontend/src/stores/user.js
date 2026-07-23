@@ -25,7 +25,7 @@ const ROLE_DEFAULT_PAGE = {
   STUDENT:   '/my-apply',
   COUNSELOR: '/counselor-review',
   COLLEGE:   '/college-review',
-  SCHOOL:    '/school-review'
+  SCHOOL:    '/member4/school-business?tab=review'
 }
 
 // 所有菜单项定义，roles 控制可见角色
@@ -35,17 +35,16 @@ const ALL_MENUS = [
   { key: 'my-apply',    label: '我的申请',     icon: 'document',        roles: ['STUDENT'],                                   path: '/my-apply' },
   { key: 'counselor',   label: '辅导员审核',   icon: 'check-circle',    roles: ['COUNSELOR'],                                 path: '/counselor-review' },
   { key: 'college',     label: '学院审核',     icon: 'flag',            roles: ['COLLEGE'],                                   path: '/college-review' },
-  { key: 'school-review',label: '学校审核',    icon: 'check-circle',    roles: ['SCHOOL'],                                    path: '/school-review' },
   { key: 'messages',    label: '消息中心',     icon: 'bell',            roles: ['STUDENT'],                                   path: '/student/messages' },
   { key: 'messages-counselor', label: '消息中心', icon: 'bell',         roles: ['COUNSELOR'],                                 path: '/counselor/messages' },
   { key: 'messages-college', label: '消息中心', icon: 'bell',           roles: ['COLLEGE'],                                   path: '/college/messages' },
   { key: 'messages-school', label: '消息中心', icon: 'bell',            roles: ['SCHOOL'],                                    path: '/school/messages' },
-  // 学校端欠费确认、代申请、线下补录和单据均在“学校业务处理页”内通过页签切换。
+  // 学校端最终审核、欠费确认、代申请、线下补录和单据均在“学校业务处理页”内通过页签切换。
   { key: 'school-business', label: '业务处理', icon: 'coin',            roles: ['SCHOOL'],                                    path: '/member4/school-business' },
   // 统计看板只由学校管理员使用；学院审核端不再显示会跳转到 403 的入口。
   { key: 'stats',       label: '统计报表',     icon: 'chart-line',      roles: ['SCHOOL'],                                    path: '/stats' },
   { key: 'base-data',   label: '基础数据',     icon: 'database',        roles: ['SCHOOL'],                                    path: '/base-data' },
-  { key: 'application-config', label: '绿色通道信息设置', icon: 'setting', roles: ['SCHOOL', 'COLLEGE'],                   path: '/application-config' },
+  { key: 'application-config', label: '信息设置', icon: 'setting', roles: ['SCHOOL', 'COLLEGE'],                         path: '/application-config' },
   { key: 'policy',      label: '政策与说明',   icon: 'info',            roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'],    path: '/policy' }
 ]
 

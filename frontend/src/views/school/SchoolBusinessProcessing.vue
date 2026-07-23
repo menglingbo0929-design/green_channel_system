@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchPendingArrears } from '../../api/confirmation'
 import { getApprovalDashboard } from '../../api/approval'
 import SchoolWorkspaceShell from '../../components/school/SchoolWorkspaceShell.vue'
+import ApprovalWorkbench from '../approval/ApprovalWorkbench.vue'
 import ArrearsConfirmationList from './confirmation/ArrearsConfirmationList.vue'
 import ArrearsVoucher from './confirmation/ArrearsVoucher.vue'
 import SchoolProxyApplication from './supplement/SchoolProxyApplication.vue'
@@ -13,10 +14,10 @@ import arrearsConfirmationIcon from '../../figures/arrears-confirmation.png'
 import supplementRecordIcon from '../../figures/supplement-record.png'
 import voidedApplicationIcon from '../../figures/voided-application.png'
 
-/** 页面八：学校业务处理。最终审核只跳转到成员三维护的审核工作台。 */
+/** 页面八：学校业务处理。最终审核直接复用审核工作台内容。 */
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref('arrears')
+const activeTab = ref('review')
 const ownSummary = ref({ pendingSchoolReviewCount: 0, pendingArrearsCount: 0 })
 
 const tabs = [
@@ -36,12 +37,8 @@ function selectTab(tab) {
   router.replace({ name: 'MemberFourSchoolBusiness', query: { ...route.query, tab } })
 }
 
-function openSchoolReview() {
-  router.push('/school-review')
-}
-
 const summaryCards = computed(() => [
-  { label: '待学校审核', value: ownSummary.value.pendingSchoolReviewCount, hint: '进入学校审核工作台处理', color: '#1677ff', icon: pendingReviewIcon, action: openSchoolReview },
+  { label: '待学校审核', value: ownSummary.value.pendingSchoolReviewCount, hint: '在最终审核页签处理', color: '#1677ff', icon: pendingReviewIcon, action: () => selectTab('review') },
   { label: '欠费待确认', value: ownSummary.value.pendingArrearsCount, hint: '待确认欠费申请', color: '#ff7a00', icon: arrearsConfirmationIcon, action: () => selectTab('arrears') },
   { label: '今日补录', value: '—', hint: '线下业务补录记录', color: '#00b96b', icon: supplementRecordIcon, action: () => selectTab('supplement') },
   { label: '作废申请', value: '—', hint: '已作废业务记录', color: '#ff4d4f', icon: voidedApplicationIcon },
@@ -96,17 +93,9 @@ onMounted(loadOwnSummary)
           >{{ tab.label }}</button>
         </div>
 
-        <section v-if="activeTab === 'review'" class="review-entry">
-          <div class="review-entry-icon">✓</div>
-          <div>
-            <h2>学校最终审核</h2>
-            <p>学校审核列表、详情和审核弹窗由审核工作台统一维护。</p>
-          </div>
-          <el-button type="primary" @click="openSchoolReview">进入学校审核</el-button>
-        </section>
-
-        <div v-else class="embedded-business">
-          <ArrearsConfirmationList v-if="activeTab === 'arrears'" />
+        <div class="embedded-business">
+          <ApprovalWorkbench v-if="activeTab === 'review'" embedded />
+          <ArrearsConfirmationList v-else-if="activeTab === 'arrears'" />
           <SchoolProxyApplication v-else-if="activeTab === 'proxy'" />
           <SupplementApplication v-else-if="activeTab === 'supplement'" />
           <ArrearsVoucher v-else-if="activeTab === 'voucher'" />
@@ -185,6 +174,6 @@ onMounted(loadOwnSummary)
 .metric-grid .summary-card span { color: #4b5563; font-size: 14px; }.metric-grid .summary-card strong { font-size: 28px; }.metric-grid .summary-card small { color: #9ca3af; font-size: 12px; }
 .business-panel { min-height: 0; overflow: hidden; border-color: #e5e7eb; border-radius: 4px; }.tab-bar { height: 58px; gap: 12px; padding: 0 18px; border-bottom-color: #e5e7eb; }
 .tab-bar button { min-width: 96px; color: #4b5563; font-size: 15px; }.tab-bar button.active::after { right: 12px; left: 12px; height: 3px; }.embedded-business { padding: 22px 24px 28px; }
-.review-entry { display: flex; align-items: center; gap: 16px; padding: 28px 32px; background: #fff; }.review-entry-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; color: #1677ff; background: #e8f2ff; font-size: 22px; font-weight: 700; }.review-entry h2 { margin: 0 0 6px; color: #1f2937; font-size: 17px; }.review-entry p { margin: 0; color: #6b7280; font-size: 13px; }.review-entry .el-button { margin-left: auto; }
+.embedded-business :deep(.workbench-page) { padding: 0; }
 @media (max-width: 1280px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

@@ -12,6 +12,10 @@ import { cancelApplication, editApprovalFields, getApprovalDashboard, getApprova
 import { APPLICATION_TYPE_META, createRequestId, formatDateTime, ROLE_META } from '../../constants/approval'
 import { batchAPI } from '../../api/application.js'
 
+const props = defineProps({
+  embedded: { type: Boolean, default: false },
+})
+
 const route = useRoute()
 const role = computed(() => route.meta.role || 'COUNSELOR')
 const roleMeta = computed(() => ROLE_META[role.value])
@@ -267,12 +271,12 @@ onMounted(loadWorkspace)
         <h1>{{ roleMeta.title }}</h1>
         <p>{{ role === 'COUNSELOR' ? '核验学生材料、确认补助金额，并按批次统一提交学院。' : role === 'COLLEGE' ? '复核本学院申请、检查名额额度，并在截止时间前提交学校。' : '对全校申请进行最终审核，审核结论将直接进入办结或欠费确认流程。' }}</p>
       </div>
-      <div class="page-actions">
+      <div v-if="!props.embedded" class="page-actions">
         <el-button @click="loadWorkspace"><el-icon><Refresh /></el-icon>刷新</el-button>
       </div>
     </section>
 
-    <section class="metric-grid" aria-label="审核数量概览">
+    <section v-if="!props.embedded" class="metric-grid" aria-label="审核数量概览">
       <article v-for="metric in metrics" :key="metric.label" class="summary-card" :class="`summary-${metric.tone}`">
         <div class="summary-icon"><component :is="metric.icon" /></div>
         <div><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
