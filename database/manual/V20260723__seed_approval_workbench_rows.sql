@@ -1,8 +1,8 @@
--- 用途：为辅导员、学院、学校三个审核工作台各准备 10 条可审核数据。
+-- 用途：按审核层级递增准备数据：辅导员 10 条、学院 20 条、学校 30 条。
 -- 前置：先执行 V20260723_001__complete_batch_information.sql 与
 --       V20260723_002__add_college_user_scope.sql。
 -- 特点：不使用 OceanBase 不支持的 TEMPORARY TABLE；固定 APPR-SEED 前缀，可重复执行。
--- 金额按环节递增：辅导员 600~1500，学院 2150~3500，学校 4700~6500。
+-- 金额按环节递增且区间不重叠：辅导员 600~1500，学院 2000~3900，学校 4100~7000。
 
 ROLLBACK;
 
@@ -53,7 +53,7 @@ SET @college_id = (
     GROUP BY s.college_id ORDER BY COUNT(*) DESC, s.college_id LIMIT 1
 );
 
--- 若该学院真实学生不足 10 人，补齐固定学号的审核联调学生；组织字段复用该学院真实学生，
+-- 若该学院真实学生不足 30 人，补齐固定学号的审核联调学生；组织字段复用该学院真实学生，
 -- 不伪造学院/专业/年级/班级主数据，也不影响现有学生。
 SET @seed_major_id=(SELECT major_id FROM student WHERE college_id=@college_id AND deleted=0 ORDER BY id LIMIT 1);
 SET @seed_grade_id=(SELECT grade_id FROM student WHERE college_id=@college_id AND deleted=0 ORDER BY id LIMIT 1);
@@ -69,6 +69,10 @@ SELECT CONCAT('APPRS',LPAD(n.seq_no,3,'0')),CONCAT('审核联调学生',LPAD(n.s
 FROM (
     SELECT 1 seq_no UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
     UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+    UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+    UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20
+    UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL SELECT 25
+    UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30
 ) n
 WHERE @college_id IS NOT NULL AND @seed_major_id IS NOT NULL AND @seed_grade_id IS NOT NULL AND @seed_class_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM student s WHERE s.student_no=CONCAT('APPRS',LPAD(n.seq_no,3,'0')));
@@ -89,7 +93,7 @@ INSERT INTO appr_seed_students(seq_no,student_id,grade_id)
 SELECT ROW_NUMBER() OVER (ORDER BY s.id),s.id,s.grade_id
 FROM student s
 WHERE s.deleted=0 AND s.enabled=1 AND s.college_id=@college_id AND s.grade_id IS NOT NULL
-ORDER BY s.id LIMIT 10;
+ORDER BY s.id LIMIT 30;
 
 INSERT INTO counselor_student(counselor_user_id,student_id,create_time)
 SELECT @counselor_user_id,t.student_id,NOW()
@@ -165,9 +169,10 @@ SELECT CONCAT('APPR-SEED-C-',LPAD(t.seq_no,2,'0')),t.student_id,'GREEN_CHANNEL',
        @batch_c,NULL,'COUNSELOR_PENDING','COUNSELOR',0,1,
        CONCAT('辅导员审核联调申请，序号 ',t.seq_no),DATE_SUB(NOW(),INTERVAL t.seq_no HOUR),
        @counselor_user_id,@counselor_user_id,DATE_SUB(NOW(),INTERVAL t.seq_no HOUR),NOW(),0
-FROM appr_seed_students t;
+FROM appr_seed_students t
+WHERE t.seq_no <= 10;
 
--- 10 条学院待审核。
+-- 20 条学院待审核。
 INSERT INTO application(
     application_no,student_id,application_type,source,batch_type,
     green_channel_batch_id,subsidy_batch_id,status,current_level,review_round,version,
@@ -177,9 +182,10 @@ SELECT CONCAT('APPR-SEED-O-',LPAD(t.seq_no,2,'0')),t.student_id,'GREEN_CHANNEL',
        @batch_o,NULL,'COLLEGE_PENDING','COLLEGE',0,3,
        CONCAT('学院审核联调申请，序号 ',t.seq_no),DATE_SUB(NOW(),INTERVAL (t.seq_no+12) HOUR),
        @counselor_user_id,@counselor_user_id,DATE_SUB(NOW(),INTERVAL (t.seq_no+12) HOUR),NOW(),0
-FROM appr_seed_students t;
+FROM appr_seed_students t
+WHERE t.seq_no <= 20;
 
--- 10 条学校待审核。
+-- 30 条学校待审核。
 INSERT INTO application(
     application_no,student_id,application_type,source,batch_type,
     green_channel_batch_id,subsidy_batch_id,status,current_level,review_round,version,
@@ -196,8 +202,8 @@ INSERT INTO arrears_application(application_id,fee_item_id,declared_amount,arrea
 SELECT a.id,@fee_item_id,
        CASE
            WHEN a.application_no LIKE 'APPR-SEED-C-%' THEN 500+t.seq_no*100
-           WHEN a.application_no LIKE 'APPR-SEED-O-%' THEN 2000+t.seq_no*150
-           ELSE 4500+t.seq_no*200
+           WHEN a.application_no LIKE 'APPR-SEED-O-%' THEN 1900+t.seq_no*100
+           ELSE 4000+t.seq_no*100
        END,
        CASE MOD(t.seq_no,5)
            WHEN 0 THEN 'FAMILY_FINANCIAL_DIFFICULTY'
@@ -263,13 +269,13 @@ INSERT INTO approval_submission_record(
     scope_type,scope_id,application_id,review_round,submitter_id,submitted_count,status,request_id,submit_time,create_time
 )
 VALUES
-('GREEN_CHANNEL',@batch_o,NULL,'COUNSELOR','INITIAL_BATCH','COUNSELOR',@counselor_user_id,0,0,@counselor_user_id,10,'SUBMITTED','APPR-SEED-BATCH-C-O',DATE_SUB(NOW(),INTERVAL 8 HOUR),NOW()),
-('GREEN_CHANNEL',@batch_s,NULL,'COUNSELOR','INITIAL_BATCH','COUNSELOR',@counselor_user_id,0,0,@counselor_user_id,10,'SUBMITTED','APPR-SEED-BATCH-C-S',DATE_SUB(NOW(),INTERVAL 7 HOUR),NOW()),
-('GREEN_CHANNEL',@batch_s,NULL,'COLLEGE','INITIAL_BATCH','COLLEGE',@college_id,0,0,@college_user_id,10,'SUBMITTED','APPR-SEED-BATCH-O-S',DATE_SUB(NOW(),INTERVAL 6 HOUR),NOW());
+('GREEN_CHANNEL',@batch_o,NULL,'COUNSELOR','INITIAL_BATCH','COUNSELOR',@counselor_user_id,0,0,@counselor_user_id,20,'SUBMITTED','APPR-SEED-BATCH-C-O',DATE_SUB(NOW(),INTERVAL 8 HOUR),NOW()),
+('GREEN_CHANNEL',@batch_s,NULL,'COUNSELOR','INITIAL_BATCH','COUNSELOR',@counselor_user_id,0,0,@counselor_user_id,30,'SUBMITTED','APPR-SEED-BATCH-C-S',DATE_SUB(NOW(),INTERVAL 7 HOUR),NOW()),
+('GREEN_CHANNEL',@batch_s,NULL,'COLLEGE','INITIAL_BATCH','COLLEGE',@college_id,0,0,@college_user_id,30,'SUBMITTED','APPR-SEED-BATCH-O-S',DATE_SUB(NOW(),INTERVAL 6 HOUR),NOW());
 
 COMMIT;
 
--- 验证：每个阶段应为 10 条；金额最小值/最大值应逐阶段增长；invalid_rows 必须为 0。
+-- 验证：COUNSELOR_PENDING=10、COLLEGE_PENDING=20、SCHOOL_PENDING=30；金额区间逐级增长；无效行必须为 0。
 SELECT status,COUNT(*) row_count,MIN(aa.declared_amount) min_amount,MAX(aa.declared_amount) max_amount
 FROM application a
 JOIN arrears_application aa ON aa.application_id=a.id AND aa.deleted=0
