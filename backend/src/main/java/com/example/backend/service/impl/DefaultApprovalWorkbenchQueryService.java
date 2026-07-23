@@ -107,7 +107,7 @@ public class DefaultApprovalWorkbenchQueryService implements ApprovalWorkbenchQu
         ).map(ApprovalRecordEntity::getAction).orElse(null);
         return new ApprovalListItem(
                 item.applicationId(), item.applicationNo(), item.applicationType(), typeName(item.applicationType()),
-                item.batchType(), item.batchId(), item.studentId(), item.studentNo(), item.studentName(),
+                item.batchType(), item.batchId(), item.batchCode(), item.batchName(), item.studentId(), item.studentNo(), item.studentName(),
                 item.collegeId(), item.collegeName(), item.gradeName(), item.declaredAmount(), item.status(), statusName(item.status()),
                 item.currentLevel(), latestDecision, item.submitTime(), item.version()
         );

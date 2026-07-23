@@ -67,10 +67,9 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     }
 
     public List<ApplicationSummary> findMine(Long studentId) {
-        return applicationMapper.findMine(studentId).stream().map(a -> new ApplicationSummary(a.getId(), a.getApplicationNo(),
-                a.getApplicationType(), a.getStatus(), a.getVersion(), a.getApplicationReason(), batchId(a))).toList();
+        return applicationMapper.findMine(studentId).stream().map(this::summary).toList();
     }
-    public ApplicationSummary findOne(Long id) { Application a = required(id); return new ApplicationSummary(a.getId(), a.getApplicationNo(), a.getApplicationType(), a.getStatus(), a.getVersion(), a.getApplicationReason(), batchId(a)); }
+    public ApplicationSummary findOne(Long id) { return summary(required(id)); }
     @Transactional public ApplicationSummary updateDraft(Long id, String reason, Integer version, Long operatorId) {
         if (applicationMapper.updateDraft(id, reason, version, operatorId) != 1) throw conflict("APPLICATION_VERSION_CONFLICT", "申请状态或版本已变化");
         return findOne(id);
@@ -233,6 +232,15 @@ public class ApplicationService implements ApplicationCreationService, Applicati
     }
     private String nextApplicationNo() { return "GC" + LocalDate.now().toString().replace("-", "") + String.format("%06d", System.nanoTime() % 1_000_000); }
     private Long batchId(Application a) { return a.getBatchType() == BatchType.GREEN_CHANNEL ? a.getGreenChannelBatchId() : a.getSubsidyBatchId(); }
+    private ApplicationSummary summary(Application application) {
+        Long id = batchId(application);
+        BatchSnapshot batch = batchQueryService.getRequiredBatch(application.getBatchType().name(), id);
+        return new ApplicationSummary(
+                application.getId(), application.getApplicationNo(), application.getApplicationType(),
+                application.getStatus(), application.getVersion(), application.getApplicationReason(), id,
+                batch.getBatchCode(), batch.getBatchName()
+        );
+    }
     private ApplicationStateSnapshot snapshot(Application a) { return new ApplicationStateSnapshot(a.getId(), a.getStudentId(), a.getBatchType(), batchId(a), a.getApplicationType(), a.getStatus(), a.getCurrentLevel(), a.getReviewRound(), a.getVersion()); }
     private ApplicationException conflict(String code, String message) { return new ApplicationException(code, HttpStatus.CONFLICT, message); }
 }

@@ -1,12 +1,15 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { createProxyDraft, findProxyStudent, submitProxyDraft, uploadProxyAttachment } from '../../../api/schoolProxy'
+import { batchAPI } from '../../../api/application.js'
+import { formatBatchLabel } from '../../../constants/batch.js'
 const student = ref(null)
 const result = ref(null)
 const loading = ref(false)
 const errorMessage = ref('')
 const selectedFile = ref(null)
 const attachmentUploaded = ref(false)
+const batchOptions = ref([])
 const form = reactive({ studentNo: '', batchId: '', applicationReason: '', feeItemId: '', declaredAmount: '', arrearsReasonCode: 'OTHER', giftItemId: '', giftQuantity: 1 })
 const uuid = () => crypto.randomUUID?.() ?? `proxy-${Date.now()}`
 const getErrorMessage = (error, fallback) => error?.response?.data?.message || error?.message || fallback
@@ -41,6 +44,7 @@ const arrearsReasonOptions = [
   { value: 'DISASTER_ACCIDENT', label: '灾害事故' },
   { value: 'OTHER', label: '其他' },
 ]
+onMounted(async () => { batchOptions.value = await batchAPI.open('GREEN_CHANNEL') || [] })
 </script>
 <template>
   <section class="proxy-page">
@@ -55,7 +59,7 @@ const arrearsReasonOptions = [
     <section class="form-card">
       <h3>申请内容</h3>
       <div class="form-grid">
-        <label><span>申请批次 ID</span><input v-model="form.batchId" type="number" min="1" placeholder="请输入批次 ID" /></label>
+        <label><span>申请批次</span><select v-model="form.batchId"><option value="">请选择批次</option><option v-for="batch in batchOptions" :key="batch.batchId" :value="batch.batchId">{{ formatBatchLabel(batch) }}</option></select></label>
         <label><span>欠费项目 ID</span><input v-model="form.feeItemId" type="number" min="1" placeholder="可选" /></label>
         <label><span>申报金额</span><input v-model="form.declaredAmount" type="number" min="0.01" step="0.01" placeholder="可选" /></label>
         <label><span>欠费原因</span><select v-model="form.arrearsReasonCode"><option v-for="item in arrearsReasonOptions" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>

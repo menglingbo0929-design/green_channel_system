@@ -14,6 +14,8 @@ public record ApprovalApplicationSnapshot(
         ApplicationType applicationType,
         BatchType batchType,
         Long batchId,
+        String batchCode,
+        String batchName,
         Long studentId,
         String studentNo,
         String studentName,
