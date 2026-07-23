@@ -128,7 +128,7 @@ onMounted(loadApplications)
       </div>
 
       <el-table v-loading="loading" :data="records" border class="standard-table" empty-text="暂无符合条件的申请">
-        <el-table-column label="申请编号" min-width="168"><template #default="{ row }"><strong class="primary-cell">{{ row.applicationNo }}</strong><span class="secondary-cell">{{ row.batchName }}</span></template></el-table-column>
+        <el-table-column label="申请编号" min-width="220"><template #default="{ row }"><strong class="primary-cell">{{ row.applicationNo }}</strong><span class="secondary-cell">{{ row.batchDisplayName }}</span></template></el-table-column>
         <el-table-column prop="applicationTypeName" label="申请类型" min-width="112" />
         <el-table-column label="申请金额" width="120"><template #default="{ row }">¥{{ row.declaredAmount.toLocaleString() }}</template></el-table-column>
         <el-table-column label="当前审核节点" min-width="132"><template #default="{ row }">{{ row.currentNode }}</template></el-table-column>

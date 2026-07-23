@@ -59,6 +59,8 @@ class DefaultApprovalWorkbenchQueryServiceTest {
         assertEquals(ApplicationStatus.COUNSELOR_PENDING, page.records().getFirst().status());
         assertEquals("待辅导员审核", page.records().getFirst().statusName());
         assertEquals(new BigDecimal("1200.00"), page.records().getFirst().declaredAmount());
+        assertEquals("GC-2026-01", page.records().getFirst().batchCode());
+        assertEquals("2026 年新生绿色通道", page.records().getFirst().batchName());
         ArgumentCaptor<ApprovalListQuery> queryCaptor = ArgumentCaptor.forClass(ApprovalListQuery.class);
         verify(applications).pagePending(any(), queryCaptor.capture());
         assertEquals(ApplicationStatus.COUNSELOR_PENDING, queryCaptor.getValue().status());
@@ -177,6 +179,7 @@ class DefaultApprovalWorkbenchQueryServiceTest {
     private ApprovalApplicationSnapshot snapshot() {
         return new ApprovalApplicationSnapshot(
                 10L, "GC202607210001", ApplicationType.GREEN_CHANNEL, BatchType.GREEN_CHANNEL, 3L,
+                "GC-2026-01", "2026 年新生绿色通道",
                 20L, "20260001", "张三", 8L, "计算机学院", "2026级", new BigDecimal("1200.00"),
                 ApplicationStatus.COUNSELOR_PENDING, ApprovalLevel.COUNSELOR, 2,
                 LocalDateTime.of(2026, 7, 21, 9, 0), 4

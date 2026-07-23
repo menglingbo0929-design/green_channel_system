@@ -28,6 +28,9 @@ public interface BatchQueryService {
      */
     BatchSnapshot getRequiredBatch(Long batchId);
 
+    /** 按批次体系查询详情，避免绿色通道和补助批次 ID 重号时取错数据。 */
+    BatchSnapshot getRequiredBatch(String batchType, Long batchId);
+
     /**
      * 判断某年级是否在批次的适用范围内
      */

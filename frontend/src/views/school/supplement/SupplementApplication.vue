@@ -1,6 +1,8 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { createSupplement, findSupplementStudent } from '../../../api/supplement'
+import { batchAPI } from '../../../api/application.js'
+import { formatBatchLabel } from '../../../constants/batch.js'
 import BusinessConfirmDialog from '../../../components/school/BusinessConfirmDialog.vue'
 import SupplementHistory from './SupplementHistory.vue'
 
@@ -10,6 +12,7 @@ const loading = ref(false)
 const refreshKey = ref(0)
 const confirmDialogOpen = ref(false)
 const pendingPayload = ref(null)
+const batchOptions = ref([])
 
 const nowForInput = () => {
   const date = new Date()
@@ -117,6 +120,15 @@ const arrearsReasonOptions = [
   { value: 'DISASTER_ACCIDENT', label: '灾害事故' },
   { value: 'OTHER', label: '其他' },
 ]
+
+async function loadBatchOptions() {
+  form.batchId = ''
+  const batchType = form.applicationType === 'GREEN_CHANNEL' ? 'GREEN_CHANNEL' : 'SUBSIDY'
+  batchOptions.value = await batchAPI.open(batchType) || []
+}
+
+watch(() => form.applicationType, loadBatchOptions)
+onMounted(loadBatchOptions)
 </script>
 
 <template>
@@ -145,7 +157,7 @@ const arrearsReasonOptions = [
             <option value="TRAVEL_SUBSIDY">路费补助</option>
           </select>
         </label>
-        <label>批次 ID<input v-model="form.batchId" type="number" min="1" /></label>
+        <label>申请批次<select v-model="form.batchId"><option value="">请选择批次</option><option v-for="batch in batchOptions" :key="batch.batchId" :value="batch.batchId">{{ formatBatchLabel(batch) }}</option></select></label>
         <label>线下办理时间<input v-model="form.handledAt" type="datetime-local" /></label>
         <label class="wide">申请原因<textarea v-model="form.applicationReason" rows="2" /></label>
         <label class="wide">补录原因<textarea v-model="form.supplementReason" rows="2" placeholder="说明为何未走线上流程" /></label>

@@ -1,6 +1,7 @@
 import axios from 'axios'
 import * as mock from '../mock/approval'
-import { createRequestId } from '../constants/approval'
+import { APPLICATION_TYPE_META, createRequestId } from '../constants/approval'
+import { formatBatchLabel } from '../constants/batch'
 
 const client = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', timeout: 10000 })
 client.interceptors.request.use((config) => {
@@ -16,6 +17,12 @@ client.interceptors.request.use((config) => {
 const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 const unwrap = (response) => response.data?.data ?? response.data
 const valueOf = (value) => value == null ? '' : String(value)
+const currentNodeByStatus = {
+  DRAFT: '待本人提交', COUNSELOR_PENDING: '辅导员审核', COUNSELOR_RETURNED: '待本人修改',
+  COLLEGE_PENDING: '学院审核', COLLEGE_RETURNED: '待本人修改', SCHOOL_PENDING: '学校审核',
+  SCHOOL_RETURNED: '待本人修改', REJECTED: '审核不通过', APPROVED: '审核已通过',
+  CONFIRM_PENDING: '欠费确认', COMPLETED: '业务已办结', CANCELLED: '申请已取消',
+}
 
 function normalizePage(payload, fallback = {}) {
   const records = payload?.records ?? payload?.list ?? payload?.content ?? []
@@ -31,10 +38,10 @@ function normalizeApplication(item) {
   return {
     ...item,
     applicationId: item.applicationId ?? item.id,
-    applicationTypeName: item.applicationTypeName ?? item.applicationType ?? '—',
-    batchName: item.batchName ?? (item.batchId ? `批次 ${item.batchId}` : '—'),
+    applicationTypeName: item.applicationTypeName ?? APPLICATION_TYPE_META[item.applicationType] ?? '—',
+    batchDisplayName: formatBatchLabel(item),
     declaredAmount: Number(item.declaredAmount ?? item.requestedAmount ?? item.amount ?? 0),
-    currentNode: item.currentNode ?? item.currentLevelName ?? item.statusName ?? item.status ?? '—',
+    currentNode: item.currentNode ?? item.currentLevelName ?? currentNodeByStatus[item.status] ?? item.statusName ?? '—',
     submitTime: item.submitTime ?? item.createTime ?? null,
   }
 }
