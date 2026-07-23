@@ -116,11 +116,11 @@ public class StudentImportServiceImpl implements StudentImportService {
 
                     // 绑定学生角色（幂等：已有则不重复插入）
                     boolean hasStudentRole = userRoleMapper.exists(
-                            new LambdaQueryWrapper<UserRole>()
-                                    .eq(UserRole::getUserId, user.getId())
-                                    .eq(UserRole::getRoleId, 1L));
+                            new LambdaQueryWrapper<UserRoleRelation>()
+                                    .eq(UserRoleRelation::getUserId, user.getId())
+                                    .eq(UserRoleRelation::getRoleId, 1L));
                     if (!hasStudentRole) {
-                        UserRole ur = new UserRole();
+                        UserRoleRelation ur = new UserRoleRelation();
                         ur.setUserId(user.getId());
                         ur.setRoleId(1L); // STUDENT
                         userRoleMapper.insert(ur);

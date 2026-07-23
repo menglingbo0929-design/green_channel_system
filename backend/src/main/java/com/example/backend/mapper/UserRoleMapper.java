@@ -1,12 +1,12 @@
 package com.example.backend.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.backend.model.domain.UserRole;
+import com.example.backend.model.domain.UserRoleRelation;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
-public interface UserRoleMapper extends BaseMapper<UserRole> {
+public interface UserRoleMapper extends BaseMapper<UserRoleRelation> {
 
     /**
      * 查某个用户的所有角色编码

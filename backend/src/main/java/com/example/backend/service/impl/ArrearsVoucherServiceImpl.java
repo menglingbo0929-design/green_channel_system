@@ -3,7 +3,7 @@ package com.example.backend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.mapper.ArrearsConfirmationMapper;
-import com.example.backend.application.exception.ApplicationException;
+import com.example.backend.common.exception.ApplicationException;
 import com.example.backend.model.domain.ArrearsConfirmation;
 import com.example.backend.model.dto.PageDTO;
 import com.example.backend.model.dto.voucher.ArrearsVoucherQueryDTO;

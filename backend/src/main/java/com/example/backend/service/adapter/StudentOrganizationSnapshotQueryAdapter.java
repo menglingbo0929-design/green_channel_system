@@ -1,7 +1,7 @@
 package com.example.backend.service.adapter;
 
-import com.example.backend.application.dto.StudentOrganizationSnapshot;
-import com.example.backend.application.port.StudentOrganizationSnapshotQuery;
+import com.example.backend.model.dto.StudentOrganizationSnapshot;
+import com.example.backend.service.StudentOrganizationSnapshotQuery;
 import com.example.backend.model.dto.StudentApplicationProfile;
 import com.example.backend.service.StudentProfileQueryService;
 import lombok.RequiredArgsConstructor;

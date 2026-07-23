@@ -5,11 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan({
-        "com.example.backend.mapper",
-        "com.example.backend.application.mapper",
-        "com.example.backend.approval.persistence.mapper"
-})
+@MapperScan("com.example.backend.mapper")
 public class BackendApplication {
 
     public static void main(String[] args) {

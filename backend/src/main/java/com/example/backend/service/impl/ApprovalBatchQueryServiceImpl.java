@@ -1,8 +1,8 @@
 package com.example.backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.example.backend.application.domain.BatchType;
-import com.example.backend.approval.port.ApprovalBatchQueryService;
+import com.example.backend.model.domain.BatchType;
+import com.example.backend.service.ApprovalBatchQueryService;
 import com.example.backend.mapper.GreenChannelBatchMapper;
 import com.example.backend.mapper.SubsidyBatchMapper;
 import com.example.backend.model.domain.GreenChannelBatch;

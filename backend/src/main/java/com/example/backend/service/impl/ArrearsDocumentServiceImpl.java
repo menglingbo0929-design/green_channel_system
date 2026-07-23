@@ -1,7 +1,7 @@
 package com.example.backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.example.backend.approval.port.ArrearsDocumentService;
+import com.example.backend.service.ArrearsDocumentService;
 import com.example.backend.mapper.ArrearsConfirmationMapper;
 import com.example.backend.model.domain.ArrearsConfirmation;
 import lombok.RequiredArgsConstructor;
