@@ -62,6 +62,32 @@ class DefaultSystemMessageServiceTest {
     }
 
     @Test
+    void sendsProgressMessageForApplication() {
+        service.sendApprovalProgress(7L, 10L, "您的申请已提交学院审核。");
+
+        ArgumentCaptor<SystemMessageEntity> captor = ArgumentCaptor.forClass(SystemMessageEntity.class);
+        verify(systemMessageMapper).insert(captor.capture());
+        SystemMessageEntity message = captor.getValue();
+        assertEquals(7L, message.getReceiverUserId());
+        assertEquals(MessageType.APPROVAL_APPROVED, message.getMessageType());
+        assertEquals("申请审核进度更新", message.getTitle());
+        assertEquals("您的申请已提交学院审核。", message.getContent());
+    }
+
+    @Test
+    void sendsPendingTaskMessageForReviewer() {
+        service.sendApprovalTask(8L, 10L, "有一条学生申请等待学院审核。");
+
+        ArgumentCaptor<SystemMessageEntity> captor = ArgumentCaptor.forClass(SystemMessageEntity.class);
+        verify(systemMessageMapper).insert(captor.capture());
+        SystemMessageEntity message = captor.getValue();
+        assertEquals(8L, message.getReceiverUserId());
+        assertEquals(MessageType.APPROVAL_PENDING, message.getMessageType());
+        assertEquals("新的待审核申请", message.getTitle());
+        assertEquals("有一条学生申请等待学院审核。", message.getContent());
+    }
+
+    @Test
     void listsReadFilteredMessagesWithContractPagination() {
         SystemMessageEntity entity = SystemMessageEntity.builder()
                 .id(1L)
