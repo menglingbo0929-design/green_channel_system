@@ -120,4 +120,18 @@ export const classAPI = {
   toggle: (id)             => api.put(`/class/${id}/status`)
 }
 
+// 学院管理员-学院关联
+export const collegeScopeAPI = {
+  list: () => api.get('/college-scope/list'),
+  add: (userId, collegeId) => api.post('/college-scope', null, { params: { userId, collegeId } }),
+  remove: (id) => api.delete(`/college-scope/${id}`)
+}
+
+// 辅导员-学生关联
+export const counselorScopeAPI = {
+  list: () => api.get('/counselor-scope/list'),
+  add: (counselorUserId, studentId) => api.post('/counselor-scope', null, { params: { counselorUserId, studentId } }),
+  remove: (id) => api.delete(`/counselor-scope/${id}`)
+}
+
 export default api

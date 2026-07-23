@@ -40,4 +40,6 @@ public class StudentApplicationProfile {
     private String difficultyLevel;
     /** 信息是否完善：0=否 1=是 */
     private Integer infoComplete;
+    /** 辅导员用户ID */
+    private Long counselorId;
 }

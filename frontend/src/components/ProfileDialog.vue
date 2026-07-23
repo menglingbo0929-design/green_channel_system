@@ -12,10 +12,14 @@
       </el-form-item>
       <el-form-item label="困难等级">
         <el-select v-model="form.difficultyLevel" placeholder="请选择" clearable>
-          <el-option label="特别困难" value="SPECIAL_DIFFICULTY" />
-          <el-option label="困难" value="DIFFICULTY" />
-          <el-option label="一般困难" value="GENERAL_DIFFICULTY" />
-          <el-option label="不困难" value="NONE" />
+          <el-option label="特别困难" value="特别困难" />
+          <el-option label="困难" value="困难" />
+          <el-option label="一般困难" value="一般困难" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="辅导员">
+        <el-select v-model="form.counselorId" placeholder="请选择辅导员" clearable filterable>
+          <el-option v-for="c in counselors" :key="c.id" :label="c.loginName" :value="c.id" />
         </el-select>
       </el-form-item>
     </el-form>
@@ -38,16 +42,19 @@ const emit = defineEmits(['update:modelValue', 'done'])
 const visible = ref(false)
 const saving = ref(false)
 
-const form = reactive({ phone: '', originLoan: 0, campusLoan: 0, difficultyLevel: '' })
-const difficultyCode = {
-  特别困难: 'SPECIAL_DIFFICULTY',
-  困难: 'DIFFICULTY',
-  一般困难: 'GENERAL_DIFFICULTY',
-  不困难: 'NONE'
+const form = reactive({ phone: '', originLoan: 0, campusLoan: 0, difficultyLevel: '', counselorId: null })
+const counselors = ref([])
+
+async function loadCounselors() {
+  try {
+    const res = await axios.get('/api/counselors', { headers: auth() })
+    counselors.value = res.data.data || []
+  } catch { /* ignore */ }
 }
 
 watch(() => props.modelValue, async (val) => {
   if (val) {
+    loadCounselors()
     try {
       const res = await axios.get('/api/student/profile', { headers: auth() })
       const d = res.data.data
@@ -55,7 +62,8 @@ watch(() => props.modelValue, async (val) => {
         form.phone = d.phone || ''
         form.originLoan = d.originLoan || 0
         form.campusLoan = d.campusLoan || 0
-        form.difficultyLevel = difficultyCode[d.difficultyLevel] || d.difficultyLevel || ''
+        form.difficultyLevel = d.difficultyLevel || ''
+        form.counselorId = d.counselorId || null
       }
     } catch { /* ignore */ }
     visible.value = true

@@ -129,6 +129,11 @@ public class StudentController {
         s.setDifficultyLevel(request.normalizedDifficultyLevel());
         s.setInfoComplete(1);
         s.setUpdateTime(LocalDateTime.now());
+        // 辅导员关联
+        if (request.counselorId() != null) {
+            s.setCounselorId(request.counselorId());
+            try { counselorStudents.assign(request.counselorId(), studentId); } catch (Exception ignored) {}
+        }
         studentMapper.updateById(s);
         return JsonResponse.successMessage("保存成功");
     }

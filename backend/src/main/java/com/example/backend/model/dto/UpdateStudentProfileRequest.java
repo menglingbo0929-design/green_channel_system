@@ -21,7 +21,8 @@ public record UpdateStudentProfileRequest(
                 regexp = "^$|SPECIAL_DIFFICULTY|DIFFICULTY|GENERAL_DIFFICULTY|NONE|特别困难|困难|一般困难|不困难",
                 message = "困难等级取值无效"
         )
-        String difficultyLevel
+        String difficultyLevel,
+        Long counselorId
 ) {
     /** 兼容历史中文值和旧版客户端，数据库统一保存稳定的枚举编码。 */
     public String normalizedDifficultyLevel() {
