@@ -132,7 +132,15 @@ async function openDetail(row) {
 }
 
 function openReview(application) {
-  reviewTarget.value = application
+  // 列表行自带 version，但从详情抽屉发起审核时版本号位于
+  // detail.version。统一补齐，避免审核请求携带 null 版本号。
+  const detailVersion = detail.value?.application?.applicationId === application?.applicationId
+    ? detail.value.version
+    : null
+  reviewTarget.value = {
+    ...application,
+    version: application?.version ?? detailVersion,
+  }
   reviewOpen.value = true
 }
 
