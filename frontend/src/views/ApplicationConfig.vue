@@ -99,6 +99,8 @@ onMounted(loadData)
 .config-tabs :deep(.el-tabs__item:nth-child(1)),.config-tabs :deep(.el-tabs__item:nth-child(3)),.config-tabs :deep(.el-tabs__item:nth-child(5)) { font-size:0; }
 .config-tabs :deep(.el-tabs__item:nth-child(1)::after) { content:'批次管理'; font-size:14px; }.config-tabs :deep(.el-tabs__item:nth-child(3)::after) { content:'基础与政策'; font-size:14px; }.config-tabs :deep(.el-tabs__item:nth-child(5)::after) { content:'申请资源'; font-size:14px; }
 .config-tabs:has(:deep(.el-tabs__item:nth-child(1).is-active)) :deep(.el-tab-pane:nth-child(2)),.config-tabs:has(:deep(.el-tabs__item:nth-child(3).is-active)) :deep(.el-tab-pane:nth-child(4)),.config-tabs:has(:deep(.el-tabs__item:nth-child(5).is-active)) :deep(.el-tab-pane:nth-child(6)) { display:block !important; margin-top:28px; padding-top:24px; border-top:1px solid #e5e7eb; }
+/* 欠费金额改为学生按实际情况填写，不再暴露维护成本高且易造成误解的预设金额档位。旧数据暂保留，确保历史申请可追溯。 */
+.config-tabs :deep(.el-tab-pane:nth-child(4) > .config-toolbar .el-button:first-child),.config-tabs :deep(.el-tab-pane:nth-child(4) > .subsection-title),.config-tabs :deep(.el-tab-pane:nth-child(4) > .subsection-title + .el-table) { display:none; }
 /* 所有配置表的最后一列均为操作列：覆盖全局按钮最小宽度，避免编辑/删除被挤成两行。 */
 .config-page :deep(.standard-table .el-table__body .el-table__cell:last-child .cell) { display: flex; align-items: center; justify-content: center; gap: 8px; overflow: visible; }
 .config-page :deep(.standard-table .el-table__body .el-table__cell:last-child .el-button) { min-width: 48px; height: 28px; margin-left: 0; padding: 0 6px; }
