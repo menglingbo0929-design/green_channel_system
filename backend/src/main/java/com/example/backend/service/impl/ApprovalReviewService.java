@@ -176,13 +176,15 @@ public class ApprovalReviewService {
 
     private ApplicationStatus targetStatus(ApplicationStatus current, ReviewCommand command) {
         return switch (command.action()) {
-            case APPROVE -> {
-                if (command.level() == ApprovalRecordLevel.SCHOOL) {
+            case APPROVE -> switch (command.level()) {
+                case COUNSELOR -> ApplicationStatus.COLLEGE_PENDING;
+                case COLLEGE -> ApplicationStatus.SCHOOL_PENDING;
+                case SCHOOL -> {
                     boolean hasArrears = requireDetailService().containsArrears(command.applicationId());
                     yield hasArrears ? ApplicationStatus.CONFIRM_PENDING : ApplicationStatus.APPROVED;
                 }
-                yield current;
-            }
+                default -> throw new ApprovalException(ApprovalErrorCode.APPROVAL_INVALID_STATUS, "当前层级不支持审核通过");
+            };
             case RETURN -> switch (command.level()) {
                 case COUNSELOR -> ApplicationStatus.COUNSELOR_RETURNED;
                 case COLLEGE -> ApplicationStatus.COLLEGE_RETURNED;

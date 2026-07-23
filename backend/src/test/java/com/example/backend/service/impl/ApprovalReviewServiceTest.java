@@ -70,6 +70,7 @@ class ApprovalReviewServiceTest {
         scopeService = mock(StudentScopeService.class);
         when(records.findByRequestId(anyString())).thenReturn(Optional.empty());
         when(query.getRequiredState(10L)).thenReturn(snapshot());
+        when(writer.updateState(any(), any(), any(), any(), any(), any())).thenReturn(snapshotAtCollegePending());
         when(scopeService.isCounselorResponsibleFor(99L, 20L)).thenReturn(true);
         service = new ApprovalReviewService(
                 query, writer, records, resources, details, recipients, messages, scopeService, editService
@@ -77,33 +78,30 @@ class ApprovalReviewServiceTest {
     }
 
     @Test
-    void counselorApprovalWritesDecisionWithoutAdvancingState() {
+    void counselorApprovalAdvancesApplicationToCollegeReview() {
         var result = service.review(
                 counselor(), 10L, command(ApprovalAction.APPROVE, "材料完整", "review-10")
         );
 
-        assertEquals(ApplicationStatus.COUNSELOR_PENDING, result.status());
-        assertEquals(3, result.version());
+        assertEquals(ApplicationStatus.COLLEGE_PENDING, result.status());
+        assertEquals(4, result.version());
         ArgumentCaptor<ApprovalRecordEntity> captor = ArgumentCaptor.forClass(ApprovalRecordEntity.class);
         verify(records).insert(captor.capture());
         assertEquals(ApprovalAction.APPROVE, captor.getValue().getAction());
-        assertEquals(ApplicationStatus.COUNSELOR_PENDING, captor.getValue().getNewStatus());
-        verify(writer, never()).updateState(
-                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()
-        );
+        assertEquals(ApplicationStatus.COLLEGE_PENDING, captor.getValue().getNewStatus());
+        verify(writer).updateState(10L, ApplicationStatus.COUNSELOR_PENDING,
+                ApplicationStatus.COLLEGE_PENDING, ApprovalLevel.COLLEGE, 3, 99L);
     }
 
     @Test
-    void repeatedApprovalWithoutStateChangeReturnsTheOriginalVersion() {
+    void repeatedApprovalReturnsTheAlreadyAdvancedVersion() {
         ApprovalRecordEntity previous = ApprovalRecordEntity.builder()
                 .applicationId(10L)
                 .reviewRound(1)
                 .approvalLevel(ApprovalRecordLevel.COUNSELOR)
                 .action(ApprovalAction.APPROVE)
                 .oldStatus(ApplicationStatus.COUNSELOR_PENDING)
-                .newStatus(ApplicationStatus.COUNSELOR_PENDING)
+                .newStatus(ApplicationStatus.COLLEGE_PENDING)
                 .requestId("same-review")
                 .build();
         when(records.findByRequestId("same-review")).thenReturn(Optional.of(previous));
@@ -112,7 +110,7 @@ class ApprovalReviewServiceTest {
                 counselor(), 10L, command(ApprovalAction.APPROVE, "材料完整", "same-review")
         );
 
-        assertEquals(3, result.version());
+        assertEquals(4, result.version());
         verify(query, never()).getRequiredState(any());
         verify(records, never()).insert(any());
     }
@@ -232,6 +230,14 @@ class ApprovalReviewServiceTest {
         return new ApplicationStateSnapshot(
                 state.applicationId(), state.studentId(), state.batchType(), state.batchId(), state.applicationType(),
                 state.status(), state.currentLevel(), state.reviewRound(), version
+        );
+    }
+
+    private ApplicationStateSnapshot snapshotAtCollegePending() {
+        ApplicationStateSnapshot state = snapshot();
+        return new ApplicationStateSnapshot(
+                state.applicationId(), state.studentId(), state.batchType(), state.batchId(), state.applicationType(),
+                ApplicationStatus.COLLEGE_PENDING, ApprovalLevel.COLLEGE, state.reviewRound(), state.version() + 1
         );
     }
 }

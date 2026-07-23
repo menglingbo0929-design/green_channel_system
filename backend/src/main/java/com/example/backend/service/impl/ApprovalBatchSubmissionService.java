@@ -359,7 +359,9 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
             return false;
         }
         if (level == SubmissionLevel.COUNSELOR) {
-            return batch.applicationDeadline() != null && now.isAfter(batch.applicationDeadline());
+            // 辅导员审核完成后即可上报学院；学生申请截止日只限制学生新建/提交，
+            // 不能阻塞已经审核通过的申请继续流转。
+            return true;
         }
         return batch.collegeDeadline() != null && !now.isAfter(batch.collegeDeadline());
     }
