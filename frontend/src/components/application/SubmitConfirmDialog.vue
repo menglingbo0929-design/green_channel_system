@@ -10,8 +10,8 @@ const emit = defineEmits(['update:modelValue', 'confirm'])
 
 <template>
   <el-dialog :model-value="modelValue" title="提交申请确认" width="520px" class="business-dialog" @update:model-value="emit('update:modelValue', $event)">
-    <el-alert v-if="!available" type="warning" :closable="false" show-icon title="正式提交接口尚未接入">
-      当前仅支持保存草稿和维护欠费明细。提交动作将等待成员一的身份/批次服务与成员三的审核流转服务完成联调后开放。
+    <el-alert v-if="!available" type="warning" :closable="false" show-icon title="当前申请暂不满足提交条件">
+      请确认申请明细与证明附件已完整保存，然后刷新申请状态再提交。
     </el-alert>
     <template v-else>
       <p class="dialog-tip">提交后申请将进入审核流程，草稿内容不能再由学生直接修改。</p>

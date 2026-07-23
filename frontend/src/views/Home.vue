@@ -76,7 +76,7 @@ const quickLinks = computed(() => {
     { key: 'my-apply',  label: '我的申请',     path: '/my-apply',         icon: Document,      roles: ['STUDENT'] },
     { key: 'counselor', label: '辅导员审核',   path: '/counselor-review',  icon: CircleCheck,  roles: ['COUNSELOR'] },
     { key: 'college',   label: '学院审核',     path: '/college-review',    icon: Flag,         roles: ['COLLEGE'] },
-    { key: 'school',    label: '学校审核',     path: '/school-review',     icon: CircleCheck,  roles: ['SCHOOL'] },
+    { key: 'school',    label: '业务处理',     path: '/member4/school-business?tab=review', icon: CircleCheck, roles: ['SCHOOL'] },
     { key: 'stats',     label: '统计报表',     path: '/stats',             icon: TrendCharts,  roles: ['SCHOOL'] },
     { key: 'base-data', label: '基础数据',     path: '/base-data',         icon: DataBoard,    roles: ['SCHOOL'] },
     { key: 'policy',    label: '政策与说明',   path: '/policy',            icon: InfoFilled,   roles: ['STUDENT','COUNSELOR','COLLEGE','SCHOOL'] }

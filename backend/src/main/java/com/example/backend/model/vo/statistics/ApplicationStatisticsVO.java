@@ -14,7 +14,7 @@ import java.util.List;
  */
 @Data
 public class ApplicationStatisticsVO {
-    /** APPROVED 与 COMPLETED 中按 studentId 去重后的申请总人数。 */
+    /** v4 口径三种状态中按 studentId 去重后的申请总人数。 */
     private Long finalApplicantCount = 0L;
     /** COMPLETED 中按 studentId 去重后的实报人数。 */
     private Long completedStudentCount = 0L;

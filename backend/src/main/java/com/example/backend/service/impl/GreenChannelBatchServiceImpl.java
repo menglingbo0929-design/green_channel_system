@@ -2,8 +2,10 @@ package com.example.backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.backend.mapper.BatchEligibleGradeMapper;
+import com.example.backend.mapper.BatchFundingSourceMapper;
 import com.example.backend.mapper.GreenChannelBatchMapper;
 import com.example.backend.model.domain.BatchEligibleGrade;
+import com.example.backend.model.domain.BatchFundingSource;
 import com.example.backend.model.domain.GreenChannelBatch;
 import com.example.backend.model.dto.BatchVO;
 import com.example.backend.model.dto.CreateBatchRequest;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,24 +25,26 @@ public class GreenChannelBatchServiceImpl implements GreenChannelBatchService {
 
     private final GreenChannelBatchMapper batchMapper;
     private final BatchEligibleGradeMapper eligibleGradeMapper;
+    private final BatchFundingSourceMapper fundingSourceMapper;
 
     @Override
     @Transactional
     public BatchVO create(CreateBatchRequest req) {
+        validateBatchTimes(req.getStartTime(), req.getEndTime(), req.getCollegeDeadline());
         GreenChannelBatch batch = new GreenChannelBatch();
         batch.setBatchCode(req.getBatchCode());
         batch.setBatchName(req.getBatchName());
+        batch.setAcademicYear(req.getAcademicYear());
         batch.setStartTime(req.getStartTime());
         batch.setEndTime(req.getEndTime());
         batch.setCollegeDeadline(req.getCollegeDeadline());
-        batch.setStatus("DRAFT");
+        batch.setStatus(req.getStatus() == null ? "DRAFT" : req.getStatus());
         batch.setEnabled(1);
         batch.setRemark(req.getRemark());
         batchMapper.insert(batch);
 
-        if (req.getEligibleGradeIds() != null) {
-            saveGrades(batch.getId(), req.getEligibleGradeIds());
-        }
+        saveGrades(batch.getId(), req.getEligibleGradeIds());
+        saveFundingSources(batch.getId(), req.getFundingSourceCodes());
         return toVO(batch);
     }
 
@@ -51,15 +56,17 @@ public class GreenChannelBatchServiceImpl implements GreenChannelBatchService {
             throw new IllegalArgumentException("批次不存在");
         }
         batch.setBatchName(req.getBatchName());
+        batch.setAcademicYear(req.getAcademicYear());
         batch.setStartTime(req.getStartTime());
         batch.setEndTime(req.getEndTime());
         batch.setCollegeDeadline(req.getCollegeDeadline());
         batch.setRemark(req.getRemark());
+        if (req.getStatus() != null) batch.setStatus(req.getStatus());
+        validateBatchTimes(batch.getStartTime(), batch.getEndTime(), batch.getCollegeDeadline());
         batchMapper.updateById(batch);
 
-        if (req.getEligibleGradeIds() != null) {
-            saveGrades(id, req.getEligibleGradeIds());
-        }
+        saveGrades(id, req.getEligibleGradeIds());
+        saveFundingSources(id, req.getFundingSourceCodes());
         return toVO(batch);
     }
 
@@ -106,11 +113,41 @@ public class GreenChannelBatchServiceImpl implements GreenChannelBatchService {
         eligibleGradeMapper.delete(
                 new LambdaQueryWrapper<BatchEligibleGrade>()
                         .eq(BatchEligibleGrade::getBatchId, batchId));
-        for (Long gradeId : gradeIds) {
+        if (gradeIds == null) return;
+        for (Long gradeId : new LinkedHashSet<>(gradeIds)) {
+            if (gradeId == null || gradeId <= 0) continue;
             BatchEligibleGrade eg = new BatchEligibleGrade();
             eg.setBatchId(batchId);
             eg.setGradeId(gradeId);
             eligibleGradeMapper.insert(eg);
+        }
+    }
+
+    private void saveFundingSources(Long batchId, List<String> sourceCodes) {
+        fundingSourceMapper.delete(new LambdaQueryWrapper<BatchFundingSource>()
+                .eq(BatchFundingSource::getBatchId, batchId));
+        if (sourceCodes == null) return;
+        sourceCodes.stream()
+                .filter(code -> code != null && !code.isBlank())
+                .map(String::trim)
+                .map(String::toUpperCase)
+                .distinct()
+                .forEach(code -> {
+                    BatchFundingSource source = new BatchFundingSource();
+                    source.setBatchId(batchId);
+                    source.setSourceCode(code);
+                    fundingSourceMapper.insert(source);
+                });
+    }
+
+    private void validateBatchTimes(java.time.LocalDateTime startTime,
+                                    java.time.LocalDateTime endTime,
+                                    java.time.LocalDateTime collegeDeadline) {
+        if (!startTime.isBefore(endTime)) {
+            throw new IllegalArgumentException("申请开始时间必须早于申请截止时间");
+        }
+        if (collegeDeadline.isBefore(endTime)) {
+            throw new IllegalArgumentException("学院上报截止时间不得早于学生申请截止时间");
         }
     }
 
@@ -120,11 +157,18 @@ public class GreenChannelBatchServiceImpl implements GreenChannelBatchService {
                         .eq(BatchEligibleGrade::getBatchId, b.getId()))
                 .stream().map(BatchEligibleGrade::getGradeId)
                 .collect(Collectors.toList());
+        List<String> fundingSourceCodes = fundingSourceMapper.selectList(
+                        new LambdaQueryWrapper<BatchFundingSource>()
+                                .eq(BatchFundingSource::getBatchId, b.getId())
+                                .orderByAsc(BatchFundingSource::getId))
+                .stream().map(BatchFundingSource::getSourceCode)
+                .toList();
 
         return BatchVO.builder()
                 .id(b.getId())
                 .batchCode(b.getBatchCode())
                 .batchName(b.getBatchName())
+                .academicYear(b.getAcademicYear())
                 .startTime(b.getStartTime())
                 .endTime(b.getEndTime())
                 .collegeDeadline(b.getCollegeDeadline())
@@ -132,6 +176,7 @@ public class GreenChannelBatchServiceImpl implements GreenChannelBatchService {
                 .enabled(b.getEnabled())
                 .remark(b.getRemark())
                 .eligibleGradeIds(gradeIds)
+                .fundingSourceCodes(fundingSourceCodes)
                 .createTime(b.getCreateTime())
                 .build();
     }

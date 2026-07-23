@@ -10,8 +10,6 @@ import com.example.backend.service.port.StatisticsReportQueryPort;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
@@ -31,16 +29,10 @@ class StatisticsReportServiceImplTest {
 
     private final StatisticsReportQueryPort reportPort = mock(StatisticsReportQueryPort.class);
     private final StatisticsAccessPort accessPort = mock(StatisticsAccessPort.class);
-    private final ObjectProvider<StatisticsReportQueryPort> reportProvider = mock(ObjectProvider.class);
-    private final ObjectProvider<StatisticsAccessPort> accessProvider = mock(ObjectProvider.class);
-    private final StatisticsReportServiceImpl service = new StatisticsReportServiceImpl();
+    private final StatisticsReportServiceImpl service = new StatisticsReportServiceImpl(reportPort, accessPort);
 
     @BeforeEach
     void setUp() {
-        when(reportProvider.getObject()).thenReturn(reportPort);
-        when(accessProvider.getObject()).thenReturn(accessPort);
-        ReflectionTestUtils.setField(service, "reportQueryPortProvider", reportProvider);
-        ReflectionTestUtils.setField(service, "statisticsAccessPortProvider", accessProvider);
     }
 
     @Test

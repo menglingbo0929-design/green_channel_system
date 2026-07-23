@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.model.dto.statistics.StatisticsReportQueryDTO;
 import com.example.backend.model.vo.statistics.StatisticsReportRowVO;
 import com.example.backend.service.port.StatisticsReportQueryPort;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -21,6 +21,7 @@ import java.util.Map;
  * 子查询中聚合，避免主表行被重复后导致分页总数和金额错误。</p>
  */
 @Component
+@RequiredArgsConstructor
 public class StatisticsReportQueryPortAdapter implements StatisticsReportQueryPort {
 
     /** 页面可用的排序 key 到固定 SQL 列的映射，不直接拼接前端传入的字符串。 */
@@ -44,8 +45,7 @@ public class StatisticsReportQueryPortAdapter implements StatisticsReportQueryPo
         SORT_COLUMNS.put("completionTime", "a.update_time");
     }
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     /** 按页面筛选条件返回最终状态申请的真实分页明细。 */
     @Override

@@ -9,8 +9,7 @@ import com.example.backend.model.vo.supplement.SupplementApplicationVO;
 import com.example.backend.service.ISupplementApplicationService;
 import com.example.backend.service.port.SchoolProxyStudentQueryPort;
 import com.example.backend.service.port.SupplementApplicationPort;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,18 +22,14 @@ import java.util.ArrayList;
  * 组装最终结果。请求的基础必填项继续由 DTO 注解校验，Service 不再包装异常。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class SupplementApplicationServiceImpl implements ISupplementApplicationService {
-
-    @Autowired
-    private ObjectProvider<SchoolProxyStudentQueryPort> studentPortProvider;
-
-    @Autowired
-    private ObjectProvider<SupplementApplicationPort> applicationPortProvider;
+    private final SchoolProxyStudentQueryPort studentPort;
+    private final SupplementApplicationPort applicationPort;
 
     @Override
     public SchoolProxyStudentVO findStudent(String studentNo, Long operatorUserId) {
-        return studentPortProvider.getObject()
-                .findEnabledStudentByStudentNo(studentNo);
+        return studentPort.findEnabledStudentByStudentNo(studentNo);
     }
 
     @Override
@@ -44,8 +39,7 @@ public class SupplementApplicationServiceImpl implements ISupplementApplicationS
             Long operatorUserId
     ) {
         PageDTO actualPage = page == null ? new PageDTO() : page;
-        return applicationPortProvider.getObject()
-                .findSupplementPage(query, actualPage, operatorUserId);
+        return applicationPort.findSupplementPage(query, actualPage, operatorUserId);
     }
 
     @Override
@@ -53,8 +47,7 @@ public class SupplementApplicationServiceImpl implements ISupplementApplicationS
             Long applicationId,
             Long operatorUserId
     ) {
-        return applicationPortProvider.getObject()
-                .findSupplementById(applicationId, operatorUserId);
+        return applicationPort.findSupplementById(applicationId, operatorUserId);
     }
 
     @Override
@@ -70,8 +63,7 @@ public class SupplementApplicationServiceImpl implements ISupplementApplicationS
             request.setGiftItems(new ArrayList<>());
         }
 
-        SchoolProxyStudentVO student = studentPortProvider.getObject()
-                .findEnabledStudentByStudentNo(request.getStudentNo());
+        SchoolProxyStudentVO student = studentPort.findEnabledStudentByStudentNo(request.getStudentNo());
         String batchType = "GREEN_CHANNEL".equals(request.getApplicationType())
                 ? "GREEN_CHANNEL"
                 : "SUBSIDY";
@@ -80,7 +72,6 @@ public class SupplementApplicationServiceImpl implements ISupplementApplicationS
          * 自动审核桥接和最终状态回写；成员四这里仅负责调用，不再二次调用成员三，
          * 避免同一补录申请重复推进审核状态。
          */
-        return applicationPortProvider.getObject()
-                .createSupplementDraft(request, student, batchType, operatorUserId);
+        return applicationPort.createSupplementDraft(request, student, batchType, operatorUserId);
     }
 }

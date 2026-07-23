@@ -10,7 +10,7 @@ import com.example.backend.model.vo.confirmation.PendingArrearsApplicationVO;
 import com.example.backend.security.ICurrentUserProvider;
 import com.example.backend.service.IArrearsConfirmationService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,13 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 /** School-side arrears confirmation endpoints protected by the JWT user context. */
 @RestController
 @RequestMapping("/api/confirm")
+@RequiredArgsConstructor
 public class ArrearsConfirmationController {
-
-    @Autowired
-    private IArrearsConfirmationService arrearsConfirmationService;
-
-    @Autowired
-    private ICurrentUserProvider currentUserProvider;
+    private final IArrearsConfirmationService arrearsConfirmationService;
+    private final ICurrentUserProvider currentUserProvider;
 
     @GetMapping("/list")
     public JsonResponse<Page<PendingArrearsApplicationVO>> listPending(

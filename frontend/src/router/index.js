@@ -21,7 +21,7 @@ const routes = [
     path: '/member4/school-business',
     name: 'MemberFourSchoolBusiness',
     component: () => import('../views/school/SchoolBusinessProcessing.vue'),
-    meta: { title: '学校业务处理页', roles: ['SCHOOL'] }
+    meta: { title: '学校业务处理页', role: 'SCHOOL', roles: ['SCHOOL'] }
   },
   {
     path: '/member4/statistics-dashboard',
@@ -36,7 +36,7 @@ const routes = [
       { path: '', redirect: '/home' },
       { path: 'home', name: 'Home', component: Home, meta: { title: '首页' } },
       { path: 'student-center', name: 'StudentCenter', component: StudentApplicationCenter, meta: { title: '学生申请中心', roles: ['STUDENT'] } },
-      { path: 'application-config', name: 'ApplicationConfig', component: ApplicationConfig, meta: { title: '批次与申请配置', roles: ['SCHOOL', 'COLLEGE'] } },
+      { path: 'application-config', name: 'ApplicationConfig', component: ApplicationConfig, meta: { title: '绿色通道信息设置', roles: ['SCHOOL', 'COLLEGE'] } },
       {
         path: 'my-apply',
         alias: '/student/applications',
@@ -62,7 +62,7 @@ const routes = [
         path: 'school-review',
         alias: '/school/approvals',
         name: 'SchoolReview',
-        component: ApprovalWorkbench,
+        redirect: { path: '/member4/school-business', query: { tab: 'review' } },
         meta: { title: '学校审核', role: 'SCHOOL', roles: ['SCHOOL'], menuKey: 'APPROVAL' }
       },
       { path: 'school-process', name: 'SchoolProcess', redirect: '/member4/school-business', meta: { title: '学校业务处理', roles: ['SCHOOL'] } },

@@ -8,21 +8,19 @@ import com.example.backend.model.vo.schoolproxy.SchoolProxyStudentVO;
 import com.example.backend.security.ICurrentUserProvider;
 import com.example.backend.service.ISchoolProxyApplicationService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 /** 6.1.3 学校代申请 Controller：查学生、建草稿、传附件、正式提交。 */
 @RestController
 @RequestMapping("/api/school-proxy")
+@RequiredArgsConstructor
 public class SchoolProxyApplicationController {
-
-    @Autowired
-    private ISchoolProxyApplicationService service;
+    private final ISchoolProxyApplicationService service;
 
     /** 操作人统一取自成员一登录模块写入的 JWT 上下文。 */
-    @Autowired
-    private ICurrentUserProvider currentUserProvider;
+    private final ICurrentUserProvider currentUserProvider;
 
     @GetMapping("/students")
     public JsonResponse<SchoolProxyStudentVO> findStudent(@RequestParam String studentNo) { requireSchoolUser(); return JsonResponse.success(service.findStudent(studentNo)); }

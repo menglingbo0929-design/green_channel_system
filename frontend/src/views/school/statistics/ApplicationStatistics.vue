@@ -41,7 +41,7 @@ onMounted(loadStatistics)
     <header>
       <p class="eyebrow">成员四 · 统计联调示意页</p>
       <h1>申请统计</h1>
-      <p>只统计最终审核通过（APPROVED）或已完成（COMPLETED）的真实数据。</p>
+      <p>按 v4 口径统计审核通过（APPROVED）、待欠费确认（CONFIRM_PENDING）和已完成（COMPLETED）的真实数据。</p>
     </header>
 
     <p class="dependency-note">当前须同时具备成员一学校权限与成员二集合统计服务，演示前须完成合入；页面不展示模拟统计数字。</p>
@@ -54,7 +54,7 @@ onMounted(loadStatistics)
       <label>年级 ID<input v-model="filter.gradeId" type="number" min="1" /></label>
       <label>班级 ID<input v-model="filter.classId" type="number" min="1" /></label>
       <label>申请类型<select v-model="filter.applicationType"><option value="">全部</option><option value="GREEN_CHANNEL">绿色通道</option><option value="LIVING_SUBSIDY">生活补助</option><option value="TRAVEL_SUBSIDY">路费补助</option></select></label>
-      <label>最终状态<select v-model="filter.applicationStatus"><option value="">APPROVED + COMPLETED</option><option value="APPROVED">APPROVED</option><option value="COMPLETED">COMPLETED</option></select></label>
+      <label>统计状态<select v-model="filter.applicationStatus"><option value="">APPROVED + CONFIRM_PENDING + COMPLETED</option><option value="APPROVED">APPROVED</option><option value="CONFIRM_PENDING">CONFIRM_PENDING</option><option value="COMPLETED">COMPLETED</option></select></label>
       <label>欠费项目 ID<input v-model="filter.feeItemId" type="number" min="1" /></label>
       <label>申请开始时间<input v-model="filter.applicationStartTime" type="datetime-local" /></label>
       <label>申请结束时间<input v-model="filter.applicationEndTime" type="datetime-local" /></label>

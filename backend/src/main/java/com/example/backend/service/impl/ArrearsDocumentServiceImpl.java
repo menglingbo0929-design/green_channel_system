@@ -1,10 +1,10 @@
 package com.example.backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.example.backend.approval.port.ArrearsDocumentService;
+import com.example.backend.service.ArrearsDocumentService;
 import com.example.backend.mapper.ArrearsConfirmationMapper;
 import com.example.backend.model.domain.ArrearsConfirmation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +19,11 @@ import java.time.LocalDateTime;
  * 标记为逻辑作废，不物理删除记录。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class ArrearsDocumentServiceImpl implements ArrearsDocumentService {
 
     /** 成员四确认表 Mapper，只访问本模块拥有的单据记录。 */
-    @Autowired
-    private ArrearsConfirmationMapper arrearsConfirmationMapper;
+    private final ArrearsConfirmationMapper arrearsConfirmationMapper;
 
     /**
      * 当前确认表没有“线下领取/发放已完成”的持久化字段或外部履约模块。

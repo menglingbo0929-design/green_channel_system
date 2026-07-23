@@ -13,6 +13,7 @@ public class SubsidyBatch {
 
     @TableField("batch_code")  private String batchCode;
     @TableField("batch_name")  private String batchName;
+    @TableField("academic_year") private String academicYear;
     @TableField("batch_type")  private String batchType;
     @TableField("start_time")  private LocalDateTime startTime;
     @TableField("end_time")    private LocalDateTime endTime;

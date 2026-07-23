@@ -1,6 +1,6 @@
 package com.example.backend.service.impl;
 
-import com.example.backend.approval.port.ApprovalMessageRecipientResolver;
+import com.example.backend.service.ApprovalMessageRecipientResolver;
 import com.example.backend.mapper.StudentMapper;
 import com.example.backend.model.domain.Student;
 import lombok.RequiredArgsConstructor;

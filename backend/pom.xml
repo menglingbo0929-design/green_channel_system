@@ -125,7 +125,7 @@
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Apache POI — Excel 读写 -->
+        <!-- Apache POI：成员四 6.1.7 生成真正的 xlsx 统计报表；只追加依赖，不改已有版本。 -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>

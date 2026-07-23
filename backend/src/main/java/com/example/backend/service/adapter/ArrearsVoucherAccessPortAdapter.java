@@ -1,7 +1,7 @@
 package com.example.backend.service.adapter;
 
 import com.example.backend.service.port.ArrearsVoucherAccessPort;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Component;
@@ -18,10 +18,9 @@ import java.util.stream.Collectors;
  * 页面不再自行传入可信角色或确认人名称。</p>
  */
 @Component
+@RequiredArgsConstructor
 public class ArrearsVoucherAccessPortAdapter implements ArrearsVoucherAccessPort {
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     /** 确认当前操作用户具有 SCHOOL 角色。 */
     @Override

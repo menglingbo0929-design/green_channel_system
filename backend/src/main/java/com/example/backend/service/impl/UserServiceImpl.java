@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.example.backend.mapper.UserMapper;
 import com.example.backend.mapper.UserRoleMapper;
 import com.example.backend.model.domain.User;
-import com.example.backend.model.domain.UserRole;
+import com.example.backend.model.domain.UserRoleRelation;
 import com.example.backend.model.dto.UserVO;
 import com.example.backend.service.IUserService;
 import lombok.RequiredArgsConstructor;
@@ -48,9 +48,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return users.stream().map(user -> {
             List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
             List<Long> roleIds = userRoleMapper.selectList(
-                new LambdaQueryWrapper<UserRole>()
-                    .eq(UserRole::getUserId, user.getId())
-            ).stream().map(UserRole::getRoleId).collect(Collectors.toList());
+                new LambdaQueryWrapper<UserRoleRelation>()
+                    .eq(UserRoleRelation::getUserId, user.getId())
+            ).stream().map(UserRoleRelation::getRoleId).collect(Collectors.toList());
             return new UserVO(
                 user.getId(), user.getLoginName(), user.getRemark(),
                 roles, roleIds, user.getDeleted(),
@@ -72,7 +72,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         // 分配角色
         for (Long roleId : roleIds) {
-            UserRole ur = new UserRole();
+            UserRoleRelation ur = new UserRoleRelation();
             ur.setUserId(user.getId());
             ur.setRoleId(roleId);
             ur.setCreateTime(LocalDateTime.now());
@@ -92,10 +92,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         userMapper.updateById(user);
 
         // 先删旧角色，再插新角色
-        userRoleMapper.delete(new LambdaQueryWrapper<UserRole>()
-                .eq(UserRole::getUserId, userId));
+        userRoleMapper.delete(new LambdaQueryWrapper<UserRoleRelation>()
+                .eq(UserRoleRelation::getUserId, userId));
         for (Long roleId : roleIds) {
-            UserRole ur = new UserRole();
+            UserRoleRelation ur = new UserRoleRelation();
             ur.setUserId(userId);
             ur.setRoleId(roleId);
             ur.setCreateTime(LocalDateTime.now());

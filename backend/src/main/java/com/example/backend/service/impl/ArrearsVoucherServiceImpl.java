@@ -3,7 +3,7 @@ package com.example.backend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.mapper.ArrearsConfirmationMapper;
-import com.example.backend.application.exception.ApplicationException;
+import com.example.backend.common.exception.ApplicationException;
 import com.example.backend.model.domain.ArrearsConfirmation;
 import com.example.backend.model.dto.PageDTO;
 import com.example.backend.model.dto.voucher.ArrearsVoucherQueryDTO;
@@ -12,8 +12,7 @@ import com.example.backend.model.vo.voucher.ArrearsVoucherVO;
 import com.example.backend.service.IArrearsVoucherService;
 import com.example.backend.service.port.ArrearsVoucherAccessPort;
 import com.example.backend.service.port.ArrearsVoucherApplicantQueryPort;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -31,16 +30,11 @@ import java.util.stream.Collectors;
  * 不在 Service 中增加自定义异常处理。</p>
  */
 @Service
+@RequiredArgsConstructor
 public class ArrearsVoucherServiceImpl implements IArrearsVoucherService {
-
-    @Autowired
-    private ArrearsConfirmationMapper confirmationMapper;
-
-    @Autowired
-    private ObjectProvider<ArrearsVoucherApplicantQueryPort> applicantPort;
-
-    @Autowired
-    private ObjectProvider<ArrearsVoucherAccessPort> accessPort;
+    private final ArrearsConfirmationMapper confirmationMapper;
+    private final ArrearsVoucherApplicantQueryPort applicantPort;
+    private final ArrearsVoucherAccessPort accessPort;
 
     @Override
     public Page<ArrearsVoucherVO> pageForSchool(
@@ -165,11 +159,10 @@ public class ArrearsVoucherServiceImpl implements IArrearsVoucherService {
     private Map<Long, ArrearsVoucherApplicantSnapshot> applicants(
             Collection<Long> applicationIds
     ) {
-        return applicantPort.getObject()
-                .findVoucherApplicantsByApplicationIds(applicationIds);
+        return applicantPort.findVoucherApplicantsByApplicationIds(applicationIds);
     }
 
     private ArrearsVoucherAccessPort access() {
-        return accessPort.getObject();
+        return accessPort;
     }
 }

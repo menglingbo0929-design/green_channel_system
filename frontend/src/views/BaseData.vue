@@ -296,7 +296,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import FormDialog from '../components/FormDialog.vue'
@@ -378,7 +378,7 @@ function handleUpload(e) {
         ElMessageBox.alert(r.errors.slice(0,10).join('<br>'), '跳过详情', { dangerouslyUseHTMLString:true, confirmButtonText:'知道了' })
       }, 800)
     }
-    loadStudents()
+    Promise.all([loadStudents(), loadUsers()])
   }).catch(() => ElMessage.error('导入失败，请检查文件格式'))
   e.target.value = ''  // 清空以便重复选择同一文件
 }
@@ -390,10 +390,11 @@ const stuFormMajors=computed(()=>stuForm.collegeId?majors.value.filter(m=>m.coll
 const stuFormClasses=computed(()=>classes.value.filter(c=>(!stuForm.collegeId||c.collegeId===stuForm.collegeId)&&(!stuForm.gradeId||c.gradeId===stuForm.gradeId)))
 function openStuDialog(row){ stuIsEdit.value=!!row;stuEditId.value=row?.id; if(row){ Object.assign(stuForm,row) }else{ Object.assign(stuForm,{studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null,phone:'',originLoan:0,campusLoan:0,difficultyLevel:''}) } stuDialog.value=true }
 async function onStuCollegeChange(){ stuForm.majorId=null;stuForm.classId=null }
-async function handleStuSave(){ stuSaving.value=true; try{ const data={studentNo:stuForm.studentNo,studentName:stuForm.studentName,collegeId:stuForm.collegeId,majorId:stuForm.majorId,gradeId:stuForm.gradeId,classId:stuForm.classId,phone:stuForm.phone,originLoan:stuForm.originLoan,campusLoan:stuForm.campusLoan,difficultyLevel:stuForm.difficultyLevel}; stuIsEdit.value?await studentAPI.update(stuEditId.value,data):await studentAPI.create(data); ElMessage.success(stuIsEdit.value?'更新成功':'新增成功');stuDialog.value=false;loadStudents() }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ stuSaving.value=false } }
+async function handleStuSave(){ stuSaving.value=true; try{ const data={studentNo:stuForm.studentNo,studentName:stuForm.studentName,collegeId:stuForm.collegeId,majorId:stuForm.majorId,gradeId:stuForm.gradeId,classId:stuForm.classId,phone:stuForm.phone,originLoan:stuForm.originLoan,campusLoan:stuForm.campusLoan,difficultyLevel:stuForm.difficultyLevel}; stuIsEdit.value?await studentAPI.update(stuEditId.value,data):await studentAPI.create(data); ElMessage.success(stuIsEdit.value?'更新成功':'新增成功');stuDialog.value=false;await Promise.all([loadStudents(), loadUsers()]) }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ stuSaving.value=false } }
 async function handleStuToggle(row){ const act=row.enabled?'停用':'启用'; try{ await ElMessageBox.confirm(`确定${act}学生「${row.studentName}(${row.studentNo})」？`,null,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); await studentAPI.toggle(row.id); ElMessage.success(act+'成功');loadStudents() }catch{} }
 
 onMounted(()=>{ loadUsers();loadAllOrg();loadStudents() })
+watch(activeTab, tab => { if (tab === 'users') loadUsers() })
 </script>
 
 <style scoped>

@@ -6,24 +6,20 @@ import com.example.backend.model.vo.schoolproxy.SchoolProxyStudentVO;
 import com.example.backend.service.ISchoolProxyApplicationService;
 import com.example.backend.service.port.SchoolProxyApplicationPort;
 import com.example.backend.service.port.SchoolProxyStudentQueryPort;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 /** 6.1.3 学校代申请演示流程，保持字段注入和直接调用 Port 的视频写法。 */
 @Service
+@RequiredArgsConstructor
 public class SchoolProxyApplicationServiceImpl implements ISchoolProxyApplicationService {
-
-    @Autowired
-    private ObjectProvider<SchoolProxyStudentQueryPort> studentPort;
-
-    @Autowired
-    private ObjectProvider<SchoolProxyApplicationPort> applicationPort;
+    private final SchoolProxyStudentQueryPort studentPort;
+    private final SchoolProxyApplicationPort applicationPort;
 
     @Override
     public SchoolProxyStudentVO findStudent(String studentNo) {
-        return studentPort.getObject().findEnabledStudentByStudentNo(studentNo);
+        return studentPort.findEnabledStudentByStudentNo(studentNo);
     }
 
     @Override
@@ -32,7 +28,7 @@ public class SchoolProxyApplicationServiceImpl implements ISchoolProxyApplicatio
             Long operatorUserId
     ) {
         findStudent(request.getStudentNo());
-        return applicationPort.getObject().createDraft(request, operatorUserId);
+        return applicationPort.createDraft(request, operatorUserId);
     }
 
     @Override
@@ -42,7 +38,7 @@ public class SchoolProxyApplicationServiceImpl implements ISchoolProxyApplicatio
             String requestId,
             Long operatorUserId
     ) {
-        applicationPort.getObject().uploadAttachment(
+        applicationPort.uploadAttachment(
                 applicationId, file, requestId, operatorUserId);
     }
 
@@ -53,7 +49,7 @@ public class SchoolProxyApplicationServiceImpl implements ISchoolProxyApplicatio
             String requestId,
             Long operatorUserId
     ) {
-        return applicationPort.getObject().submit(
+        return applicationPort.submit(
                 applicationId, version, requestId, operatorUserId);
     }
 }

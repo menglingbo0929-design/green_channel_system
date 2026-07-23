@@ -9,9 +9,8 @@ import org.springframework.web.multipart.MultipartFile;
  *
  * 成员二拥有 application、明细、附件和资源表；该接口使成员四只编排学校端流程。
  *
- * <p>TODO(成员二)：在现有学校代申请主表创建入口上补齐附件、资源预占和正式提交；
- * 成员三已经通过 {@code ApprovalTransitionService.submitInitial} 提供写入 SUBMIT 审核记录并推进到
- * {@code COUNSELOR_PENDING} 的正式能力，成员二须在同一提交事务中调用。</p>
+ * <p>正式实现已在同一事务链中完成附件、资源预占、正式提交和
+ * {@code COUNSELOR_PENDING} 审核流转。</p>
  */
 public interface SchoolProxyApplicationPort {
     SchoolProxyApplicationVO createDraft(SchoolProxyDraftDTO command, Long operatorUserId);

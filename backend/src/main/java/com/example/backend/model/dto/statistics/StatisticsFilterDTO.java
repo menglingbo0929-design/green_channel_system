@@ -2,6 +2,7 @@ package com.example.backend.model.dto.statistics;
 
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
+import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDateTime;
 
@@ -24,7 +25,9 @@ public class StatisticsFilterDTO {
     private Long classId;
     /** GREEN_CHANNEL、LIVING_SUBSIDY 或 TRAVEL_SUBSIDY。 */
     private String applicationType;
-    /** 只允许 APPROVED 或 COMPLETED；为空时同时统计两个最终状态。 */
+    /** v4 口径：APPROVED、CONFIRM_PENDING 或 COMPLETED；为空时同时统计三种状态。 */
+    @Pattern(regexp = "^(APPROVED|CONFIRM_PENDING|COMPLETED)?$",
+            message = "applicationStatus 仅支持 APPROVED、CONFIRM_PENDING 或 COMPLETED")
     private String applicationStatus;
     /** 成员二维护的欠费项目主键。 */
     private Long feeItemId;
