@@ -78,16 +78,25 @@ function queryParams() {
 async function loadWorkspace() {
   loading.value = true
   try {
-    const [pageData, dashboardData, submissionData] = await Promise.all([
+    const countParams = { ...queryParams(), page: 1, size: 1 }
+    const [pageData, dashboardData, submissionData, pendingPage, processedPage, returnedPage] = await Promise.all([
       getApprovalList(role.value, currentTab.value, queryParams()),
       getApprovalDashboard(role.value, queryParams()),
       usesBatchSubmission.value && hasSelectedBatch.value
         ? getSubmissionStatus(role.value, { batchType: filters.batchType, batchId: Number(filters.batchId) })
         : Promise.resolve(null),
+      getApprovalList(role.value, 'pending', countParams),
+      getApprovalList(role.value, 'processed', countParams),
+      getApprovalList(role.value, 'returned', countParams),
     ])
     list.value = pageData.records
     total.value = pageData.total
-    dashboard.value = dashboardData
+    dashboard.value = {
+      ...dashboardData,
+      pending: pendingPage.total,
+      processed: processedPage.total,
+      returned: returnedPage.total,
+    }
     submission.value = submissionData
   } catch (error) {
     ElMessage.error(errorMessage(error, '审核数据加载失败'))

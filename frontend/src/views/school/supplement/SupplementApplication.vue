@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import { createSupplement, findSupplementStudent } from '../../../api/supplement'
-import { batchAPI } from '../../../api/application.js'
+import { batchAPI, catalogAPI } from '../../../api/application.js'
 import { formatBatchLabel } from '../../../constants/batch.js'
 import BusinessConfirmDialog from '../../../components/school/BusinessConfirmDialog.vue'
 import SupplementHistory from './SupplementHistory.vue'
@@ -13,6 +13,8 @@ const refreshKey = ref(0)
 const confirmDialogOpen = ref(false)
 const pendingPayload = ref(null)
 const batchOptions = ref([])
+const feeItemOptions = ref([])
+const giftItemOptions = ref([])
 
 const nowForInput = () => {
   const date = new Date()
@@ -128,7 +130,15 @@ async function loadBatchOptions() {
 }
 
 watch(() => form.applicationType, loadBatchOptions)
-onMounted(loadBatchOptions)
+onMounted(async () => {
+  const [, feeItems, giftItems] = await Promise.all([
+    loadBatchOptions(),
+    catalogAPI.listFeeItems(false),
+    catalogAPI.listGiftItems(false),
+  ])
+  feeItemOptions.value = feeItems ?? []
+  giftItemOptions.value = giftItems ?? []
+})
 </script>
 
 <template>
@@ -166,7 +176,7 @@ onMounted(loadBatchOptions)
       <template v-if="form.applicationType === 'GREEN_CHANNEL'">
         <div class="detail-header"><h3>欠费明细</h3><button type="button" @click="addArrearsItem">增加欠费项</button></div>
         <div v-for="(item, index) in form.arrearsItems" :key="`arrears-${index}`" class="detail-row">
-          <label>欠费项目 ID<input v-model="item.feeItemId" type="number" min="1" /></label>
+          <label>欠费项目<select v-model="item.feeItemId"><option value="">请选择欠费项目</option><option v-for="option in feeItemOptions" :key="option.id" :value="option.id">{{ option.name }}</option></select></label>
           <label>申报金额<input v-model="item.declaredAmount" type="number" min="0.01" step="0.01" /></label>
           <label>欠费原因<select v-model="item.arrearsReasonCode"><option v-for="option in arrearsReasonOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
           <button type="button" class="remove" @click="removeItem(form.arrearsItems, index)">删除</button>
@@ -174,7 +184,7 @@ onMounted(loadBatchOptions)
 
         <div class="detail-header"><h3>礼包明细</h3><button type="button" @click="addGiftItem">增加礼包项</button></div>
         <div v-for="(item, index) in form.giftItems" :key="`gift-${index}`" class="detail-row">
-          <label>礼包物品 ID<input v-model="item.giftItemId" type="number" min="1" /></label>
+          <label>礼包物品<select v-model="item.giftItemId"><option value="">请选择礼包物品</option><option v-for="option in giftItemOptions" :key="option.id" :value="option.id">{{ option.name }}</option></select></label>
           <label>数量<input v-model="item.quantity" type="number" min="1" /></label>
           <button type="button" class="remove" @click="removeItem(form.giftItems, index)">删除</button>
         </div>
