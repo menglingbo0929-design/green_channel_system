@@ -76,7 +76,7 @@ class ApprovalStateMachineTest {
     }
 
     @Test
-    void counselorApprovalRecordsDecisionWithoutChangingStatus() {
+    void counselorApprovalAdvancesToCollegeReview() {
         ApprovalTransition transition = stateMachine.review(
                 ApplicationStatus.COUNSELOR_PENDING,
                 ApprovalLevel.COUNSELOR,
@@ -88,14 +88,14 @@ class ApprovalStateMachineTest {
         assertTransition(
                 transition,
                 ApplicationStatus.COUNSELOR_PENDING,
-                ApplicationStatus.COUNSELOR_PENDING,
+                ApplicationStatus.COLLEGE_PENDING,
                 0
         );
-        assertFalse(transition.changesStatus());
+        assertTrue(transition.changesStatus());
     }
 
     @Test
-    void collegeApprovalRecordsDecisionWithoutChangingStatus() {
+    void collegeApprovalAdvancesToSchoolReview() {
         ApprovalTransition transition = stateMachine.review(
                 ApplicationStatus.COLLEGE_PENDING,
                 ApprovalLevel.COLLEGE,
@@ -107,7 +107,7 @@ class ApprovalStateMachineTest {
         assertTransition(
                 transition,
                 ApplicationStatus.COLLEGE_PENDING,
-                ApplicationStatus.COLLEGE_PENDING,
+                ApplicationStatus.SCHOOL_PENDING,
                 0
         );
     }

@@ -7,17 +7,23 @@ import com.example.backend.common.exception.ApplicationException;
 import com.example.backend.mapper.ApplicationMapper;
 import com.example.backend.mapper.ApplicationOperationMapper;
 import com.example.backend.mapper.ApplicationResourceMapper;
+import com.example.backend.mapper.CounselorStudentMapper;
+import com.example.backend.mapper.StudentMapper;
 import com.example.backend.model.dto.ApplicationAttachmentSnapshot;
 import com.example.backend.model.dto.ApplicationAttachmentContent;
 import com.example.backend.service.ApplicationAttachmentReadService;
 import com.example.backend.service.ApprovalTransitionService;
 import com.example.backend.service.ApprovalResourceService;
+import com.example.backend.service.SystemMessageService;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,13 +38,18 @@ public class StudentApplicationSubmissionService implements ApplicationAttachmen
     private final ApplicationOperationMapper operations;
     private final ApprovalResourceService resourceService;
     private final ApprovalTransitionService transitionService;
+    private final CounselorStudentMapper counselorStudents;
+    private final StudentMapper students;
+    private final ObjectProvider<SystemMessageService> messageServiceProvider;
     @Value("${application.attachment-storage-path:./private-uploads}") private String attachmentStoragePath;
 
     public StudentApplicationSubmissionService(ApplicationMapper applications, ApplicationResourceMapper resources,
                                                 ApplicationOperationMapper operations, ApprovalResourceService resourceService,
-                                                ApprovalTransitionService transitionService) {
+                                                ApprovalTransitionService transitionService, CounselorStudentMapper counselorStudents,
+                                                StudentMapper students, ObjectProvider<SystemMessageService> messageServiceProvider) {
         this.applications = applications; this.resources = resources; this.operations = operations;
         this.resourceService = resourceService; this.transitionService = transitionService;
+        this.counselorStudents = counselorStudents; this.students = students; this.messageServiceProvider = messageServiceProvider;
     }
 
     @Transactional
@@ -68,6 +79,7 @@ public class StudentApplicationSubmissionService implements ApplicationAttachmen
         if (resources.countActiveAttachments(applicationId) < 1) throw conflict("APPLICATION_ATTACHMENT_REQUIRED", "正式提交前至少上传一份证明附件");
         resourceService.reserveOnSubmit(applicationId, requestId, operatorId);
         transitionService.submitInitial(applicationId, version, requestId, operatorId);
+        notifyResponsibleCounselors(application);
     }
 
     public ApplicationAttachmentContent readAttachment(Long applicationId, Long studentId, Long attachmentId) {
@@ -104,6 +116,16 @@ public class StudentApplicationSubmissionService implements ApplicationAttachmen
         try { byte[] content = file.getBytes(); boolean pdf = ext.equals(".pdf") && type.equals("application/pdf") && starts(content, "%PDF-".getBytes()); boolean png = ext.equals(".png") && type.equals("image/png") && starts(content, new byte[]{(byte)0x89,0x50,0x4e,0x47}); boolean jpeg = (ext.equals(".jpg") || ext.equals(".jpeg")) && type.equals("image/jpeg") && starts(content, new byte[]{(byte)0xff,(byte)0xd8,(byte)0xff}); if (!pdf && !png && !jpeg) throw conflict("APPLICATION_ATTACHMENT_TYPE_INVALID", "仅支持 PDF、JPG、JPEG 或 PNG 证明附件"); return new Attachment(name, type, content); } catch (IOException exception) { throw conflict("APPLICATION_ATTACHMENT_STORE_FAILED", "附件读取失败"); }
     }
     private boolean starts(byte[] content, byte[] prefix) { return content.length >= prefix.length && Arrays.equals(Arrays.copyOf(content, prefix.length), prefix); }
+    private void notifyResponsibleCounselors(Application application) {
+        SystemMessageService messages = messageServiceProvider.getIfAvailable();
+        if (messages == null) return;
+        Set<Long> recipientIds = new LinkedHashSet<>(counselorStudents.findCounselorUserIds(application.getStudentId()));
+        var student = students.selectById(application.getStudentId());
+        if (student != null && student.getCounselorId() != null) recipientIds.add(student.getCounselorId());
+        for (Long recipientId : recipientIds) {
+            if (recipientId != null && recipientId > 0) messages.sendApplicationSubmitted(recipientId, application.getId(), application.getApplicationNo());
+        }
+    }
     private ApplicationException conflict(String code, String message) { return new ApplicationException(code, HttpStatus.CONFLICT, message); }
     private record Attachment(String name, String contentType, byte[] content) { }
 }

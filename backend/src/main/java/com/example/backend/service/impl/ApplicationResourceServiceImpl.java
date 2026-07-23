@@ -171,6 +171,16 @@ public class ApplicationResourceServiceImpl implements ApprovalResourceService {
     private void record(Long applicationId, String operation, String requestId, Long operatorId) { operations.insert(applicationId, operation, requestId, operatorId); }
     private Application required(Long applicationId) { if (applicationId == null || applicationId <= 0) throw invalid("APPLICATION_NOT_FOUND", "申请不存在"); Application application = applications.findRequired(applicationId); if (application == null) throw invalid("APPLICATION_NOT_FOUND", "申请不存在"); return application; }
     private void validateRequest(String requestId) { if (requestId == null || requestId.isBlank() || requestId.length() > 64) throw invalid("APPLICATION_REQUEST_INVALID", "requestId 必须为 1 到 64 个字符"); }
-    private void require(int changed, String code) { if (changed != 1) throw invalid(code, "资源余额、名额或状态已变化，请刷新后重试"); }
+    private void require(int changed, String code) {
+        if (changed == 1) return;
+        String message = switch (code) {
+            case "APPLICATION_GIFT_STOCK_INSUFFICIENT" -> "当前批次的礼包库存不足，请联系学校管理员调整库存";
+            case "APPLICATION_COLLEGE_QUOTA_INSUFFICIENT" -> "当前批次尚未为您的学院配置足够的礼包名额，请联系学校管理员";
+            case "APPLICATION_GRADE_QUOTA_INSUFFICIENT" -> "当前批次尚未为您的年级配置足够的礼包名额，请联系学校管理员";
+            case "APPLICATION_SUBSIDY_QUOTA_INSUFFICIENT" -> "当前批次尚未为您的学院或年级配置足够的补助额度，请联系学校管理员";
+            default -> "资源余额、名额或状态已变化，请刷新后重试";
+        };
+        throw invalid(code, message);
+    }
     private ApplicationException invalid(String code, String message) { return new ApplicationException(code, HttpStatus.CONFLICT, message); }
 }

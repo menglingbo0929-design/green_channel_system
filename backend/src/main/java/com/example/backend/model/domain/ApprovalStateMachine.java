@@ -58,12 +58,14 @@ public final class ApprovalStateMachine {
                     currentStatus,
                     COUNSELOR_PENDING,
                     COUNSELOR_RETURNED,
+                    COLLEGE_PENDING,
                     action
             );
             case COLLEGE -> reviewAtPendingLevel(
                     currentStatus,
                     COLLEGE_PENDING,
                     COLLEGE_RETURNED,
+                    SCHOOL_PENDING,
                     action
             );
             case SCHOOL -> reviewAtSchool(
@@ -143,11 +145,12 @@ public final class ApprovalStateMachine {
             ApplicationStatus currentStatus,
             ApplicationStatus expectedStatus,
             ApplicationStatus returnedStatus,
+            ApplicationStatus approvedStatus,
             ApprovalAction action
     ) {
         requireStatus(currentStatus, expectedStatus, "review at " + expectedStatus.level());
         ApplicationStatus targetStatus = switch (action) {
-            case APPROVE -> currentStatus;
+            case APPROVE -> approvedStatus;
             case RETURN -> returnedStatus;
             case REJECT -> REJECTED;
             default -> throw invalid(currentStatus, "review action " + action);

@@ -11,8 +11,6 @@ import SchoolProxyApplication from './supplement/SchoolProxyApplication.vue'
 import SupplementApplication from './supplement/SupplementApplication.vue'
 import pendingReviewIcon from '../../figures/pending-review.png'
 import arrearsConfirmationIcon from '../../figures/arrears-confirmation.png'
-import supplementRecordIcon from '../../figures/supplement-record.png'
-import voidedApplicationIcon from '../../figures/voided-application.png'
 
 /** 页面八：学校业务处理。最终审核直接复用审核工作台内容。 */
 const route = useRoute()
@@ -40,8 +38,6 @@ function selectTab(tab) {
 const summaryCards = computed(() => [
   { label: '待学校审核', value: ownSummary.value.pendingSchoolReviewCount, hint: '在最终审核页签处理', color: '#1677ff', icon: pendingReviewIcon, action: () => selectTab('review') },
   { label: '欠费待确认', value: ownSummary.value.pendingArrearsCount, hint: '待确认欠费申请', color: '#ff7a00', icon: arrearsConfirmationIcon, action: () => selectTab('arrears') },
-  { label: '今日补录', value: '—', hint: '线下业务补录记录', color: '#00b96b', icon: supplementRecordIcon, action: () => selectTab('supplement') },
-  { label: '作废申请', value: '—', hint: '已作废业务记录', color: '#ff4d4f', icon: voidedApplicationIcon },
 ])
 
 async function loadOwnSummary() {
@@ -167,7 +163,7 @@ onMounted(loadOwnSummary)
 .page-heading-row { display: flex; align-items: center; min-height: 58px; margin-bottom: 18px; }
 .page-heading-row h1 { margin: 0 0 8px; color: #1f2937; font-size: 24px; line-height: 1; }
 .page-heading-row p { margin: 0; color: #6b7280; font-size: 13px; }
-.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+.metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
 .metric-grid .summary-card { min-height: 120px; padding: 20px 24px; gap: 18px; border: 1px solid #e5e7eb; border-radius: 4px; box-shadow: none; cursor: pointer; text-align: left; }
 .metric-grid .summary-card:hover { border-color: #b7d5ff; box-shadow: 0 4px 12px rgba(22, 119, 255, .08); }
 .metric-grid .summary-card img { width: 52px; height: 52px; }.metric-grid .summary-card div { gap: 4px; }

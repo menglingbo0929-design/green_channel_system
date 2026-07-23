@@ -4,6 +4,8 @@ import com.example.backend.model.dto.SystemMessagePage;
 
 public interface SystemMessageService {
 
+    void sendApplicationSubmitted(Long receiverUserId, Long applicationId, String applicationNo);
+
     void sendApprovalReturned(Long receiverUserId, Long applicationId, String reason);
 
     void sendApprovalRejected(Long receiverUserId, Long applicationId, String reason);

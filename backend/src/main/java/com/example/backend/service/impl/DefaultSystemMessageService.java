@@ -36,6 +36,18 @@ public class DefaultSystemMessageService implements SystemMessageService {
 
     @Override
     @Transactional
+    public void sendApplicationSubmitted(Long receiverUserId, Long applicationId, String applicationNo) {
+        send(
+                receiverUserId,
+                applicationId,
+                MessageType.APPLICATION_SUBMITTED,
+                "有新的学生申请待审核",
+                "学生已提交申请 " + requireText(applicationNo, "applicationNo") + "，请及时处理。"
+        );
+    }
+
+    @Override
+    @Transactional
     public void sendApprovalReturned(Long receiverUserId, Long applicationId, String reason) {
         send(
                 receiverUserId,

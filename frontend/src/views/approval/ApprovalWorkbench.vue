@@ -51,7 +51,6 @@ const submissionBlockReason = computed(() => {
   if (submission.value.pendingReviewCount > 0) return `仍有 ${submission.value.pendingReviewCount} 条申请未给出审核结论。`
   if (submission.value.approvedWaitingSubmitCount === 0) return '当前没有审核通过且等待提交的申请。'
   const now = Date.now()
-  if (role.value === 'COUNSELOR' && submission.value.applicationDeadline && now <= new Date(submission.value.applicationDeadline).getTime()) return '学生申请尚未截止，截止后才能统一提交学院。'
   if (role.value === 'COLLEGE' && submission.value.collegeDeadline && now > new Date(submission.value.collegeDeadline).getTime()) return '学院上报截止时间已过，无法首次批量提交。'
   return '当前批次暂不满足提交条件，请刷新后重试。'
 })
@@ -133,7 +132,15 @@ async function openDetail(row) {
 }
 
 function openReview(application) {
-  reviewTarget.value = application
+  // 列表行自带 version，但从详情抽屉发起审核时版本号位于
+  // detail.version。统一补齐，避免审核请求携带 null 版本号。
+  const detailVersion = detail.value?.application?.applicationId === application?.applicationId
+    ? detail.value.version
+    : null
+  reviewTarget.value = {
+    ...application,
+    version: application?.version ?? detailVersion,
+  }
   reviewOpen.value = true
 }
 
@@ -270,7 +277,7 @@ onMounted(loadWorkspace)
     <section class="page-heading-row">
       <div>
         <h1>{{ roleMeta.title }}</h1>
-        <p>{{ role === 'COUNSELOR' ? '核验学生材料、确认补助金额，并按批次统一提交学院。' : role === 'COLLEGE' ? '复核本学院申请、检查名额额度，并在截止时间前提交学校。' : '对全校申请进行最终审核，审核结论将直接进入办结或欠费确认流程。' }}</p>
+        <p>{{ role === 'COUNSELOR' ? '核验学生材料、确认补助金额；审核通过后将直接进入学院审核。' : role === 'COLLEGE' ? '复核本学院申请、检查名额额度；审核通过后将直接进入学校审核。' : '对全校申请进行最终审核，审核结论将直接进入办结或欠费确认流程。' }}</p>
       </div>
       <div v-if="!props.embedded && role !== 'COLLEGE'" class="page-actions">
         <el-button @click="loadWorkspace"><el-icon><Refresh /></el-icon>刷新</el-button>
