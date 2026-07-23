@@ -24,21 +24,21 @@ public class GreenChannelBatchController {
     /** 列表 */
     @GetMapping
     public JsonResponse<List<BatchVO>> list() {
-        requireSchool();
+        requireConfigurationManager();
         return JsonResponse.success(batchService.list());
     }
 
     /** 详情 */
     @GetMapping("{id}")
     public JsonResponse<BatchVO> detail(@PathVariable Long id) {
-        requireSchool();
+        requireConfigurationManager();
         return JsonResponse.success(batchService.getDetail(id));
     }
 
     /** 创建 */
     @PostMapping
     public JsonResponse<BatchVO> create(@Valid @RequestBody CreateBatchRequest request) {
-        requireSchool();
+        requireConfigurationManager();
         return JsonResponse.success(batchService.create(request), "创建成功");
     }
 
@@ -46,14 +46,14 @@ public class GreenChannelBatchController {
     @PutMapping("{id}")
     public JsonResponse<BatchVO> update(@PathVariable Long id,
                                         @Valid @RequestBody UpdateBatchRequest request) {
-        requireSchool();
+        requireConfigurationManager();
         return JsonResponse.success(batchService.update(id, request), "更新成功");
     }
 
     /** 切换启用/停用 */
     @PutMapping("{id}/status")
     public JsonResponse<Void> toggleStatus(@PathVariable Long id) {
-        requireSchool();
+        requireConfigurationManager();
         batchService.toggleStatus(id);
         return JsonResponse.successMessage("操作成功");
     }
@@ -62,15 +62,17 @@ public class GreenChannelBatchController {
     @PutMapping("{id}/grades")
     public JsonResponse<Void> setGrades(@PathVariable Long id,
                                         @RequestBody Map<String, List<Long>> body) {
-        requireSchool();
+        requireConfigurationManager();
         batchService.setEligibleGrades(id, body.get("gradeIds"));
         return JsonResponse.successMessage("设置成功");
     }
 
-    private void requireSchool() {
+    private void requireConfigurationManager() {
         var user = currentUsers.getRequiredUser();
-        if (user.getRoles() == null || !user.getRoles().contains("SCHOOL")) {
-            throw new SecurityException("仅学校管理员可维护绿色通道批次");
+        boolean allowed = user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> role.equals("SCHOOL") || role.equals("COLLEGE"));
+        if (!allowed) {
+            throw new SecurityException("仅学校或学院管理员可维护绿色通道批次");
         }
     }
 }

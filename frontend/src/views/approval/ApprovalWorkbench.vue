@@ -10,6 +10,7 @@ import StatusBadge from '../../components/approval/StatusBadge.vue'
 import BusinessConfirmDialog from '../../components/school/BusinessConfirmDialog.vue'
 import { cancelApplication, editApprovalFields, getApprovalDashboard, getApprovalDetail, getApprovalList, getSubmissionStatus, reviewApplication, submitInitialBatch, submitReturnResubmit } from '../../api/approval'
 import { APPLICATION_TYPE_META, createRequestId, formatDateTime, ROLE_META } from '../../constants/approval'
+import { formatBatchLabel } from '../../constants/batch'
 import { batchAPI } from '../../api/application.js'
 
 const props = defineProps({
@@ -271,19 +272,19 @@ onMounted(loadWorkspace)
         <h1>{{ roleMeta.title }}</h1>
         <p>{{ role === 'COUNSELOR' ? '核验学生材料、确认补助金额，并按批次统一提交学院。' : role === 'COLLEGE' ? '复核本学院申请、检查名额额度，并在截止时间前提交学校。' : '对全校申请进行最终审核，审核结论将直接进入办结或欠费确认流程。' }}</p>
       </div>
-      <div v-if="!props.embedded" class="page-actions">
+      <div v-if="!props.embedded && role !== 'COLLEGE'" class="page-actions">
         <el-button @click="loadWorkspace"><el-icon><Refresh /></el-icon>刷新</el-button>
       </div>
     </section>
 
-    <section v-if="!props.embedded" class="metric-grid" aria-label="审核数量概览">
+    <section v-if="!props.embedded && role !== 'COLLEGE'" class="metric-grid" aria-label="审核数量概览">
       <article v-for="metric in metrics" :key="metric.label" class="summary-card" :class="`summary-${metric.tone}`">
         <div class="summary-icon"><component :is="metric.icon" /></div>
         <div><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
       </article>
     </section>
 
-    <section v-if="usesBatchSubmission && submission" class="submission-bar" :class="{ completed: submission.initialSubmitted }">
+    <section v-if="usesBatchSubmission && submission && total > 0" class="submission-bar" :class="{ completed: submission.initialSubmitted }">
       <div class="submission-icon"><UploadFilled /></div>
       <div class="submission-copy">
         <strong>{{ submission.initialSubmitted ? `本批次已提交${roleMeta.nextLevel}` : `当前有 ${submission.approvedWaitingSubmitCount} 条申请通过待提交` }}</strong>
@@ -304,7 +305,7 @@ onMounted(loadWorkspace)
 
       <div class="standard-filter-grid">
         <div class="filter-field"><label>批次类型</label><el-select v-model="filters.batchType" clearable placeholder="全部类型"><el-option label="绿色通道" value="GREEN_CHANNEL" /><el-option label="新生补助" value="SUBSIDY" /></el-select></div>
-        <div class="filter-field"><label>申请批次</label><el-select v-model="filters.batchId" clearable filterable :disabled="!filters.batchType" placeholder="请选择批次"><el-option v-for="batch in batchOptions" :key="batch.batchId" :label="`${batch.batchName}（${batch.academicYear || '学年未设置'}）`" :value="batch.batchId" /></el-select></div>
+        <div class="filter-field"><label>申请批次</label><el-select v-model="filters.batchId" clearable filterable :disabled="!filters.batchType" placeholder="请选择批次"><el-option v-for="batch in batchOptions" :key="batch.batchId" :label="formatBatchLabel(batch)" :value="batch.batchId" /></el-select></div>
         <div class="filter-field"><label>申请类型</label><el-select v-model="filters.applicationType" clearable placeholder="全部类型"><el-option v-for="(label, value) in APPLICATION_TYPE_META" :key="value" :label="label" :value="value" /></el-select></div>
         <div class="filter-field"><label>学号</label><el-input v-model="filters.studentNo" clearable placeholder="请输入学号" /></div>
         <div class="filter-field"><label>学生姓名</label><el-input v-model="filters.studentName" clearable placeholder="请输入姓名" /></div>

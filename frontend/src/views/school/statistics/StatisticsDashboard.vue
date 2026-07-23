@@ -9,6 +9,7 @@ import {
 } from '../../../api/statistics'
 import { classAPI, collegeAPI, gradeAPI, majorAPI } from '../../../api/index'
 import SchoolWorkspaceShell from '../../../components/school/SchoolWorkspaceShell.vue'
+import { formatBatchLabel } from '../../../constants/batch.js'
 
 /**
  * 页面 9：学校统计看板页。
@@ -418,7 +419,7 @@ onBeforeUnmount(() => {
         <section class="filter-panel">
           <div class="filter-header"><h2>筛选条件</h2></div>
           <div class="filter-grid">
-            <label><span>批次筛选</span><select ref="batchSelectRef" v-model="selectedBatchKey"><option value="">全部批次</option><option v-for="batch in batchOptions" :key="`${batch.batchType}:${batch.batchId}`" :value="`${batch.batchType}:${batch.batchId}`">{{ batch.batchName }}</option></select></label>
+            <label><span>批次筛选</span><select ref="batchSelectRef" v-model="selectedBatchKey"><option value="">全部批次</option><option v-for="batch in batchOptions" :key="`${batch.batchType}:${batch.batchId}`" :value="`${batch.batchType}:${batch.batchId}`">{{ formatBatchLabel(batch) }}</option></select></label>
             <label><span>学院筛选</span><select v-model="filters.collegeId"><option value="">全部</option><option v-for="item in collegeOptions" :key="item.id" :value="item.id">{{ item.collegeName }}</option></select></label>
             <label><span>专业筛选</span><select v-model="filters.majorId" :disabled="!filters.collegeId"><option value="">全部</option><option v-for="item in organizationOptions.majors" :key="item.id" :value="item.id">{{ item.majorName }}</option></select></label>
             <label><span>年级筛选</span><select v-model="filters.gradeId"><option value="">全部</option><option v-for="item in gradeOptions" :key="item.id" :value="item.id">{{ item.gradeName }}</option></select></label>

@@ -36,13 +36,13 @@ public class PolicyRuleController {
 
     @GetMapping
     public JsonResponse<List<PolicyRuleVO>> list() {
-        requireSchool();
+        requireConfigurationManager();
         return JsonResponse.success(policyRuleService.listAllRules());
     }
 
     @PostMapping
     public JsonResponse<PolicyRuleVO> create(@Valid @RequestBody PolicyRuleRequest request) {
-        requireSchool();
+        requireConfigurationManager();
         return JsonResponse.success(policyRuleService.create(request), "政策规则创建成功");
     }
 
@@ -50,21 +50,23 @@ public class PolicyRuleController {
     public JsonResponse<PolicyRuleVO> update(
             @PathVariable Long id,
             @Valid @RequestBody PolicyRuleRequest request) {
-        requireSchool();
+        requireConfigurationManager();
         return JsonResponse.success(policyRuleService.update(id, request), "政策规则更新成功");
     }
 
     @DeleteMapping("/{id}")
     public JsonResponse<Void> delete(@PathVariable Long id) {
-        requireSchool();
+        requireConfigurationManager();
         policyRuleService.delete(id);
         return JsonResponse.successMessage("政策规则删除成功");
     }
 
-    private void requireSchool() {
+    private void requireConfigurationManager() {
         LoginUser user = currentUsers.getRequiredUser();
-        if (user.getRoles() == null || !user.getRoles().contains("SCHOOL")) {
-            throw new SecurityException("仅学校管理员可维护政策规则");
+        boolean allowed = user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> role.equals("SCHOOL") || role.equals("COLLEGE"));
+        if (!allowed) {
+            throw new SecurityException("仅学校或学院管理员可维护政策规则");
         }
     }
 }

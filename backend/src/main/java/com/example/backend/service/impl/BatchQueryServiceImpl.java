@@ -50,9 +50,21 @@ public class BatchQueryServiceImpl implements BatchQueryService {
 
     @Override
     public BatchSnapshot getRequiredBatch(Long batchId) {
+        return getRequiredBatch("GREEN_CHANNEL", batchId);
+    }
+
+    @Override
+    public BatchSnapshot getRequiredBatch(String batchType, Long batchId) {
+        if ("SUBSIDY".equalsIgnoreCase(batchType)) {
+            SubsidyBatch batch = subsidyBatchMapper.selectById(batchId);
+            if (batch == null || batch.getDeleted() != 0) {
+                throw new IllegalArgumentException("补助批次不存在: id=" + batchId);
+            }
+            return toSnapshot(batch);
+        }
         GreenChannelBatch batch = greenChannelBatchMapper.selectById(batchId);
         if (batch == null || batch.getDeleted() != 0) {
-            throw new IllegalArgumentException("批次不存在: id=" + batchId);
+            throw new IllegalArgumentException("绿色通道批次不存在: id=" + batchId);
         }
         return toSnapshot(batch);
     }

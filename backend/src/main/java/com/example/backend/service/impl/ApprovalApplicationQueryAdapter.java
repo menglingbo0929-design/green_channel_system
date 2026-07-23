@@ -47,7 +47,9 @@ public class ApprovalApplicationQueryAdapter implements ApprovalApplicationQuery
     private static final String FROM = " FROM application a "
             + "JOIN student s ON s.id=a.student_id AND s.deleted=0 "
             + "LEFT JOIN college c ON c.id=s.college_id AND c.deleted=0 "
-            + "LEFT JOIN grade g ON g.id=s.grade_id AND g.deleted=0 ";
+            + "LEFT JOIN grade g ON g.id=s.grade_id AND g.deleted=0 "
+            + "LEFT JOIN green_channel_batch gb ON a.batch_type='GREEN_CHANNEL' AND gb.id=a.green_channel_batch_id AND gb.deleted=0 "
+            + "LEFT JOIN subsidy_batch sb ON a.batch_type='SUBSIDY' AND sb.id=a.subsidy_batch_id AND sb.deleted=0 ";
 
     private final NamedParameterJdbcTemplate jdbc;
     private final ApplicationService applications;
@@ -86,6 +88,7 @@ public class ApprovalApplicationQueryAdapter implements ApprovalApplicationQuery
         List<ApprovalApplicationSnapshot> records = jdbc.query(
                 "SELECT a.id,a.application_no,a.application_type,a.batch_type,"
                         + "COALESCE(a.green_channel_batch_id,a.subsidy_batch_id) batch_id,"
+                        + "COALESCE(gb.batch_code,sb.batch_code) batch_code,COALESCE(gb.batch_name,sb.batch_name) batch_name,"
                         + "a.student_id,s.student_no,s.student_name,s.college_id,c.college_name,g.grade_name,"
                         + "CASE WHEN a.application_type='GREEN_CHANNEL' THEN COALESCE((SELECT SUM(aa.declared_amount) FROM arrears_application aa WHERE aa.application_id=a.id AND aa.deleted=0),0) ELSE COALESCE((SELECT sa.expected_amount FROM subsidy_application sa WHERE sa.application_id=a.id AND sa.deleted=0 LIMIT 1),0) END declaredAmount,"
                         + "a.status,a.current_level,a.review_round,a.submit_time,a.version"
@@ -101,6 +104,7 @@ public class ApprovalApplicationQueryAdapter implements ApprovalApplicationQuery
         Map<String, Object> application = jdbc.query(
                 "SELECT a.id applicationId,a.application_no applicationNo,a.application_type applicationType,"
                         + "a.batch_type batchType,COALESCE(a.green_channel_batch_id,a.subsidy_batch_id) batchId,"
+                        + "COALESCE(gb.batch_code,sb.batch_code) batchCode,COALESCE(gb.batch_name,sb.batch_name) batchName,"
                         + "a.status,a.current_level currentLevel,a.review_round reviewRound,a.application_reason applicationReason,"
                         + "a.source,a.submit_time submitTime,a.create_time createTime,s.id studentId,s.student_no studentNo,"
                         + "s.student_name studentName,s.college_id collegeId,c.college_name collegeName,"
@@ -109,7 +113,7 @@ public class ApprovalApplicationQueryAdapter implements ApprovalApplicationQuery
                 parameters, rs -> {
                     if (!rs.next()) return null;
                     Map<String, Object> value = new LinkedHashMap<>();
-                    for (String column : List.of("applicationId", "applicationNo", "applicationType", "batchType", "batchId",
+                    for (String column : List.of("applicationId", "applicationNo", "applicationType", "batchType", "batchId", "batchCode", "batchName",
                             "status", "currentLevel", "reviewRound", "applicationReason", "source", "submitTime", "createTime",
                             "studentId", "studentNo", "studentName", "collegeId", "collegeName", "gradeId", "gradeName")) {
                         value.put(column, rs.getObject(column));
@@ -192,7 +196,8 @@ public class ApprovalApplicationQueryAdapter implements ApprovalApplicationQuery
     private RowMapper<ApprovalApplicationSnapshot> snapshotMapper() {
         return (rs, rowNum) -> new ApprovalApplicationSnapshot(rs.getLong("id"), rs.getString("application_no"),
                 ApplicationType.valueOf(rs.getString("application_type")), BatchType.valueOf(rs.getString("batch_type")),
-                rs.getLong("batch_id"), rs.getLong("student_id"), rs.getString("student_no"), rs.getString("student_name"),
+                rs.getLong("batch_id"), rs.getString("batch_code"), rs.getString("batch_name"),
+                rs.getLong("student_id"), rs.getString("student_no"), rs.getString("student_name"),
                 rs.getLong("college_id"), rs.getString("college_name"), rs.getString("grade_name"),
                 rs.getBigDecimal("declaredAmount"),
                 ApplicationStatus.valueOf(rs.getString("status")), ApprovalLevel.valueOf(rs.getString("current_level")),
