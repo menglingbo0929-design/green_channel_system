@@ -37,16 +37,16 @@ if not exist "%FRONTEND_DIR%\node_modules\vite\bin\vite.js" (
   popd
 )
 
-powerShell -NoProfile -ExecutionPolicy Bypass -Command "$client=[Net.Sockets.TcpClient]::new(); try { $client.Connect('127.0.0.1',8080); exit 0 } catch { exit 1 } finally { $client.Dispose() }"
+powerShell -NoProfile -ExecutionPolicy Bypass -Command "$client=[Net.Sockets.TcpClient]::new(); try { $client.Connect('127.0.0.1',8083); exit 0 } catch { exit 1 } finally { $client.Dispose() }"
 if errorlevel 1 (
-  echo Starting backend at http://127.0.0.1:8080
+  echo Starting backend at http://127.0.0.1:8083
   start "Green Channel Backend" /min /D "%BACKEND_DIR%" cmd /k call mvnw.cmd spring-boot:run
 ) else (
-  echo Backend is already listening at http://127.0.0.1:8080, reusing it.
+  echo Backend is already listening at http://127.0.0.1:8083, reusing it.
 )
 
 echo Waiting for backend...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$deadline=(Get-Date).AddSeconds(60); do { try { $client=[Net.Sockets.TcpClient]::new(); $client.Connect('127.0.0.1',8080); $client.Dispose(); exit 0 } catch { Start-Sleep -Milliseconds 500 } } while ((Get-Date) -lt $deadline); exit 1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$deadline=(Get-Date).AddSeconds(60); do { try { $client=[Net.Sockets.TcpClient]::new(); $client.Connect('127.0.0.1',8083); $client.Dispose(); exit 0 } catch { Start-Sleep -Milliseconds 500 } } while ((Get-Date) -lt $deadline); exit 1"
 if errorlevel 1 goto backend_timeout
 
 powerShell -NoProfile -ExecutionPolicy Bypass -Command "$client=[Net.Sockets.TcpClient]::new(); try { $client.Connect('127.0.0.1',5175); exit 0 } catch { exit 1 } finally { $client.Dispose() }"
@@ -93,7 +93,7 @@ goto failed
 echo ERROR: Frontend did not respond within 30 seconds.
 goto failed
 :backend_timeout
-echo ERROR: Backend did not respond on port 8080 within 60 seconds.
+echo ERROR: Backend did not respond on port 8083 within 60 seconds.
 echo Check the Green Channel Backend window for database password or migration errors.
 goto failed
 :failed

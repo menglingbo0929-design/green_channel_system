@@ -32,7 +32,7 @@
 
 - 后端：JDK 21
 - 前端开发端口：`5175`
-- 后端默认端口：`8080`
+- 后端默认端口：`8083`
 - 数据库名称：`green_channel`
 
 实际依赖版本以 `backend/pom.xml` 和 `frontend/package.json` 为准。
@@ -800,7 +800,7 @@ mvn spring-boot:run
 默认地址：
 
 ```text
-http://localhost:8080
+http://localhost:8083
 ```
 
 ### 数据库
