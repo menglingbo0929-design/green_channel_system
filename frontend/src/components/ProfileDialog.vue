@@ -12,9 +12,10 @@
       </el-form-item>
       <el-form-item label="困难等级">
         <el-select v-model="form.difficultyLevel" placeholder="请选择" clearable>
-          <el-option label="特别困难" value="特别困难" />
-          <el-option label="困难" value="困难" />
-          <el-option label="一般困难" value="一般困难" />
+          <el-option label="特别困难" value="SPECIAL_DIFFICULTY" />
+          <el-option label="困难" value="DIFFICULTY" />
+          <el-option label="一般困难" value="GENERAL_DIFFICULTY" />
+          <el-option label="不困难" value="NONE" />
         </el-select>
       </el-form-item>
     </el-form>
@@ -38,6 +39,12 @@ const visible = ref(false)
 const saving = ref(false)
 
 const form = reactive({ phone: '', originLoan: 0, campusLoan: 0, difficultyLevel: '' })
+const difficultyCode = {
+  特别困难: 'SPECIAL_DIFFICULTY',
+  困难: 'DIFFICULTY',
+  一般困难: 'GENERAL_DIFFICULTY',
+  不困难: 'NONE'
+}
 
 watch(() => props.modelValue, async (val) => {
   if (val) {
@@ -48,7 +55,7 @@ watch(() => props.modelValue, async (val) => {
         form.phone = d.phone || ''
         form.originLoan = d.originLoan || 0
         form.campusLoan = d.campusLoan || 0
-        form.difficultyLevel = d.difficultyLevel || ''
+        form.difficultyLevel = difficultyCode[d.difficultyLevel] || d.difficultyLevel || ''
       }
     } catch { /* ignore */ }
     visible.value = true
