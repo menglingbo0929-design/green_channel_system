@@ -93,6 +93,7 @@ INSERT INTO appr_seed_students(seq_no,student_id,grade_id)
 SELECT ROW_NUMBER() OVER (ORDER BY s.id),s.id,s.grade_id
 FROM student s
 WHERE s.deleted=0 AND s.enabled=1 AND s.college_id=@college_id AND s.grade_id IS NOT NULL
+  AND s.student_no LIKE 'APPRS%'
 ORDER BY s.id LIMIT 30;
 
 INSERT INTO counselor_student(counselor_user_id,student_id,create_time)
