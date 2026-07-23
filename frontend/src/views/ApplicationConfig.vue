@@ -7,7 +7,7 @@ import SubsidyBatchConfig from '../components/application/SubsidyBatchConfig.vue
 import { batchAPI, catalogAPI, policyRuleAPI, resourceConfigAPI } from '../api/application.js'
 import { formatBatchLabel } from '../constants/batch.js'
 
-const activeTab = ref('fees'); const loading = ref(false); const resourceLoading = ref(false)
+const activeTab = ref('batch'); const loading = ref(false); const resourceLoading = ref(false)
 const fees = ref([]); const amounts = ref([]); const gifts = ref([]); const colleges = ref([]); const grades = ref([]); const batches = ref([]); const policies = ref([])
 const resourceBatchId = ref(null); const batchGiftItems = ref([]); const giftQuotas = ref([]); const subsidyQuotas = ref([])
 const feeDialog = ref(false); const amountDialog = ref(false); const giftDialog = ref(false); const batchDialog = ref(false); const batchGiftDialog = ref(false); const allocationOpen = ref(false); const mergeFeeDialog = ref(false); const policyDialog = ref(false)
@@ -94,6 +94,11 @@ onMounted(loadData)
 
 <style scoped>
 .config-page { padding: 0 0 24px; }.config-tabs :deep(.el-tabs__header) { margin: 0; padding: 0 20px; }.config-tabs :deep(.el-tabs__content) { padding: 20px; }.config-toolbar,.resource-heading { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #6b7280; font-size: 12px; }.config-toolbar > div { display:flex; gap:12px; }.resource-heading { justify-content:flex-start; }.subsection-title { margin: 24px 0 12px; font-size:16px; }.merge-fee-form { margin-top: 20px; }
+/* 将原有 6 个配置面板收敛为 3 个操作入口：批次管理、基础与政策、申请资源。 */
+.config-tabs :deep(.el-tabs__item:nth-child(2)),.config-tabs :deep(.el-tabs__item:nth-child(4)),.config-tabs :deep(.el-tabs__item:nth-child(6)) { display:none; }
+.config-tabs :deep(.el-tabs__item:nth-child(1)),.config-tabs :deep(.el-tabs__item:nth-child(3)),.config-tabs :deep(.el-tabs__item:nth-child(5)) { font-size:0; }
+.config-tabs :deep(.el-tabs__item:nth-child(1)::after) { content:'批次管理'; font-size:14px; }.config-tabs :deep(.el-tabs__item:nth-child(3)::after) { content:'基础与政策'; font-size:14px; }.config-tabs :deep(.el-tabs__item:nth-child(5)::after) { content:'申请资源'; font-size:14px; }
+.config-tabs:has(:deep(.el-tabs__item:nth-child(1).is-active)) :deep(.el-tab-pane:nth-child(2)),.config-tabs:has(:deep(.el-tabs__item:nth-child(3).is-active)) :deep(.el-tab-pane:nth-child(4)),.config-tabs:has(:deep(.el-tabs__item:nth-child(5).is-active)) :deep(.el-tab-pane:nth-child(6)) { display:block !important; margin-top:28px; padding-top:24px; border-top:1px solid #e5e7eb; }
 /* 所有配置表的最后一列均为操作列：覆盖全局按钮最小宽度，避免编辑/删除被挤成两行。 */
 .config-page :deep(.standard-table .el-table__body .el-table__cell:last-child .cell) { display: flex; align-items: center; justify-content: center; gap: 8px; overflow: visible; }
 .config-page :deep(.standard-table .el-table__body .el-table__cell:last-child .el-button) { min-width: 48px; height: 28px; margin-left: 0; padding: 0 6px; }
