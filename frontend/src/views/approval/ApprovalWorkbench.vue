@@ -8,7 +8,7 @@ import ApprovalEditableFieldsDialog from '../../components/approval/ApprovalEdit
 import ReviewDialog from '../../components/approval/ReviewDialog.vue'
 import StatusBadge from '../../components/approval/StatusBadge.vue'
 import BusinessConfirmDialog from '../../components/school/BusinessConfirmDialog.vue'
-import { cancelApplication, editApprovalFields, getApprovalDashboard, getApprovalDetail, getApprovalList, getSubmissionStatus, reviewApplication, submitInitialBatch, submitReturnResubmit } from '../../api/approval'
+import { cancelApplication, editApprovalFields, getApprovalDashboard, getApprovalDetail, getApprovalList, getSubmissionStatus, reviewApplication, submitInitialBatch } from '../../api/approval'
 import { APPLICATION_TYPE_META, createRequestId, formatDateTime, ROLE_META } from '../../constants/approval'
 import { formatBatchLabel } from '../../constants/batch'
 import { batchAPI } from '../../api/application.js'
@@ -36,7 +36,6 @@ const reviewOpen = ref(false)
 const reviewSubmitting = ref(false)
 const reviewTarget = ref(null)
 const batchSubmitting = ref(false)
-const resubmittingId = ref(null)
 const cancellationOpen = ref(false)
 const cancellationSubmitting = ref(false)
 const cancellationTarget = ref(null)
@@ -242,23 +241,6 @@ async function submitBatch() {
   }
 }
 
-async function resubmitReturned(row) {
-  try {
-    await ElMessageBox.confirm(
-      `确认将 ${row.studentName} 的申请逐条补交至${roleMeta.value.nextLevel}？`,
-      '退回申请补交',
-      { confirmButtonText: '确认补交', cancelButtonText: '取消', type: 'warning' },
-    )
-    resubmittingId.value = row.applicationId
-    const result = await submitReturnResubmit(role.value, { applicationId: row.applicationId, version: row.version, requestId: createRequestId() })
-    ElMessage.success(`补交成功，当前状态：${result.statusName || result.status || '已更新'}`)
-    await loadWorkspace()
-  } catch (error) {
-    if (error !== 'cancel') ElMessage.error(errorMessage(error, '补交失败'))
-  } finally {
-    resubmittingId.value = null
-  }
-}
 
 watch(role, () => {
   currentTab.value = 'pending'
@@ -307,7 +289,7 @@ onMounted(loadWorkspace)
       <div class="card-tabs">
         <button type="button" :class="{ active: currentTab === 'pending' }" @click="switchTab('pending')">待审核 <span>{{ dashboard.pending }}</span></button>
         <button type="button" :class="{ active: currentTab === 'processed' }" @click="switchTab('processed')">已审核 <span>{{ dashboard.processed }}</span></button>
-        <button type="button" :class="{ active: currentTab === 'returned' }" @click="switchTab('returned')">退回补交 <span>{{ dashboard.returned }}</span></button>
+        <button type="button" :class="{ active: currentTab === 'returned' }" @click="switchTab('returned')">退回待学生修改 <span>{{ dashboard.returned }}</span></button>
       </div>
 
       <div class="standard-filter-grid">
@@ -328,7 +310,7 @@ onMounted(loadWorkspace)
         <el-table-column label="申请金额" width="118"><template #default="{ row }">¥{{ row.declaredAmount.toLocaleString() }}</template></el-table-column>
         <el-table-column label="提交时间" width="136"><template #default="{ row }">{{ formatDateTime(row.submitTime) }}</template></el-table-column>
         <el-table-column label="状态" min-width="142"><template #default="{ row }"><StatusBadge :status="row.status" /></template></el-table-column>
-        <el-table-column label="操作" width="260" fixed="right"><template #default="{ row }"><div class="table-actions"><el-button size="small" @click="openDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="currentTab === 'pending'" size="small" type="primary" @click="openReview(row)">审核</el-button><el-button v-else-if="currentTab === 'returned' && usesBatchSubmission" size="small" type="primary" plain :loading="resubmittingId === row.applicationId" @click="resubmitReturned(row)">逐条补交</el-button><el-button v-if="canCancel(row)" size="small" type="danger" plain @click="openCancellation(row)">取消申请</el-button></div></template></el-table-column>
+        <el-table-column label="操作" width="260" fixed="right"><template #default="{ row }"><div class="table-actions"><el-button size="small" @click="openDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button v-if="currentTab === 'pending'" size="small" type="primary" @click="openReview(row)">审核</el-button><span v-else-if="currentTab === 'returned'" class="returned-waiting">等待学生修改并重新提交</span><el-button v-if="canCancel(row)" size="small" type="danger" plain @click="openCancellation(row)">取消申请</el-button></div></template></el-table-column>
       </el-table>
 
       <div class="pagination-row"><span>共 {{ total }} 条记录</span><el-pagination v-model:current-page="filters.page" v-model:page-size="filters.size" layout="prev, pager, next" :total="total" @current-change="loadWorkspace" /></div>

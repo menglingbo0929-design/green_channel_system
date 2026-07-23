@@ -79,8 +79,12 @@ public class SchoolProxyApplicationService implements SchoolProxyApplicationPort
         validateRequestId(requestId);
         if (application.getStatus() != ApplicationStatus.DRAFT && !isReturned(application.getStatus())) throw bad("APPLICATION_INVALID_STATUS", "当前申请不能正式提交");
         if (resources.countActiveAttachments(applicationId) < 1) throw bad("APPLICATION_ATTACHMENT_REQUIRED", "正式提交前至少上传一份证明附件");
-        resourceService.reserveOnSubmit(applicationId, requestId, operatorUserId);
-        transitionService.submitInitial(applicationId, expectedVersion, requestId, operatorUserId);
+        if (isReturned(application.getStatus())) {
+            transitionService.resubmitReturned(applicationId, expectedVersion, requestId, operatorUserId);
+        } else {
+            resourceService.reserveOnSubmit(applicationId, requestId, operatorUserId);
+            transitionService.submitInitial(applicationId, expectedVersion, requestId, operatorUserId);
+        }
         return toView(requireProxy(applicationId));
     }
     private List<GiftApplicationItemCommand> toGiftItems(Long batchId, List<SchoolProxyGiftItemDTO> items) {

@@ -14,7 +14,7 @@ class UpdateStudentProfileRequestTest {
 
     @Test
     void acceptsAndNormalizesLegacyChineseDifficultyLevel() {
-        var request = new UpdateStudentProfileRequest("10000000000", 1, 0, "困难");
+        var request = new UpdateStudentProfileRequest("10000000000", 1, 0, "困难", null);
 
         assertTrue(validator.validate(request).isEmpty());
         assertEquals("DIFFICULTY", request.normalizedDifficultyLevel());
@@ -22,7 +22,7 @@ class UpdateStudentProfileRequestTest {
 
     @Test
     void acceptsEmptyDifficultyLevelAndStoresItAsNull() {
-        var request = new UpdateStudentProfileRequest("10000000000", 1, 0, "");
+        var request = new UpdateStudentProfileRequest("10000000000", 1, 0, "", null);
 
         assertTrue(validator.validate(request).isEmpty());
         assertNull(request.normalizedDifficultyLevel());
@@ -30,7 +30,7 @@ class UpdateStudentProfileRequestTest {
 
     @Test
     void rejectsUnknownDifficultyLevel() {
-        var request = new UpdateStudentProfileRequest("10000000000", 1, 0, "UNKNOWN");
+        var request = new UpdateStudentProfileRequest("10000000000", 1, 0, "UNKNOWN", null);
 
         assertEquals(1, validator.validate(request).size());
     }
