@@ -257,9 +257,6 @@ function renderCharts() {
       })),
       label: { show: true, position: 'top', color: '#222' },
     }],
-    graphic: colleges.length ? [] : [{
-      type: 'text', left: 'center', top: 'middle', style: { text: '暂无统计数据', fill: '#9aa2ad', fontSize: 14 },
-    }],
   }, true)
 
   const reasons = summary.value?.arrearsReasonStatistics ?? []
@@ -299,9 +296,6 @@ function renderCharts() {
         data: reasonAmounts,
       },
     ],
-    graphic: reasons.length ? [] : [{
-      type: 'text', left: 'center', top: 'middle', style: { text: '暂无统计数据', fill: '#9aa2ad', fontSize: 14 },
-    }],
   }, true)
 
   const gifts = summary.value?.giftItemApplicationCounts ?? []
@@ -329,9 +323,6 @@ function renderCharts() {
       barMaxWidth: 48,
       data: gifts.map(item => item.applicationCount),
       label: { show: true, position: 'top', color: '#222' },
-    }],
-    graphic: gifts.length ? [] : [{
-      type: 'text', left: 'center', top: 'middle', style: { text: '暂无礼包申请数据', fill: '#9aa2ad', fontSize: 14 },
     }],
   }, true)
 }
