@@ -95,11 +95,7 @@ onMounted(loadData)
 
 <style scoped>
 .config-page { padding: 0 0 24px; }.config-tabs :deep(.el-tabs__header) { margin: 0; padding: 0 20px; }.config-tabs :deep(.el-tabs__content) { padding: 20px; }.config-toolbar,.resource-heading { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #6b7280; font-size: 12px; }.config-toolbar > div { display:flex; gap:12px; }.resource-heading { justify-content:flex-start; }.subsection-title { margin: 24px 0 12px; font-size:16px; }.merge-fee-form { margin-top: 20px; }
-/* 将原有 6 个配置面板收敛为 3 个操作入口：批次管理、基础与政策、申请资源。 */
-.config-tabs :deep(.el-tabs__item:nth-child(2)),.config-tabs :deep(.el-tabs__item:nth-child(4)),.config-tabs :deep(.el-tabs__item:nth-child(6)) { display:none; }
-.config-tabs :deep(.el-tabs__item:nth-child(1)),.config-tabs :deep(.el-tabs__item:nth-child(3)),.config-tabs :deep(.el-tabs__item:nth-child(5)) { font-size:0; }
-.config-tabs :deep(.el-tabs__item:nth-child(1)::after) { content:'批次管理'; font-size:14px; }.config-tabs :deep(.el-tabs__item:nth-child(3)::after) { content:'政策引导'; font-size:14px; }.config-tabs :deep(.el-tabs__item:nth-child(5)::after) { content:'申请资源'; font-size:14px; }
-.config-tabs:has(:deep(.el-tabs__item:nth-child(1).is-active)) :deep(.el-tab-pane:nth-child(2)),.config-tabs:has(:deep(.el-tabs__item:nth-child(5).is-active)) :deep(.el-tab-pane:nth-child(4)),.config-tabs:has(:deep(.el-tabs__item:nth-child(5).is-active)) :deep(.el-tab-pane:nth-child(6)) { display:block !important; margin-top:28px; padding-top:24px; border-top:1px solid #e5e7eb; }
+.config-tabs :deep(.el-tabs__item:first-child) { font-size:0; }.config-tabs :deep(.el-tabs__item:first-child::after) { content:'绿色通道批次'; font-size:14px; }
 /* 欠费金额改为学生按实际情况填写，不再暴露维护成本高且易造成误解的预设金额档位。旧数据暂保留，确保历史申请可追溯。 */
 .config-tabs :deep(.el-tab-pane:nth-child(4) > .config-toolbar .el-button:first-child),.config-tabs :deep(.el-tab-pane:nth-child(4) > .subsection-title),.config-tabs :deep(.el-tab-pane:nth-child(4) > .subsection-title + .el-table) { display:none; }
 /* 生活、路费补助额度统一由申请资源页底部的补助额度配置维护，避免展示两套相同入口。 */
