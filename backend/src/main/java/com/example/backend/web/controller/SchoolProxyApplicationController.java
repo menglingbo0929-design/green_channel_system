@@ -11,8 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-/** 6.1.3 学校代申请 Controller：查学生、建草稿、传附件、正式提交。 */
+//学校待申请相关功能
 @RestController
 @RequestMapping("/api/school-proxy")
 @RequiredArgsConstructor
@@ -21,17 +20,20 @@ public class SchoolProxyApplicationController {
 
     /** 操作人统一取自成员一登录模块写入的 JWT 上下文。 */
     private final ICurrentUserProvider currentUserProvider;
-
+    //根据学号来查找学生信息
     @GetMapping("/students")
     public JsonResponse<SchoolProxyStudentVO> findStudent(@RequestParam String studentNo) { requireSchoolUser(); return JsonResponse.success(service.findStudent(studentNo)); }
+    //学校代替学生申请绿色通道，创建一份尚未提交的申请草稿
     @PostMapping("/applications/drafts")
     public JsonResponse<SchoolProxyApplicationVO> createDraft(@Valid @RequestBody SchoolProxyDraftDTO request) { return JsonResponse.success(service.createDraft(request,requireSchoolUser())); }
+    //创建申请草稿后，会在下面弹出来提示，让学校管理员代学生来提交支撑材料
     @PostMapping("/applications/{applicationId}/attachments")
     public JsonResponse<Void> upload(@PathVariable Long applicationId, @RequestPart("file") MultipartFile file, @RequestParam String requestId) { service.uploadAttachment(applicationId,file,requestId,requireSchoolUser()); return JsonResponse.successMessage("附件上传成功"); }
+    //提交附件后把刚才创造的草稿提交进入三级审核
     @PostMapping("/applications/{applicationId}/submit")
     public JsonResponse<SchoolProxyApplicationVO> submit(@PathVariable Long applicationId, @RequestParam Integer version, @RequestParam String requestId) { return JsonResponse.success(service.submit(applicationId,version,requestId,requireSchoolUser()),"学校代申请已提交审核"); }
 
-    /** 返回已通过身份校验的学校管理员用户 ID。 */
+    //getter,返回当前登录的学校管理员账号id
     private Long requireSchoolUser() {
         LoginUser user = currentUserProvider.getRequiredUser();
         if (user.getRoles() == null || !user.getRoles().contains("SCHOOL")) {

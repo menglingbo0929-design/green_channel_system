@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+//归属第四部分
+//此controller对应,欠费状态审核相关操作
 
 /** School-side arrears confirmation endpoints protected by the JWT user context. */
 @RestController
@@ -25,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ArrearsConfirmationController {
     private final IArrearsConfirmationService arrearsConfirmationService;
     private final ICurrentUserProvider currentUserProvider;
-
+    //打开欠费页面后可以看到欠费待确认列表
     @GetMapping("/list")
     public JsonResponse<Page<PendingArrearsApplicationVO>> listPending(
             ArrearsConfirmationQueryDTO queryDTO,
@@ -34,6 +36,7 @@ public class ArrearsConfirmationController {
         return JsonResponse.success(arrearsConfirmationService.listPending(queryDTO, pageDTO));
     }
 
+    //欠费确认功能，点击确认金额之后会谈一个学生信息的弹窗
     @GetMapping("/app/{applicationId}")
     public JsonResponse<PendingArrearsApplicationVO> getPendingDetail(
             @PathVariable("applicationId") Long applicationId) {
@@ -41,6 +44,7 @@ public class ArrearsConfirmationController {
         return JsonResponse.success(arrearsConfirmationService.getPendingDetail(applicationId));
     }
 
+    //对应弹窗里面的确定按钮点击事件
     @PostMapping("/{applicationId}")
     public JsonResponse<ConfirmResultVO> confirm(
             @PathVariable("applicationId") Long applicationId,
@@ -50,7 +54,7 @@ public class ArrearsConfirmationController {
                 arrearsConfirmationService.confirm(applicationId, confirmDTO, confirmUserId),
                 "欠费确认成功");
     }
-
+    //在每次调用controller的时候先确认用户是否为学校管理圆，确认后才能进入。并取得该管理员的id，作为欠费信息确认人记录下来
     private Long requireSchoolUser() {
         com.example.backend.model.dto.LoginUser user = currentUserProvider.getRequiredUser();
         if (user.getRoles() == null || !user.getRoles().contains("SCHOOL")) {

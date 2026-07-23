@@ -12,11 +12,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 6.1.5、6.1.6 学校端统计接口。
- *
+ * 学校端统计接口。
  * <p>当前登录人与 SCHOOL 角色均从成员一 JWT 登录上下文读取，Controller 不接收
  * 也不信任前端传入的用户 ID 或角色。</p>
  */
+//
 @RestController
 @RequestMapping("/api/statistics/applications")
 @RequiredArgsConstructor
