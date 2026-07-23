@@ -7,7 +7,7 @@ CREATE TABLE user_college_scope (
     PRIMARY KEY (id),
     UNIQUE KEY uk_user_college_scope_user (user_id),
     KEY idx_user_college_scope_college (college_id)
-) ENGINE = oceanbase;
+) ENGINE = InnoDB;
 
 -- 演示库兼容：将已有学院角色账号映射到第一个启用学院，后续可在基础数据中调整。
 INSERT INTO user_college_scope (user_id, college_id)

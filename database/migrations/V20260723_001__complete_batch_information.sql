@@ -15,7 +15,7 @@ CREATE TABLE batch_funding_source (
     KEY idx_bfs_batch (batch_id),
     CONSTRAINT chk_batch_funding_source_code
         CHECK (source_code IN ('SCHOOL','GOVERNMENT','SOCIETY','OTHER'))
-) ENGINE = oceanbase;
+) ENGINE = InnoDB;
 
 INSERT INTO batch_funding_source (batch_id, source_code)
 SELECT id, 'SCHOOL'
