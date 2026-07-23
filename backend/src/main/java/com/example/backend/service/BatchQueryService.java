@@ -36,6 +36,9 @@ public interface BatchQueryService {
      */
     boolean isGradeEligible(Long batchId, Long gradeId);
 
+    /** Checks grade eligibility within the requested batch family. */
+    boolean isGradeEligible(String batchType, Long batchId, Long gradeId);
+
     /** 查询所有启用且开放的批次（供前端下拉框） */
     List<BatchSnapshot> listOpenBatches();
 

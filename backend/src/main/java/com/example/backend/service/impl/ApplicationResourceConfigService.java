@@ -29,9 +29,9 @@ public class ApplicationResourceConfigService {
         this.batchQueryService = batchQueryService; this.organizationQueryService = organizationQueryService;
     }
 
-    public List<BatchGiftItemView> findBatchGiftItems(Long batchId) { requireBatch(batchId); return mapper.findBatchGiftItems(batchId); }
+    public List<BatchGiftItemView> findBatchGiftItems(Long batchId) { requireGreenBatch(batchId); return mapper.findBatchGiftItems(batchId); }
     @Transactional public BatchGiftItemView createBatchGiftItem(BatchGiftItemCommand command) {
-        requireBatch(command.batchId());
+        requireGreenBatch(command.batchId());
         if (catalogMapper.findGiftItem(command.giftItemId()) == null) throw notFound("GIFT_ITEM_NOT_FOUND", "礼包物品不存在或已删除");
         if (mapper.countBatchGiftItem(command.batchId(), command.giftItemId()) > 0) throw conflict("BATCH_GIFT_ITEM_EXISTS", "该批次已配置此礼包物品");
         mapper.insertBatchGiftItem(command.batchId(), command.giftItemId(), command.stockTotal(), command.perStudentLimit());
@@ -51,11 +51,11 @@ public class ApplicationResourceConfigService {
     }
 
     public List<GiftQuotaView> findGiftQuotas(Long batchId, QuotaScope scope) {
-        requireBatch(batchId);
+        requireGreenBatch(batchId);
         return rawGiftQuotas(batchId, scope).stream().map(v -> decorate(v, scope)).toList();
     }
     @Transactional public GiftQuotaView createGiftQuota(GiftQuotaCommand command) {
-        requireBatch(command.batchId()); requireTarget(command.scope(), command.batchId(), command.targetId());
+        requireGreenBatch(command.batchId()); requireTarget("GREEN_CHANNEL", command.scope(), command.batchId(), command.targetId());
         if (countGift(command.scope(), command.batchId(), command.targetId()) > 0) throw conflict("GIFT_QUOTA_EXISTS", "该批次和对象已有礼包名额配置");
         if (command.scope() == QuotaScope.COLLEGE) mapper.insertCollegeGiftQuota(command.batchId(), command.targetId(), command.quotaTotal());
         else mapper.insertGradeGiftQuota(command.batchId(), command.targetId(), command.quotaTotal());
@@ -75,11 +75,11 @@ public class ApplicationResourceConfigService {
     }
 
     public List<SubsidyQuotaView> findSubsidyQuotas(Long batchId, QuotaScope scope) {
-        requireBatch(batchId);
+        requireSubsidyBatch(batchId);
         return rawSubsidyQuotas(batchId, scope).stream().map(v -> decorate(v, scope)).toList();
     }
     @Transactional public SubsidyQuotaView createSubsidyQuota(SubsidyQuotaCommand command) {
-        requireBatch(command.batchId()); requireTarget(command.scope(), command.batchId(), command.targetId());
+        requireSubsidyBatch(command.batchId()); requireTarget("SUBSIDY", command.scope(), command.batchId(), command.targetId());
         if (countSubsidy(command.scope(), command.batchId(), command.targetId()) > 0) throw conflict("SUBSIDY_QUOTA_EXISTS", "该批次和对象已有补助额度配置");
         if (command.scope() == QuotaScope.COLLEGE) mapper.insertCollegeSubsidyQuota(command.batchId(), command.targetId(), command.quotaAmount());
         else mapper.insertGradeSubsidyQuota(command.batchId(), command.targetId(), command.quotaAmount());
@@ -110,10 +110,12 @@ public class ApplicationResourceConfigService {
     private SubsidyQuotaView requiredSubsidyQuota(QuotaScope scope, Long id) { SubsidyQuotaView view=scope==QuotaScope.COLLEGE?mapper.findCollegeSubsidyQuota(id):mapper.findGradeSubsidyQuota(id); if(view==null) throw notFound("SUBSIDY_QUOTA_NOT_FOUND", "补助额度配置不存在或已删除"); return decorate(view, scope); }
     private GiftQuotaView decorate(GiftQuotaView v, QuotaScope scope) { return new GiftQuotaView(v.id(),v.batchId(),scope,v.targetId(),targetName(scope,v.targetId()),v.quotaTotal(),v.reservedCount(),v.usedCount(),v.version()); }
     private SubsidyQuotaView decorate(SubsidyQuotaView v, QuotaScope scope) { return new SubsidyQuotaView(v.id(),v.batchId(),scope,v.targetId(),targetName(scope,v.targetId()),v.quotaAmount(),v.reservedAmount(),v.usedAmount(),v.version()); }
-    private void requireBatch(Long batchId) { try { batchQueryService.getRequiredBatch(batchId); } catch (RuntimeException e) { throw new ApplicationException("BATCH_NOT_FOUND", HttpStatus.BAD_REQUEST, "批次不存在或不可用"); } }
-    private void requireTarget(QuotaScope scope, Long batchId, Long targetId) {
+    private void requireGreenBatch(Long batchId) { requireBatch("GREEN_CHANNEL", batchId); }
+    private void requireSubsidyBatch(Long batchId) { requireBatch("SUBSIDY", batchId); }
+    private void requireBatch(String batchType, Long batchId) { try { batchQueryService.getRequiredBatch(batchType, batchId); } catch (RuntimeException e) { throw new ApplicationException("BATCH_NOT_FOUND", HttpStatus.BAD_REQUEST, "批次不存在或不可用"); } }
+    private void requireTarget(String batchType, QuotaScope scope, Long batchId, Long targetId) {
         if (targetName(scope, targetId) == null) throw new ApplicationException("QUOTA_TARGET_NOT_FOUND", HttpStatus.BAD_REQUEST, "学院或年级不存在或已停用");
-        if (scope == QuotaScope.GRADE && !batchQueryService.isGradeEligible(batchId, targetId)) {
+        if (scope == QuotaScope.GRADE && !batchQueryService.isGradeEligible(batchType, batchId, targetId)) {
             throw new ApplicationException("GRADE_NOT_ELIGIBLE_FOR_BATCH", HttpStatus.BAD_REQUEST, "该年级不在批次适用范围内");
         }
     }

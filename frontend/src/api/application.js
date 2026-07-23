@@ -25,6 +25,10 @@ export const batchAPI = {
   createGreenChannel: (data) => api.post('/batch/green-channel', data).then(payload),
   updateGreenChannel: (id, data) => api.put(`/batch/green-channel/${id}`, data).then(payload),
   toggleGreenChannel: (id) => api.put(`/batch/green-channel/${id}/status`).then(payload),
+  listSubsidy: () => api.get('/batch/subsidy').then(payload),
+  createSubsidy: (data) => api.post('/batch/subsidy', data).then(payload),
+  updateSubsidy: (id, data) => api.put(`/batch/subsidy/${id}`, data).then(payload),
+  toggleSubsidy: (id) => api.put(`/batch/subsidy/${id}/status`).then(payload),
   available: (applicationType) => api.get('/batches/available', { params: { applicationType } }).then(payload),
   open: (batchType) => api.get('/batches/open', { params: { batchType } }).then(payload),
 }

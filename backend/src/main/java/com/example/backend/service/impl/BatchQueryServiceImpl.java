@@ -122,6 +122,17 @@ public class BatchQueryServiceImpl implements BatchQueryService {
 
     @Override
     public boolean isGradeEligible(Long batchId, Long gradeId) {
+        return isGradeEligible("GREEN_CHANNEL", batchId, gradeId);
+    }
+
+    @Override
+    public boolean isGradeEligible(String batchType, Long batchId, Long gradeId) {
+        if ("SUBSIDY".equalsIgnoreCase(batchType)) {
+            return subsidyEligibleGradeMapper.exists(
+                    new LambdaQueryWrapper<SubsidyBatchEligibleGrade>()
+                            .eq(SubsidyBatchEligibleGrade::getBatchId, batchId)
+                            .eq(SubsidyBatchEligibleGrade::getGradeId, gradeId));
+        }
         return batchEligibleGradeMapper.exists(
                 new LambdaQueryWrapper<BatchEligibleGrade>()
                         .eq(BatchEligibleGrade::getBatchId, batchId)
