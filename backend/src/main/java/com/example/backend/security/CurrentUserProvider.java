@@ -1,6 +1,8 @@
 package com.example.backend.security;
 
 import com.example.backend.model.dto.LoginUser;
+import com.example.backend.model.domain.Student;
+import com.example.backend.service.StudentUserMappingService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,6 +14,12 @@ import java.util.Map;
 /** Exposes only the identity established by {@link JwtAuthenticationFilter}. */
 @Component
 public class CurrentUserProvider implements ICurrentUserProvider {
+
+    private final StudentUserMappingService studentUserMappings;
+
+    public CurrentUserProvider(StudentUserMappingService studentUserMappings) {
+        this.studentUserMappings = studentUserMappings;
+    }
 
     @Override
     @SuppressWarnings("unchecked")
@@ -34,8 +42,16 @@ public class CurrentUserProvider implements ICurrentUserProvider {
                 .map(value -> value.startsWith("ROLE_") ? value.substring(5) : value)
                 .distinct()
                 .toList();
-        return new LoginUser(userId, loginName, roles,
-                asLong(details.get("studentId")), asLong(details.get("collegeId")));
+        Long studentId = asLong(details.get("studentId"));
+        // A database repair can link a previously unbound student account while
+        // the browser still holds a JWT issued before that mapping existed.
+        // Recover the trusted mapping server-side so every student endpoint
+        // continues to work without requiring the user to log in again.
+        if (studentId == null && roles.contains("STUDENT")) {
+            Student student = studentUserMappings.findActiveStudentByUserId(userId);
+            if (student != null) studentId = student.getId();
+        }
+        return new LoginUser(userId, loginName, roles, studentId, asLong(details.get("collegeId")));
     }
 
     private Long asLong(Object value) {
