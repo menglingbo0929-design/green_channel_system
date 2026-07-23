@@ -197,7 +197,7 @@
             <el-table-column label="校园地贷款" width="110" align="center">
               <template #default="{row}"><el-tag :type="row.campusLoan?'warning':'info'" size="small">{{ row.campusLoan?'是':'否' }}</el-tag></template>
             </el-table-column>
-            <el-table-column prop="difficultyLevel" label="困难等级" width="90" />
+            <el-table-column label="困难等级" width="90"><template #default="{row}">{{ difficultyLabel(row.difficultyLevel) }}</template></el-table-column>
             <el-table-column label="信息完善" width="90" align="center">
               <template #default="{row}"><el-tag :type="row.infoComplete?'success':'danger'" size="small">{{ row.infoComplete?'是':'否' }}</el-tag></template>
             </el-table-column>
@@ -252,7 +252,7 @@
       </el-form-item>
       <el-form-item label="困难等级">
         <el-select v-model="stuForm.difficultyLevel" placeholder="请选择" clearable>
-          <el-option label="特别困难" value="特别困难" /><el-option label="困难" value="困难" /><el-option label="一般困难" value="一般困难" />
+          <el-option label="特别困难" value="SPECIAL_DIFFICULTY" /><el-option label="困难" value="DIFFICULTY" /><el-option label="一般困难" value="GENERAL_DIFFICULTY" /><el-option label="不困难" value="NONE" />
         </el-select>
       </el-form-item>
     </FormDialog>
@@ -388,7 +388,10 @@ const stuForm=reactive({ studentNo:'',studentName:'',collegeId:null,majorId:null
 const stuRules={ studentNo:[{required:true,message:'请输入学号'}],studentName:[{required:true,message:'请输入姓名'}],collegeId:[{required:true,message:'请选择学院'}],majorId:[{required:true,message:'请选择专业'}],gradeId:[{required:true,message:'请选择年级'}],classId:[{required:true,message:'请选择班级'}] }
 const stuFormMajors=computed(()=>stuForm.collegeId?majors.value.filter(m=>m.collegeId===stuForm.collegeId):majors.value)
 const stuFormClasses=computed(()=>classes.value.filter(c=>(!stuForm.collegeId||c.collegeId===stuForm.collegeId)&&(!stuForm.gradeId||c.gradeId===stuForm.gradeId)))
-function openStuDialog(row){ stuIsEdit.value=!!row;stuEditId.value=row?.id; if(row){ Object.assign(stuForm,row) }else{ Object.assign(stuForm,{studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null,phone:'',originLoan:0,campusLoan:0,difficultyLevel:''}) } stuDialog.value=true }
+const difficultyCode={特别困难:'SPECIAL_DIFFICULTY',困难:'DIFFICULTY',一般困难:'GENERAL_DIFFICULTY',不困难:'NONE'}
+const difficultyLabels={SPECIAL_DIFFICULTY:'特别困难',DIFFICULTY:'困难',GENERAL_DIFFICULTY:'一般困难',NONE:'不困难'}
+const difficultyLabel=value=>difficultyLabels[value]||value||'-'
+function openStuDialog(row){ stuIsEdit.value=!!row;stuEditId.value=row?.id; if(row){ Object.assign(stuForm,row,{difficultyLevel:difficultyCode[row.difficultyLevel]||row.difficultyLevel||''}) }else{ Object.assign(stuForm,{studentNo:'',studentName:'',collegeId:null,majorId:null,gradeId:null,classId:null,phone:'',originLoan:0,campusLoan:0,difficultyLevel:''}) } stuDialog.value=true }
 async function onStuCollegeChange(){ stuForm.majorId=null;stuForm.classId=null }
 async function handleStuSave(){ stuSaving.value=true; try{ const data={studentNo:stuForm.studentNo,studentName:stuForm.studentName,collegeId:stuForm.collegeId,majorId:stuForm.majorId,gradeId:stuForm.gradeId,classId:stuForm.classId,phone:stuForm.phone,originLoan:stuForm.originLoan,campusLoan:stuForm.campusLoan,difficultyLevel:stuForm.difficultyLevel}; stuIsEdit.value?await studentAPI.update(stuEditId.value,data):await studentAPI.create(data); ElMessage.success(stuIsEdit.value?'更新成功':'新增成功');stuDialog.value=false;await Promise.all([loadStudents(), loadUsers()]) }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ stuSaving.value=false } }
 async function handleStuToggle(row){ const act=row.enabled?'停用':'启用'; try{ await ElMessageBox.confirm(`确定${act}学生「${row.studentName}(${row.studentNo})」？`,null,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); await studentAPI.toggle(row.id); ElMessage.success(act+'成功');loadStudents() }catch{} }

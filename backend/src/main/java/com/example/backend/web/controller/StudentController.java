@@ -126,7 +126,7 @@ public class StudentController {
         s.setPhone(request.phone().trim());
         s.setOriginLoan(request.originLoan() == null ? 0 : request.originLoan());
         s.setCampusLoan(request.campusLoan() == null ? 0 : request.campusLoan());
-        s.setDifficultyLevel(request.difficultyLevel());
+        s.setDifficultyLevel(request.normalizedDifficultyLevel());
         s.setInfoComplete(1);
         s.setUpdateTime(LocalDateTime.now());
         studentMapper.updateById(s);
