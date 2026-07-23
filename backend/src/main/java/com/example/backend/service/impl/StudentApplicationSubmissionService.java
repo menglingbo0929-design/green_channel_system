@@ -77,8 +77,15 @@ public class StudentApplicationSubmissionService implements ApplicationAttachmen
         validateRequestId(requestId); requireEditable(application);
         if (!application.getVersion().equals(version)) throw conflict("APPLICATION_VERSION_CONFLICT", "申请版本已变化");
         if (resources.countActiveAttachments(applicationId) < 1) throw conflict("APPLICATION_ATTACHMENT_REQUIRED", "正式提交前至少上传一份证明附件");
-        resourceService.reserveOnSubmit(applicationId, requestId, operatorId);
-        transitionService.submitInitial(applicationId, version, requestId, operatorId);
+        boolean resubmission = application.getStatus().isReturned();
+        if (!resubmission) {
+            resourceService.reserveOnSubmit(applicationId, requestId, operatorId);
+        }
+        if (resubmission) {
+            transitionService.resubmitReturned(applicationId, version, requestId, operatorId);
+        } else {
+            transitionService.submitInitial(applicationId, version, requestId, operatorId);
+        }
         notifyResponsibleCounselors(application);
     }
 

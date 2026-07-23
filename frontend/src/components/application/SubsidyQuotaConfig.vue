@@ -41,5 +41,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.quota-section { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e5e7eb; }.quota-section h3 { margin: 0; font-size: 16px; }.quota-section p { margin: 6px 0 16px; color: #6b7280; font-size: 12px; }.toolbar { margin-bottom: 16px; display: flex; gap: 12px; align-items: center; }
+.quota-section { margin: 28px 20px 0; padding-top: 24px; border-top: 1px solid #e5e7eb; }.quota-section h3 { margin: 0; font-size: 16px; }.quota-section p { margin: 6px 0 16px; color: #6b7280; font-size: 12px; }.toolbar { margin-bottom: 16px; display: flex; gap: 12px; align-items: center; }
 </style>
