@@ -1,6 +1,7 @@
 package com.example.backend.model.domain;
 
 public enum MessageType {
+    APPLICATION_SUBMITTED,
     APPROVAL_RETURNED,
     APPROVAL_REJECTED,
     APPROVAL_APPROVED,
