@@ -1,8 +1,11 @@
 package com.example.backend.service.impl;
 
 import com.example.backend.service.ApprovalMessageRecipientResolver;
+import com.example.backend.mapper.ApprovalMessageRecipientQueryMapper;
 import com.example.backend.mapper.StudentMapper;
+import com.example.backend.model.domain.ApprovalLevel;
 import com.example.backend.model.domain.Student;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class ApprovalMessageRecipientResolverImpl implements ApprovalMessageRecipientResolver {
 
     private final StudentMapper studentMapper;
+    private final ApprovalMessageRecipientQueryMapper recipientQueryMapper;
 
     @Override
     public Long getStudentUserId(Long studentId) {
@@ -28,5 +32,18 @@ public class ApprovalMessageRecipientResolverImpl implements ApprovalMessageReci
             throw new IllegalStateException("该学生未关联登录账号: id=" + studentId);
         }
         return s.getUserId();
+    }
+
+    @Override
+    public List<Long> getReviewerUserIds(Long studentId, ApprovalLevel level) {
+        if (studentId == null || studentId <= 0 || level == null) {
+            return List.of();
+        }
+        return switch (level) {
+            case COUNSELOR -> recipientQueryMapper.findCounselorUserIds(studentId);
+            case COLLEGE -> recipientQueryMapper.findCollegeUserIds(studentId);
+            case SCHOOL -> recipientQueryMapper.findSchoolUserIds();
+            default -> List.of();
+        };
     }
 }

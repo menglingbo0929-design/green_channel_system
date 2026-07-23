@@ -17,11 +17,13 @@ import com.example.backend.model.domain.SubmissionScopeType;
 import com.example.backend.model.domain.SubmissionStatus;
 import com.example.backend.model.domain.SubmissionType;
 import com.example.backend.service.ApprovalBatchQueryService;
+import com.example.backend.service.ApprovalMessageRecipientResolver;
 import com.example.backend.service.ApprovalResourceService;
 import com.example.backend.service.ApprovalSubmissionApplicationQueryService;
 import com.example.backend.service.ApplicationStateQueryService;
 import com.example.backend.model.dto.ApplicationStateSnapshot;
 import com.example.backend.service.ApplicationStateWriteService;
+import com.example.backend.service.SystemMessageService;
 import com.example.backend.model.dto.LoginUser;
 import com.example.backend.service.StudentScopeService;
 import com.example.backend.model.domain.UserRole;
@@ -34,6 +36,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.ObjectProvider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -55,6 +58,9 @@ class ApprovalBatchSubmissionServiceTest {
     private ApprovalSubmissionApplicationQueryService applications;
     private StudentScopeService scopes;
     private ApprovalResourceService resources;
+    private ApprovalMessageRecipientResolver recipients;
+    private ObjectProvider<SystemMessageService> messageProvider;
+    private SystemMessageService messages;
     private ApprovalBatchSubmissionService service;
 
     @BeforeEach
@@ -67,13 +73,19 @@ class ApprovalBatchSubmissionServiceTest {
         applications = mock(ApprovalSubmissionApplicationQueryService.class);
         scopes = mock(StudentScopeService.class);
         resources = mock(ApprovalResourceService.class);
+        recipients = mock(ApprovalMessageRecipientResolver.class);
+        messageProvider = mock(ObjectProvider.class);
+        messages = mock(SystemMessageService.class);
         when(submissions.findByRequestId(anyString())).thenReturn(Optional.empty());
         when(submissions.listByScope(any(), any(), any(), any(), any())).thenReturn(List.of());
         when(batches.getRequiredBatch(BatchType.GREEN_CHANNEL, 30L)).thenReturn(batch());
         when(scopes.isCounselorResponsibleFor(99L, 20L)).thenReturn(true);
+        when(recipients.getStudentUserId(20L)).thenReturn(30L);
+        when(messageProvider.getIfAvailable()).thenReturn(messages);
         service = new ApprovalBatchSubmissionService(
                 submissions, records, stateQuery, stateWriter,
                 batches, applications, scopes, resources,
+                recipients, messageProvider,
                 Clock.fixed(Instant.parse("2026-07-21T12:00:00Z"), ZoneOffset.UTC)
         );
     }
@@ -84,6 +96,7 @@ class ApprovalBatchSubmissionServiceTest {
         when(applications.listByBatch(BatchType.GREEN_CHANNEL, 30L)).thenReturn(List.of(approved));
         when(records.findLatestDecision(10L, 1, ApprovalRecordLevel.COUNSELOR))
                 .thenReturn(Optional.of(decision(10L, ApprovalAction.APPROVE)));
+        when(recipients.getReviewerUserIds(20L, ApprovalLevel.COLLEGE)).thenReturn(List.of(40L));
 
         var result = service.submitInitial(counselor(), BatchType.GREEN_CHANNEL, 30L, "batch-1");
 
@@ -104,6 +117,12 @@ class ApprovalBatchSubmissionServiceTest {
         assertEquals(0L, captor.getValue().getApplicationId());
         assertEquals(1, captor.getValue().getSubmittedCount());
         assertEquals(BatchType.GREEN_CHANNEL, captor.getValue().getBatchType());
+        verify(messages).sendApprovalProgress(
+                30L, 10L, "您的申请已通过辅导员审核，并已提交学院审核。"
+        );
+        verify(messages).sendApprovalTask(
+                40L, 10L, "有一条已通过辅导员审核的学生申请等待学院审核。"
+        );
     }
 
     @Test
@@ -147,6 +166,7 @@ class ApprovalBatchSubmissionServiceTest {
         when(scopes.isStudentInCollege(20L, 8L)).thenReturn(true);
         when(records.findLatestDecision(10L, 1, ApprovalRecordLevel.COLLEGE))
                 .thenReturn(Optional.of(decision(10L, ApprovalAction.APPROVE)));
+        when(recipients.getReviewerUserIds(20L, ApprovalLevel.SCHOOL)).thenReturn(List.of(50L));
 
         var result = service.submitInitial(
                 new LoginUser(77L, UserRole.COLLEGE, null, 8L),
@@ -160,6 +180,12 @@ class ApprovalBatchSubmissionServiceTest {
         verify(stateWriter).updateState(
                 10L, ApplicationStatus.COLLEGE_PENDING, ApplicationStatus.SCHOOL_PENDING,
                 ApprovalLevel.SCHOOL, 3, 77L
+        );
+        verify(messages).sendApprovalProgress(
+                30L, 10L, "您的申请已通过学院审核，并已提交学校审核。"
+        );
+        verify(messages).sendApprovalTask(
+                50L, 10L, "有一条已通过学院审核的学生申请等待学校审核。"
         );
     }
 

@@ -18,6 +18,9 @@ import com.example.backend.model.domain.ApprovalRecordLevel;
 import com.example.backend.service.ApplicationStateQueryService;
 import com.example.backend.model.dto.ApplicationStateSnapshot;
 import com.example.backend.service.ApplicationStateWriteService;
+import com.example.backend.service.ApprovalMessageRecipientResolver;
+import com.example.backend.service.SystemMessageService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -33,6 +36,8 @@ public class ApprovalWorkflowService implements
     private final ApplicationStateQueryService stateQueryService;
     private final ApplicationStateWriteService stateWriteService;
     private final ApprovalRecordMapper approvalRecordMapper;
+    private final ApprovalMessageRecipientResolver recipientResolver;
+    private final ObjectProvider<SystemMessageService> messageServiceProvider;
 
     public ApprovalWorkflowService(
             ApprovalStateMachine stateMachine,
@@ -40,10 +45,23 @@ public class ApprovalWorkflowService implements
             ApplicationStateWriteService stateWriteService,
             ApprovalRecordMapper approvalRecordMapper
     ) {
+        this(stateMachine, stateQueryService, stateWriteService, approvalRecordMapper, null, null);
+    }
+
+    public ApprovalWorkflowService(
+            ApprovalStateMachine stateMachine,
+            ApplicationStateQueryService stateQueryService,
+            ApplicationStateWriteService stateWriteService,
+            ApprovalRecordMapper approvalRecordMapper,
+            ApprovalMessageRecipientResolver recipientResolver,
+            ObjectProvider<SystemMessageService> messageServiceProvider
+    ) {
         this.stateMachine = stateMachine;
         this.stateQueryService = stateQueryService;
         this.stateWriteService = stateWriteService;
         this.approvalRecordMapper = approvalRecordMapper;
+        this.recipientResolver = recipientResolver;
+        this.messageServiceProvider = messageServiceProvider;
     }
 
     @Override
@@ -201,7 +219,28 @@ public class ApprovalWorkflowService implements
                 .newStatus(transition.targetStatus())
                 .requestId(requestId)
                 .build());
+        notifyCounselorsIfPending(before.studentId(), applicationId, transition.targetStatus());
         return toStatusResult(after);
+    }
+
+    private void notifyCounselorsIfPending(Long studentId, Long applicationId, ApplicationStatus status) {
+        if (status != ApplicationStatus.COUNSELOR_PENDING
+                || recipientResolver == null || messageServiceProvider == null) {
+            return;
+        }
+        SystemMessageService messages = messageServiceProvider.getIfAvailable();
+        if (messages == null) return;
+        List<Long> receiverUserIds = recipientResolver.getReviewerUserIds(
+                studentId,
+                com.example.backend.model.domain.ApprovalLevel.COUNSELOR
+        );
+        if (receiverUserIds == null) return;
+        receiverUserIds.stream().filter(Objects::nonNull).distinct()
+                .forEach(userId -> messages.sendApprovalTask(
+                        userId,
+                        applicationId,
+                        "有一条学生申请等待辅导员审核。"
+                ));
     }
 
     private ApplicationStatusResult idempotentResult(

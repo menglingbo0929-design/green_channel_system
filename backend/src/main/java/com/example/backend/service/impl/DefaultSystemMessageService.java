@@ -72,6 +72,30 @@ public class DefaultSystemMessageService implements SystemMessageService {
 
     @Override
     @Transactional
+    public void sendApprovalProgress(Long receiverUserId, Long applicationId, String notice) {
+        send(
+                receiverUserId,
+                applicationId,
+                MessageType.APPROVAL_APPROVED,
+                "申请审核进度更新",
+                requireText(notice, "notice")
+        );
+    }
+
+    @Override
+    @Transactional
+    public void sendApprovalTask(Long receiverUserId, Long applicationId, String notice) {
+        send(
+                receiverUserId,
+                applicationId,
+                MessageType.APPROVAL_PENDING,
+                "新的待审核申请",
+                requireText(notice, "notice")
+        );
+    }
+
+    @Override
+    @Transactional
     public void sendApprovalCancelled(Long receiverUserId, Long applicationId, String reason) {
         send(
                 receiverUserId,

@@ -10,6 +10,10 @@ public interface SystemMessageService {
 
     void sendApprovalApproved(Long receiverUserId, Long applicationId, String notice);
 
+    void sendApprovalProgress(Long receiverUserId, Long applicationId, String notice);
+
+    void sendApprovalTask(Long receiverUserId, Long applicationId, String notice);
+
     void sendApprovalCancelled(Long receiverUserId, Long applicationId, String reason);
 
     SystemMessagePage listMessages(Long userId, int page, int size, Boolean read);

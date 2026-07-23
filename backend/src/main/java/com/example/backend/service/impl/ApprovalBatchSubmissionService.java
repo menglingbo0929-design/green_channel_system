@@ -19,11 +19,13 @@ import com.example.backend.model.domain.SubmissionScopeType;
 import com.example.backend.model.domain.SubmissionStatus;
 import com.example.backend.model.domain.SubmissionType;
 import com.example.backend.service.ApprovalBatchQueryService;
+import com.example.backend.service.ApprovalMessageRecipientResolver;
 import com.example.backend.service.ApprovalResourceService;
 import com.example.backend.service.ApprovalSubmissionApplicationQueryService;
 import com.example.backend.service.ApplicationStateQueryService;
 import com.example.backend.model.dto.ApplicationStateSnapshot;
 import com.example.backend.service.ApplicationStateWriteService;
+import com.example.backend.service.SystemMessageService;
 import com.example.backend.model.dto.LoginUser;
 import com.example.backend.service.StudentScopeService;
 import com.example.backend.model.domain.UserRole;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -50,6 +53,8 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
     private final ApprovalSubmissionApplicationQueryService applicationQueryService;
     private final StudentScopeService scopeService;
     private final ApprovalResourceService resourceService;
+    private final ApprovalMessageRecipientResolver messageRecipientResolver;
+    private final ObjectProvider<SystemMessageService> messageServiceProvider;
     private final Clock clock;
 
     public ApprovalBatchSubmissionService(
@@ -61,6 +66,8 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
             ApprovalSubmissionApplicationQueryService applicationQueryService,
             StudentScopeService scopeService,
             ApprovalResourceService resourceService,
+            ApprovalMessageRecipientResolver messageRecipientResolver,
+            ObjectProvider<SystemMessageService> messageServiceProvider,
             Clock clock
     ) {
         this.submissionRecords = submissionRecords;
@@ -71,6 +78,8 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
         this.applicationQueryService = applicationQueryService;
         this.scopeService = scopeService;
         this.resourceService = resourceService;
+        this.messageRecipientResolver = messageRecipientResolver;
+        this.messageServiceProvider = messageServiceProvider;
         this.clock = clock;
     }
 
@@ -240,6 +249,34 @@ public class ApprovalBatchSubmissionService implements ApprovalSubmissionService
                 .newStatus(target)
                 .requestId(auditRequestId(requestId, application.applicationId()))
                 .build());
+        notifyApprovalProgress(application, scope.level());
+    }
+
+    private void notifyApprovalProgress(ApplicationStateSnapshot application, SubmissionLevel submissionLevel) {
+        SystemMessageService messages = messageServiceProvider.getIfAvailable();
+        if (messages == null) return;
+        Long receiverUserId = messageRecipientResolver.getStudentUserId(application.studentId());
+        String studentNotice = submissionLevel == SubmissionLevel.COUNSELOR
+                ? "您的申请已通过辅导员审核，并已提交学院审核。"
+                : "您的申请已通过学院审核，并已提交学校审核。";
+        if (receiverUserId != null) {
+            messages.sendApprovalProgress(receiverUserId, application.applicationId(), studentNotice);
+        }
+
+        ApprovalLevel nextLevel = submissionLevel == SubmissionLevel.COUNSELOR
+                ? ApprovalLevel.COLLEGE
+                : ApprovalLevel.SCHOOL;
+        String reviewerNotice = submissionLevel == SubmissionLevel.COUNSELOR
+                ? "有一条已通过辅导员审核的学生申请等待学院审核。"
+                : "有一条已通过学院审核的学生申请等待学校审核。";
+        List<Long> reviewerUserIds = messageRecipientResolver.getReviewerUserIds(
+                application.studentId(), nextLevel
+        );
+        if (reviewerUserIds == null) return;
+        reviewerUserIds.stream().filter(Objects::nonNull).distinct()
+                .forEach(userId -> messages.sendApprovalTask(
+                        userId, application.applicationId(), reviewerNotice
+                ));
     }
 
     private void validateResources(SubmissionLevel level, List<ApplicationStateSnapshot> applications) {

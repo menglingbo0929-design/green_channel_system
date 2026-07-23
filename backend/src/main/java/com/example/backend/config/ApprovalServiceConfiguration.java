@@ -20,7 +20,6 @@ import com.example.backend.service.impl.ApprovalWorkflowService;
 import com.example.backend.service.impl.DefaultSystemMessageService;
 import com.example.backend.service.impl.DefaultApprovalWorkbenchQueryService;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -52,13 +51,17 @@ public class ApprovalServiceConfiguration {
             ApprovalStateMachine stateMachine,
             ApplicationStateQueryService stateQueryService,
             ApplicationStateWriteService stateWriteService,
-            ApprovalRecordMapper approvalRecordMapper
+            ApprovalRecordMapper approvalRecordMapper,
+            ApprovalMessageRecipientResolver recipientResolver,
+            ObjectProvider<com.example.backend.service.SystemMessageService> messageServiceProvider
     ) {
         return new ApprovalWorkflowService(
                 stateMachine,
                 stateQueryService,
                 stateWriteService,
-                approvalRecordMapper
+                approvalRecordMapper,
+                recipientResolver,
+                messageServiceProvider
         );
     }
 
@@ -109,6 +112,8 @@ public class ApprovalServiceConfiguration {
             com.example.backend.service.ApprovalSubmissionApplicationQueryService applicationQueryService,
             StudentScopeService scopeService,
             ApprovalResourceService resourceService,
+            ApprovalMessageRecipientResolver messageRecipientResolver,
+            ObjectProvider<com.example.backend.service.SystemMessageService> systemMessageService,
             Clock approvalClock
     ) {
         return new ApprovalBatchSubmissionService(
@@ -120,6 +125,8 @@ public class ApprovalServiceConfiguration {
                 applicationQueryService,
                 scopeService,
                 resourceService,
+                messageRecipientResolver,
+                systemMessageService,
                 approvalClock
         );
     }
@@ -147,8 +154,12 @@ public class ApprovalServiceConfiguration {
         );
     }
 
+    /**
+     * 消息 Mapper 由 MyBatis 在配置条件判断之后注册，不能在这里使用
+     * {@code @ConditionalOnBean}，否则消息 Service 会被静默跳过并在运行时返回 503。
+     * 直接注入依赖可以在启动阶段暴露真实的 Mapper 配置问题。
+     */
     @Bean
-    @ConditionalOnBean({SystemMessageMapper.class, MessageReadRecordMapper.class})
     DefaultSystemMessageService systemMessageService(
             SystemMessageMapper systemMessageMapper,
             MessageReadRecordMapper messageReadRecordMapper,
