@@ -214,6 +214,49 @@
             </el-table-column>
           </el-table>
         </el-tab-pane>
+
+        <!-- Tab 4：权限关联 -->
+        <el-tab-pane label="权限关联" name="scope">
+          <div class="toolbar"><span class="toolbar-hint">学院管理员关联学院 / 辅导员关联学生</span></div>
+          <el-tabs v-model="scopeTab" type="card">
+            <!-- 学院管理员 → 学院 -->
+            <el-tab-pane label="学院管理员关联" name="collegeScope">
+              <div class="toolbar">
+                <el-select v-model="scopeForm.userId" placeholder="选择学院管理员" filterable class="filter-select">
+                  <el-option v-for="u in users.filter(u=>u.roles&&u.roles.includes('COLLEGE'))" :key="u.id" :label="u.loginName" :value="u.id" />
+                </el-select>
+                <el-select v-model="scopeForm.collegeId" placeholder="选择学院" class="filter-select">
+                  <el-option v-for="c in colleges" :key="c.id" :label="c.collegeName" :value="c.id" />
+                </el-select>
+                <el-button type="primary" @click="addCollegeScope">添加关联</el-button>
+              </div>
+              <el-table :data="collegeScopes" border class="data-table">
+                <el-table-column prop="id" label="ID" width="80" />
+                <el-table-column label="用户"><template #default="{row}">{{ getUserName(row.userId) }}</template></el-table-column>
+                <el-table-column label="学院"><template #default="{row}">{{ getCollegeName(row.collegeId) }}</template></el-table-column>
+                <el-table-column label="操作" width="100"><template #default="{row}"><el-button link type="danger" @click="removeCollegeScope(row.id)">删除</el-button></template></el-table-column>
+              </el-table>
+            </el-tab-pane>
+            <!-- 辅导员 → 学生 -->
+            <el-tab-pane label="辅导员关联学生" name="counselorScope">
+              <div class="toolbar">
+                <el-select v-model="scopeForm2.counselorUserId" placeholder="选择辅导员" filterable class="filter-select">
+                  <el-option v-for="u in users.filter(u=>u.roles&&u.roles.includes('COUNSELOR'))" :key="u.id" :label="u.loginName" :value="u.id" />
+                </el-select>
+                <el-select v-model="scopeForm2.studentId" placeholder="选择学生" filterable class="filter-select">
+                  <el-option v-for="s in students" :key="s.id" :label="s.studentName+'('+s.studentNo+')'" :value="s.id" />
+                </el-select>
+                <el-button type="primary" @click="addCounselorScope">添加关联</el-button>
+              </div>
+              <el-table :data="counselorScopes" border class="data-table">
+                <el-table-column prop="id" label="ID" width="80" />
+                <el-table-column label="辅导员"><template #default="{row}">{{ getUserName(row.counselorUserId) }}</template></el-table-column>
+                <el-table-column label="学生"><template #default="{row}">{{ getStuName(row.studentId) }}</template></el-table-column>
+                <el-table-column label="操作" width="100"><template #default="{row}"><el-button link type="danger" @click="removeCounselorScope(row.id)">删除</el-button></template></el-table-column>
+              </el-table>
+            </el-tab-pane>
+          </el-tabs>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
@@ -300,7 +343,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import FormDialog from '../components/FormDialog.vue'
-import { listUsersAPI, createUserAPI, updateUserAPI, toggleUserStatusAPI, collegeAPI, majorAPI, gradeAPI, classAPI, studentAPI } from '../api/index.js'
+import { listUsersAPI, createUserAPI, updateUserAPI, toggleUserStatusAPI, collegeAPI, majorAPI, gradeAPI, classAPI, studentAPI, collegeScopeAPI, counselorScopeAPI } from '../api/index.js'
 
 // ========== Tab 状态 ==========
 const activeTab = ref('users')
@@ -312,7 +355,17 @@ const roleLabel = { STUDENT:'学生',COUNSELOR:'辅导员',COLLEGE:'学院管理
 
 // ==================== 用户管理 ====================
 const users = ref([]); const userSearch = ref('')
-const filteredUsers = computed(()=>{ const kw=userSearch.value.toLowerCase(); return kw?users.value.filter(u=>u.loginName.toLowerCase().includes(kw)):users.value })
+const roleOrder = { SCHOOL:1, COLLEGE:2, COUNSELOR:3, STUDENT:4 }
+const filteredUsers = computed(()=>{
+  const list = userSearch.value.toLowerCase()
+    ? users.value.filter(u=>u.loginName.toLowerCase().includes(userSearch.value.toLowerCase()))
+    : [...users.value]
+  return list.sort((a,b)=>{
+    const ra = a.roles?.length ? Math.min(...a.roles.map(r=>roleOrder[r]||99)) : 99
+    const rb = b.roles?.length ? Math.min(...b.roles.map(r=>roleOrder[r]||99)) : 99
+    return ra - rb
+  })
+})
 async function loadUsers(){ const {data}=await listUsersAPI(); users.value=data.data }
 const userDialog=ref(false); const userIsEdit=ref(false); const userEditId=ref(null); const userSaving=ref(false)
 const userForm=reactive({ loginName:'',password:'',roleId:null,remark:'' })
@@ -396,7 +449,22 @@ async function onStuCollegeChange(){ stuForm.majorId=null;stuForm.classId=null }
 async function handleStuSave(){ stuSaving.value=true; try{ const data={studentNo:stuForm.studentNo,studentName:stuForm.studentName,collegeId:stuForm.collegeId,majorId:stuForm.majorId,gradeId:stuForm.gradeId,classId:stuForm.classId,phone:stuForm.phone,originLoan:stuForm.originLoan,campusLoan:stuForm.campusLoan,difficultyLevel:stuForm.difficultyLevel}; stuIsEdit.value?await studentAPI.update(stuEditId.value,data):await studentAPI.create(data); ElMessage.success(stuIsEdit.value?'更新成功':'新增成功');stuDialog.value=false;await Promise.all([loadStudents(), loadUsers()]) }catch(e){ ElMessage.error(e.response?.data?.message||'操作失败') }finally{ stuSaving.value=false } }
 async function handleStuToggle(row){ const act=row.enabled?'停用':'启用'; try{ await ElMessageBox.confirm(`确定${act}学生「${row.studentName}(${row.studentNo})」？`,null,{confirmButtonText:act,cancelButtonText:'取消',type:'warning'}); await studentAPI.toggle(row.id); ElMessage.success(act+'成功');loadStudents() }catch{} }
 
-onMounted(()=>{ loadUsers();loadAllOrg();loadStudents() })
+// ==================== 权限关联 ====================
+const scopeTab = ref('collegeScope')
+const collegeScopes = ref([]); const counselorScopes = ref([])
+const scopeForm = reactive({ userId: null, collegeId: null })
+const scopeForm2 = reactive({ counselorUserId: null, studentId: null })
+
+async function loadCollegeScopes() { const {data} = await collegeScopeAPI.list(); collegeScopes.value = data.data }
+async function loadCounselorScopes() { const {data} = await counselorScopeAPI.list(); counselorScopes.value = data.data }
+async function addCollegeScope() { try { await collegeScopeAPI.add(scopeForm.userId, scopeForm.collegeId); ElMessage.success('已关联'); loadCollegeScopes() } catch(e) { ElMessage.error('关联失败') } }
+async function removeCollegeScope(id) { try { await collegeScopeAPI.remove(id); ElMessage.success('已解除'); loadCollegeScopes() } catch(e) { ElMessage.error('操作失败') } }
+async function addCounselorScope() { try { await counselorScopeAPI.add(scopeForm2.counselorUserId, scopeForm2.studentId); ElMessage.success('已关联'); loadCounselorScopes() } catch(e) { ElMessage.error('关联失败') } }
+async function removeCounselorScope(id) { try { await counselorScopeAPI.remove(id); ElMessage.success('已解除'); loadCounselorScopes() } catch(e) { ElMessage.error('操作失败') } }
+function getUserName(id) { return users.value.find(u=>u.id===id)?.loginName||'' }
+function getStuName(id) { return students.value.find(s=>s.id===id)?.studentName||'' }
+
+onMounted(()=>{ loadUsers();loadAllOrg();loadStudents();loadCollegeScopes();loadCounselorScopes() })
 watch(activeTab, tab => { if (tab === 'users') loadUsers() })
 </script>
 

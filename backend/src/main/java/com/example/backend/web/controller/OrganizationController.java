@@ -23,6 +23,10 @@ public class OrganizationController {
     private final MajorMapper majorMapper;
     private final GradeMapper gradeMapper;
     private final ClassInfoMapper classInfoMapper;
+    private final UserCollegeScopeMapper userCollegeScopeMapper;
+    private final CounselorStudentMapper counselorStudentMapper;
+    private final UserMapper userMapper;
+    private final UserRoleMapper userRoleMapper;
     private final ICurrentUserProvider currentUsers;
 
     // ==================== 学院 College ====================
@@ -167,6 +171,73 @@ public class OrganizationController {
         ClassInfo c = classInfoMapper.selectById(id);
         if (c != null) { c.setEnabled(c.getEnabled() == 1 ? 0 : 1); classInfoMapper.updateById(c); }
         return JsonResponse.successMessage("操作成功");
+    }
+
+    // ==================== 学院用户范围 ====================
+
+    @GetMapping("college-scope/list")
+    public JsonResponse<List<UserCollegeScope>> listCollegeScopes() {
+        return JsonResponse.success(userCollegeScopeMapper.selectList(null));
+    }
+
+    @PostMapping("college-scope")
+    public JsonResponse<Void> addCollegeScope(@RequestParam Long userId, @RequestParam Long collegeId) {
+        boolean exists = userCollegeScopeMapper.exists(
+                new LambdaQueryWrapper<UserCollegeScope>()
+                        .eq(UserCollegeScope::getUserId, userId)
+                        .eq(UserCollegeScope::getCollegeId, collegeId));
+        if (!exists) {
+            UserCollegeScope scope = new UserCollegeScope();
+            scope.setUserId(userId);
+            scope.setCollegeId(collegeId);
+            userCollegeScopeMapper.insert(scope);
+        }
+        return JsonResponse.successMessage("关联成功");
+    }
+
+    @DeleteMapping("college-scope/{id}")
+    public JsonResponse<Void> removeCollegeScope(@PathVariable Long id) {
+        userCollegeScopeMapper.deleteById(id);
+        return JsonResponse.successMessage("已解除");
+    }
+
+    // ==================== 辅导员-学生关联 ====================
+
+    @GetMapping("counselor-scope/list")
+    public JsonResponse<List<CounselorStudent>> listCounselorScopes() {
+        return JsonResponse.success(counselorStudentMapper.selectList(null));
+    }
+
+    @PostMapping("counselor-scope")
+    public JsonResponse<Void> addCounselorScope(@RequestParam Long counselorUserId, @RequestParam Long studentId) {
+        boolean exists = counselorStudentMapper.exists(
+                new LambdaQueryWrapper<CounselorStudent>()
+                        .eq(CounselorStudent::getCounselorUserId, counselorUserId)
+                        .eq(CounselorStudent::getStudentId, studentId));
+        if (!exists) {
+            CounselorStudent cs = new CounselorStudent();
+            cs.setCounselorUserId(counselorUserId);
+            cs.setStudentId(studentId);
+            counselorStudentMapper.insert(cs);
+        }
+        return JsonResponse.successMessage("关联成功");
+    }
+
+    @DeleteMapping("counselor-scope/{id}")
+    public JsonResponse<Void> removeCounselorScope(@PathVariable Long id) {
+        counselorStudentMapper.deleteById(id);
+        return JsonResponse.successMessage("已解除");
+    }
+
+    /** 查询所有辅导员（供学生选辅导员时下拉） */
+    @GetMapping("counselors")
+    public JsonResponse<List<User>> listCounselors() {
+        List<Long> ids = userRoleMapper.selectList(
+                new LambdaQueryWrapper<UserRoleRelation>().eq(UserRoleRelation::getRoleId, 2L))
+                .stream().map(UserRoleRelation::getUserId).toList();
+        if (ids.isEmpty()) return JsonResponse.success(List.of());
+        return JsonResponse.success(userMapper.selectList(
+                new LambdaQueryWrapper<User>().in(User::getId, ids).eq(User::getDeleted, 0L)));
     }
 
     private void requireSchool() {

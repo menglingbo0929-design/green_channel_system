@@ -67,6 +67,7 @@ public class StudentProfileQueryServiceImpl implements StudentProfileQueryServic
                 .subsidyLevel(s.getSubsidyLevel())
                 .difficultyLevel(s.getDifficultyLevel())
                 .infoComplete(s.getInfoComplete())
+                .counselorId(s.getCounselorId())
                 .build();
     }
 
