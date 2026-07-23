@@ -8,5 +8,8 @@ public interface ApplicationOperationMapper {
     @Select("SELECT COUNT(*) FROM application_operation_record WHERE application_id=#{applicationId} AND operation_type=#{operationType} AND request_id=#{requestId}")
     int countByApplicationOperationRequest(@Param("applicationId") Long applicationId, @Param("operationType") String operationType, @Param("requestId") String requestId);
     @Insert("INSERT INTO application_operation_record(application_id,operation_type,request_id,operator_id) VALUES(#{applicationId},#{operationType},#{requestId},#{operatorId})")
-    int insert(Long applicationId, String operationType, String requestId, Long operatorId);
+    int insert(@Param("applicationId") Long applicationId,
+               @Param("operationType") String operationType,
+               @Param("requestId") String requestId,
+               @Param("operatorId") Long operatorId);
 }

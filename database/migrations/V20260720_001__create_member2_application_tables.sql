@@ -55,7 +55,7 @@ CREATE TABLE batch_gift_item (
     PRIMARY KEY (id),
     UNIQUE KEY uk_batch_gift_item_batch_item_deleted (batch_id, gift_item_id, deleted),
     KEY idx_batch_gift_item_batch_id (batch_id),
-    CONSTRAINT chk_batch_gift_item_counts CHECK (stock_total >= reserved_count AND reserved_count >= used_count AND used_count >= 0),
+    CONSTRAINT chk_batch_gift_item_counts CHECK (stock_total >= reserved_count + used_count AND reserved_count >= 0 AND used_count >= 0),
     CONSTRAINT chk_batch_gift_item_limit CHECK (per_student_limit > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -71,7 +71,7 @@ CREATE TABLE college_gift_quota (
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id), UNIQUE KEY uk_college_gift_quota_batch_college_deleted (batch_id, college_id, deleted),
-    CONSTRAINT chk_college_gift_quota_counts CHECK (quota_total >= reserved_count AND reserved_count >= used_count AND used_count >= 0)
+    CONSTRAINT chk_college_gift_quota_counts CHECK (quota_total >= reserved_count + used_count AND reserved_count >= 0 AND used_count >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE grade_gift_quota (
@@ -86,7 +86,7 @@ CREATE TABLE grade_gift_quota (
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id), UNIQUE KEY uk_grade_gift_quota_batch_grade_deleted (batch_id, grade_id, deleted),
-    CONSTRAINT chk_grade_gift_quota_counts CHECK (quota_total >= reserved_count AND reserved_count >= used_count AND used_count >= 0)
+    CONSTRAINT chk_grade_gift_quota_counts CHECK (quota_total >= reserved_count + used_count AND reserved_count >= 0 AND used_count >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE application (
@@ -175,7 +175,7 @@ CREATE TABLE college_subsidy_quota (
     quota_amount DECIMAL(12,2) NOT NULL, reserved_amount DECIMAL(12,2) NOT NULL DEFAULT 0, used_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
     version INT NOT NULL DEFAULT 0, create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id), UNIQUE KEY uk_college_subsidy_quota_batch_college_deleted (batch_id, college_id, deleted),
-    CONSTRAINT chk_college_subsidy_quota_amounts CHECK (quota_amount >= reserved_amount AND reserved_amount >= used_amount AND used_amount >= 0)
+    CONSTRAINT chk_college_subsidy_quota_amounts CHECK (quota_amount >= reserved_amount + used_amount AND reserved_amount >= 0 AND used_amount >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE grade_subsidy_quota (
@@ -184,7 +184,7 @@ CREATE TABLE grade_subsidy_quota (
     quota_amount DECIMAL(12,2) NOT NULL, reserved_amount DECIMAL(12,2) NOT NULL DEFAULT 0, used_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
     version INT NOT NULL DEFAULT 0, create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, deleted BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id), UNIQUE KEY uk_grade_subsidy_quota_batch_grade_deleted (batch_id, grade_id, deleted),
-    CONSTRAINT chk_grade_subsidy_quota_amounts CHECK (quota_amount >= reserved_amount AND reserved_amount >= used_amount AND used_amount >= 0)
+    CONSTRAINT chk_grade_subsidy_quota_amounts CHECK (quota_amount >= reserved_amount + used_amount AND reserved_amount >= 0 AND used_amount >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE application_attachment (
